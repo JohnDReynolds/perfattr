@@ -1,10 +1,11 @@
-
-##################################################### OBSOLETE ABOVE HERE
 1. Read /Users/johnreynolds/MyStuff/Projects/perfattr/_extras/attribution_addon_ideas.md.
 
 2. Treat “First-step implementation plan” as the governing roadmap.
 
 3. Extract/move that section into a new file /Users/johnreynolds/MyStuff/Projects/perfattr/_extras/perfattr_roadmap.md
+
+88EE-AE4E
+##################################################### OBSOLETE ABOVE HERE
 
 
 #################################################### COMMANDS

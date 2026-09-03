@@ -351,7 +351,9 @@ def test_structural_input_contract_is_enforced() -> None:
 def test_explicit_compatibility_tolerance_preserves_raw_calculation_values() -> None:
     """A wider host tolerance accepts small residuals without normalizing weights."""
     portfolio, benchmark = _read_inputs("single_period_derived")
-    portfolio.loc[0, "weight"] += 3e-10
+    adjusted_weight = cast(float, portfolio.at[0, "weight"]) + 3e-10
+    portfolio_return = cast(float, portfolio.at[0, "return"])
+    portfolio.at[0, "weight"] = adjusted_weight
 
     with pytest.raises(AttributionError, match="weights must sum to 1.0"):
         calculate_attribution(portfolio, benchmark)
@@ -363,9 +365,9 @@ def test_explicit_compatibility_tolerance_preserves_raw_calculation_values() -> 
     )
 
     first_row = result.period_detail.iloc[0]
-    assert first_row["portfolio_weight"] == portfolio.loc[0, "weight"]
+    assert first_row["portfolio_weight"] == adjusted_weight
     assert first_row["portfolio_contribution"] == pytest.approx(
-        portfolio.loc[0, "weight"] * portfolio.loc[0, "return"],
+        adjusted_weight * portfolio_return,
         rel=0.0,
         abs=0.0,
     )
