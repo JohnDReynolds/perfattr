@@ -28,7 +28,14 @@ Apply these conventions when modifying or creating code in this project.
 
 - Follow PEP 8 unless an established project-specific convention intentionally differs.
 - Limit lines to 99 characters.
-- Keep code free of `pylint` and `pyright` errors. Evaluate warnings case by case.
+- Keep code free of `pylint`, Pylance, and `pyright` errors and warnings. Treat a
+  Pylance diagnostic observed in the supported editor as a release-gate failure even
+  when the command-line `pyright` version does not reproduce it.
+- Fix the underlying code or type information rather than suppressing diagnostics,
+  excluding checked code, or weakening checker settings. If a diagnostic appears to
+  be a false positive or would be disproportionately difficult to resolve, explain
+  the diagnostic, attempted fixes, alternatives, and tradeoff, then obtain the
+  user's explicit approval before adding the narrowest possible suppression.
 - Prefer small, behavior-preserving changes unless a broader refactor has clear value.
 
 ## Architecture And Dependencies

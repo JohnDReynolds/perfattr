@@ -1,0 +1,3 @@
+from_date,thru_date,portfolio_period_return,benchmark_period_return,portfolio_linking_coefficient,benchmark_linking_coefficient,active_effect_linking_coefficient,portfolio_horizon_return,benchmark_horizon_return
+2024-01-01,2024-01-31,0.06,0.05,0.9974736342321734,1.0035243908336231,1.0009785331840475,0.0547,0.05735
+2024-02-01,2024-02-29,-0.005,0.007,1.0296836107860807,1.0248257797598352,1.0549821109867057,0.0547,0.05735

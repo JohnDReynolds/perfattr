@@ -1,0 +1,5 @@
+from_date,thru_date,identifier,weight,return,quantity_of_days
+2024-01-01,2024-01-31,Bonds,0.5,0.02,31
+2024-01-01,2024-01-31,Equity,0.5,0.08,31
+2024-02-01,2024-02-29,Bonds,0.6,0.025,29
+2024-02-01,2024-02-29,Equity,0.4,-0.02,29

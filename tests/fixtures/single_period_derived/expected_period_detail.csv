@@ -1,0 +1,6 @@
+from_date,thru_date,quantity_of_days,identifier,portfolio_weight,portfolio_return,portfolio_contribution,benchmark_weight,benchmark_return,benchmark_contribution,active_weight,active_return,active_contribution,allocation_effect,selection_effect,total_effect,linked_portfolio_contribution,linked_benchmark_contribution,linked_active_contribution,linked_allocation_effect,linked_selection_effect,linked_total_effect
+2024-01-01,2024-01-31,31,A,0.7,0.08,0.056,0.6,0.05,0.03,0.1,0.03,0.026,0.0016,0.021,0.0226,0.056,0.03,0.026,0.0016,0.021,0.0226
+2024-01-01,2024-01-31,31,B,0.4,-0.03,-0.012,0.3,-0.02,-0.006,0.1,-0.01,-0.006,-0.0054,-0.004,-0.0094,-0.012,-0.006,-0.006,-0.0054,-0.004,-0.0094
+2024-01-01,2024-01-31,31,C,-0.1,0.2,-0.02,0.0,0.0,0.0,-0.1,0.2,-0.02,0.0034,-0.02,-0.0166,-0.02,0.0,-0.02,0.0034,-0.02,-0.0166
+2024-01-01,2024-01-31,31,D,0.0,0.0,0.0,0.1,0.1,0.01,-0.1,-0.1,-0.01,-0.0066,0.0,-0.0066,0.0,0.01,-0.01,-0.0066,0.0,-0.0066
+2024-01-01,2024-01-31,31,E,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
