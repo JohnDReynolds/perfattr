@@ -270,7 +270,7 @@ adding only a few tens of milliseconds to a normal user workflow.
 
 ### Current status
 
-Steps 1 through 11 are complete. `perfattr==0.1.0a3` supplies the standalone core, and
+Steps 1 through 11 are complete. `perfattr==0.1.0` supplies the standalone core, and
 `ppar` commit `1a0ddc8` completes the shared result boundary, opt-in pandas adapter,
 cross-engine differential matrix, exact demonstration-artifact checks, and an
 additional pandas-backed 500x integration command. Direct elapsed-time and peak-memory
@@ -280,7 +280,7 @@ columnar NumPy conversion improvement at the `ppar` adapter boundary, recorded i
 reassessment selects `perfattr` as `ppar`'s sole attribution calculator. The legacy
 Polars financial calculator and the unreleased engine-selection API are retired while
 Polars remains the host's preparation and presentation format, as recorded in `ppar`
-commit `075c513`. Publish a stable `perfattr` release before the next `ppar` release.
+commit `075c513`. The stable `perfattr` release precedes the next `ppar` release.
 
 ### Agreed design decisions
 

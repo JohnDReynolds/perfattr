@@ -7,9 +7,6 @@
 88EE-AE4E
 ##################################################### OBSOLETE ABOVE HERE
 
-Can you delete /Users/johnreynolds/MyStuff/Projects/archived/ppar_polars/.venv
-
-
 
 #################################################### COMMANDS
 python3 -m venv .venv

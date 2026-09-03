@@ -6,7 +6,7 @@ from perfattr.attribution import (
     calculate_attribution,
 )
 
-__version__ = "0.1.0a3"
+__version__ = "0.1.0"
 
 __all__ = [
     "AttributionError",

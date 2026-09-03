@@ -3,7 +3,7 @@
 `perfattr` is a small, auditable portfolio performance-attribution calculation
 library built with pandas and NumPy.
 
-The initial release will provide a reusable Brinson-Fachler calculation core for
+The 0.1.0 release provides a reusable Brinson-Fachler calculation core for
 prepared reporting-period data. Source loading, portfolio accounting, vendor schemas,
 calendar logic, and presentation are intentionally outside the package boundary.
 
