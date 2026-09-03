@@ -202,6 +202,12 @@ Cross-engine parity should mean:
 - identical displayed and serialized values at `ppar`'s supported precision; and
 - identical HTML and PNG artifacts when values are equal at presentation precision.
 
+The standalone core retains a default reconciliation tolerance of `1e-12`. The
+initial `ppar` adapter may explicitly request `5e-9` to match `ppar`'s established
+eight-decimal weight-sum validation. This compatibility tolerance affects only input
+acceptance and reconciliation evidence; calculation formulas are unchanged, and
+cross-engine output parity remains `1e-12`.
+
 Bit-for-bit floating-point identity is not a suitable cross-engine requirement because
 pandas/NumPy and parallel Polars reductions can add the same values in different
 orders. The pandas core must not call the Polars implementation. The two engines

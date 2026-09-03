@@ -67,12 +67,26 @@ def _float_array(frame: pd.DataFrame, column: str) -> npt.NDArray[np.float64]:
 
 
 def _is_close(
-    actual: npt.NDArray[np.float64], expected: npt.NDArray[np.float64]
+    actual: npt.NDArray[np.float64],
+    expected: npt.NDArray[np.float64],
+    tolerance: float,
 ) -> npt.NDArray[np.bool_]:
     """Vectorize the project's symmetric relative and absolute tolerance."""
     difference = np.abs(actual - expected)
     scale = np.maximum(np.abs(actual), np.abs(expected))
-    return difference <= np.maximum(_TOLERANCE * scale, _TOLERANCE)
+    return difference <= np.maximum(tolerance * scale, tolerance)
+
+
+def _normalize_reconciliation_tolerance(value: float) -> float:
+    """Require a finite, positive, non-boolean reconciliation tolerance."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise TypeError("reconciliation_tolerance must be a real number")
+    tolerance = float(value)
+    if not np.isfinite(tolerance) or tolerance <= 0.0:
+        raise AttributionError(
+            "reconciliation_tolerance must be finite and greater than zero"
+        )
+    return tolerance
 
 
 def _has_true(values: pd.Series) -> bool:
@@ -279,7 +293,11 @@ def _period_totals(frame: pd.DataFrame) -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
-def _validate_matched_periods(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> None:
+def _validate_matched_periods(
+    portfolio: pd.DataFrame,
+    benchmark: pd.DataFrame,
+    reconciliation_tolerance: float,
+) -> None:
     """Validate cross-side period, day-count, weight, and return contracts."""
     portfolio_periods = _period_keys(portfolio)
     benchmark_periods = _period_keys(benchmark)
@@ -300,7 +318,11 @@ def _validate_matched_periods(portfolio: pd.DataFrame, benchmark: pd.DataFrame) 
     ):
         weight_sums = _float_array(totals, "weight")
         expected_weights = np.ones_like(weight_sums)
-        if not _is_close(weight_sums, expected_weights).all():
+        if not _is_close(
+            weight_sums,
+            expected_weights,
+            reconciliation_tolerance,
+        ).all():
             _raise_invalid(side, "weights must sum to 1.0 within tolerance")
         period_returns = _float_array(totals, "period_return")
         if not np.isfinite(period_returns).all():
@@ -787,7 +809,9 @@ def _build_overall_reconciliation(
 
 
 def _build_reconciliation(
-    detail: pd.DataFrame, summary: pd.DataFrame
+    detail: pd.DataFrame,
+    summary: pd.DataFrame,
+    reconciliation_tolerance: float,
 ) -> pd.DataFrame:
     """Build positive period and overall financial reconciliation evidence."""
     reconciliation = pd.concat(
@@ -800,10 +824,11 @@ def _build_reconciliation(
     reconciliation["residual"] = (
         reconciliation["actual"] - reconciliation["expected"]
     )
-    reconciliation["tolerance"] = _TOLERANCE
+    reconciliation["tolerance"] = reconciliation_tolerance
     reconciliation["passed"] = _is_close(
         _float_array(reconciliation, "actual"),
         _float_array(reconciliation, "expected"),
+        reconciliation_tolerance,
     )
     reconciliation = reconciliation.loc[:, RECONCILIATION_COLUMNS]
     reconciliation["scope"] = reconciliation["scope"].astype("string[python]")
@@ -840,12 +865,18 @@ def _validate_result_values(
 def calculate_attribution(
     portfolio: pd.DataFrame,
     benchmark: pd.DataFrame,
+    *,
+    reconciliation_tolerance: float = _TOLERANCE,
 ) -> AttributionResult:
     """Calculate portable multi-period Brinson-Fachler attribution.
 
     Args:
         portfolio: Prepared portfolio rows satisfying the portable input contract.
         benchmark: Prepared benchmark rows for the same reporting periods.
+        reconciliation_tolerance: Positive finite relative and absolute tolerance
+            used for input weight totals and returned reconciliation evidence. The
+            standalone default is ``1e-12``; a host may explicitly request a wider
+            compatibility tolerance without changing any calculation formula.
 
     Returns:
         Five new, caller-owned result frames containing period, overall, cumulative,
@@ -866,17 +897,26 @@ def calculate_attribution(
         raise TypeError("portfolio must be a pandas DataFrame")
     if not isinstance(benchmark, pd.DataFrame):
         raise TypeError("benchmark must be a pandas DataFrame")
+    tolerance = _normalize_reconciliation_tolerance(reconciliation_tolerance)
 
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
         normalized_portfolio = _normalize_input(portfolio, "portfolio")
         normalized_benchmark = _normalize_input(benchmark, "benchmark")
-        _validate_matched_periods(normalized_portfolio, normalized_benchmark)
+        _validate_matched_periods(
+            normalized_portfolio,
+            normalized_benchmark,
+            tolerance,
+        )
         equalized = _equalize_universe(normalized_portfolio, normalized_benchmark)
         period_detail = _link_period_detail(_build_period_detail(equalized))
         period_summary = _build_period_summary(period_detail)
         overall_detail = _build_overall_detail(equalized, period_detail)
         cumulative = _build_cumulative(period_summary)
-        reconciliation = _build_reconciliation(period_detail, period_summary)
+        reconciliation = _build_reconciliation(
+            period_detail,
+            period_summary,
+            tolerance,
+        )
     _validate_result_values(
         "period_detail",
         period_detail,

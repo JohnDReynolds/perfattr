@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -345,6 +346,57 @@ def test_structural_input_contract_is_enforced() -> None:
     benchmark["thru_date"] = "2024-02-01"
     with pytest.raises(AttributionError, match="periods must match exactly"):
         calculate_attribution(portfolio, benchmark)
+
+
+def test_explicit_compatibility_tolerance_preserves_raw_calculation_values() -> None:
+    """A wider host tolerance accepts small residuals without normalizing weights."""
+    portfolio, benchmark = _read_inputs("single_period_derived")
+    portfolio.loc[0, "weight"] += 3e-10
+
+    with pytest.raises(AttributionError, match="weights must sum to 1.0"):
+        calculate_attribution(portfolio, benchmark)
+
+    result = calculate_attribution(
+        portfolio,
+        benchmark,
+        reconciliation_tolerance=5e-9,
+    )
+
+    first_row = result.period_detail.iloc[0]
+    assert first_row["portfolio_weight"] == portfolio.loc[0, "weight"]
+    assert first_row["portfolio_contribution"] == pytest.approx(
+        portfolio.loc[0, "weight"] * portfolio.loc[0, "return"],
+        rel=0.0,
+        abs=0.0,
+    )
+    assert (result.reconciliation["tolerance"] == 5e-9).all()
+    assert bool(result.reconciliation["passed"].to_numpy().all())
+
+
+@pytest.mark.parametrize(
+    ("tolerance", "error_type"),
+    (
+        (True, TypeError),
+        ("5e-9", TypeError),
+        (0.0, AttributionError),
+        (-1e-12, AttributionError),
+        (float("nan"), AttributionError),
+        (float("inf"), AttributionError),
+    ),
+)
+def test_reconciliation_tolerance_must_be_positive_and_finite(
+    tolerance: object,
+    error_type: type[Exception],
+) -> None:
+    """Invalid compatibility tolerances fail before financial calculation."""
+    portfolio, benchmark = _read_inputs("single_period_derived")
+
+    with pytest.raises(error_type, match="reconciliation_tolerance"):
+        calculate_attribution(
+            portfolio,
+            benchmark,
+            reconciliation_tolerance=cast(float, tolerance),
+        )
 
 
 def test_nonzero_weight_requires_a_return() -> None:

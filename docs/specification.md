@@ -497,7 +497,7 @@ The first release emits no warnings and never returns a partial result.
 
 ## Numerical contract
 
-All financial comparisons use:
+By default, all financial comparisons use:
 
 ```python
 math.isclose(actual, expected, rel_tol=1e-12, abs_tol=1e-12)
@@ -506,6 +506,15 @@ math.isclose(actual, expected, rel_tol=1e-12, abs_tol=1e-12)
 Null placement, dates, identifiers, row ordering, column ordering, and boolean values
 must match exactly. Numerical calculations must be equal within the tolerance above.
 Bit-for-bit floating-point identity is not required.
+
+`calculate_attribution()` also accepts an explicit keyword-only
+`reconciliation_tolerance`. It must be finite and greater than zero and controls input
+weight-sum validation and the tolerance recorded and enforced by the reconciliation
+frame. Its default remains `1e-12`. A host with an established, less precise input
+contract may deliberately request a wider compatibility tolerance; doing so changes
+only validation and reconciliation acceptance, never calculation formulas or result
+values. Cross-engine result comparison remains subject to the host's separate parity
+tolerance.
 
 Except for undefined return fields, result numeric columns must be finite. The core
 must use numerically stable `log1p`-based calculations and explicit zero-return limits.
