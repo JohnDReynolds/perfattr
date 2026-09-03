@@ -284,6 +284,14 @@ adding only a few tens of milliseconds to a normal user workflow.
    whether maintaining two financial calculators continues to earn its additional
    correctness and maintenance cost.
 
+### Current status
+
+Steps 1 through 9 are complete. `perfattr==0.1.0a3` supplies the standalone core, and
+`ppar` commit `1a0ddc8` completes the shared result boundary, opt-in pandas adapter,
+cross-engine differential matrix, exact demonstration-artifact checks, and an
+additional pandas-backed 500x integration command. The next roadmap item is Step 10:
+profile before optimizing.
+
 ### Agreed design decisions
 
 The initial design adopts these decisions:
