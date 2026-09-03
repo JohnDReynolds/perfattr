@@ -7,12 +7,13 @@ The initial release will provide a reusable Brinson-Fachler calculation core for
 prepared reporting-period data. Source loading, portfolio accounting, vendor schemas,
 calendar logic, and presentation are intentionally outside the package boundary.
 
-The first functional alpha slice calculates one prepared reporting period, including
+The calculation core accepts one or more prepared reporting periods and provides
 input validation, universe equalization, Brinson-Fachler allocation and selection,
-and financial reconciliation. Multi-period linking remains the next calculation
-milestone. The governing roadmap is available in
-[`_extras/perfattr_roadmap.md`](_extras/perfattr_roadmap.md), and the complete portable
-calculation contract is defined in [`docs/specification.md`](docs/specification.md).
+logarithmic contribution linking, Carino active-effect linking, cumulative and
+full-horizon results, and financial reconciliation. The governing roadmap is available
+in [`_extras/perfattr_roadmap.md`](_extras/perfattr_roadmap.md), and the complete
+portable calculation contract is defined in
+[`docs/specification.md`](docs/specification.md).
 
 ```python
 from perfattr import calculate_attribution
