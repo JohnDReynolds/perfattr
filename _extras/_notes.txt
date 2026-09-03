@@ -1,0 +1,15 @@
+
+##################################################### OBSOLETE ABOVE HERE
+1. Read /Users/johnreynolds/MyStuff/Projects/perfattr/_extras/attribution_addon_ideas.md.
+
+2. Treat “First-step implementation plan” as the governing roadmap.
+
+3. Extract/move that section into a new file /Users/johnreynolds/MyStuff/Projects/perfattr/_extras/perfattr_roadmap.md
+
+
+#################################################### COMMANDS
+python3 -m venv .venv
+source .venv/bin/activate
+python --version
+which python
+deactivate

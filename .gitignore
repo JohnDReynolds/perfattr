@@ -1,0 +1,64 @@
+# Generated project outputs
+/.cache/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+/build/
+/dist/
+*.egg-info/
+.eggs/
+
+# Installer remnants
+pip-delete-this-directory.txt
+
+# Tests, type checking, and profiling
+/.pytest_cache/
+/.mypy_cache/
+.dmypy.json
+dmypy.json
+htmlcov/
+.coverage
+.coverage.*
+*.cover
+*.py,cover
+coverage.xml
+*.prof
+.profraw
+
+# pyenv
+.python-version
+
+# Local environment
+.env
+.env.*
+!.env.example
+/.venv/
+
+# IDEs and text editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.Trash-*
+
+# Temporary files
+.~lock.*#

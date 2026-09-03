@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "perfattr"
+version = "0.1.0a1"
+description = "Auditable portfolio performance attribution using pandas and NumPy."
+authors = [{ name = "John Reynolds" }]
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+]
+keywords = [
+    "attribution",
+    "brinson",
+    "finance",
+    "performance",
+    "portfolio",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "pylint>=4.0",
+    "pyright>=1.1.409",
+    "pytest>=8.0",
+    "twine>=6.0",
+]
+
+[project.urls]
+Repository = "https://github.com/JohnDReynolds/perfattr"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/docs",
+    "/src",
+    "/tests",
+    "/LICENSE",
+    "/README.md",
+    "/pyproject.toml",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/perfattr"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.pyright]
+include = ["src/perfattr", "tests"]
+extraPaths = ["src"]
+pythonVersion = "3.11"
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+
+[tool.pylint.main]
+persistent = false
+py-version = "3.11"
+
+[tool.pylint.format]
+max-line-length = 99
+
+[tool.pylint."messages control"]
+enable = [
+    "unused-import",
+    "unused-variable",
+]
