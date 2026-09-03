@@ -41,7 +41,7 @@ jobs:
 
       - name: Run pylint
         if: matrix.python-version == '3.11'
-        run: python -m pylint src/perfattr tests
+        run: python -m pylint src/perfattr tests scripts
 
       - name: Run pyright
         if: matrix.python-version == '3.11'
