@@ -50,10 +50,10 @@ NumPy 2.4.2, and Polars 1.38.0. It identified per-value Python-list materializat
 the pandas/Polars boundary as the dominant non-core cost. Passing existing columnar
 NumPy arrays in both directions reduced the median of five samples from approximately
 0.52 seconds to 0.23 seconds and reduced peak traced allocation from 142.9 MiB to
-113.1 MiB. The comprehensive cross-engine tests and 500x integration gate remain the
-authority for correctness and workflow performance.
+113.1 MiB. The completed differential suite established migration parity; the
+permanent 500x integration gate remains the authority for workflow performance.
 
-After the change, the pandas-backed 500x integration command passed all scenarios.
+After the change, the permanent `ppar` 500x integration command passed all scenarios.
 The large-source workflow took 1.41 seconds at both 12,126 and 6,063,000 source rows;
 the selected-input workflow grew from 0.23 to 0.47 seconds at 10x rows; and the
 long-history workflow grew from 1.28 to 1.85 seconds at 5x history. These timings are
