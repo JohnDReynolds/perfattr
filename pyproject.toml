@@ -51,6 +51,7 @@ path = "src/perfattr/__init__.py"
 [tool.hatch.build.targets.sdist]
 include = [
     "/docs",
+    "/scripts",
     "/src",
     "/tests",
     "/LICENSE",
@@ -65,7 +66,7 @@ packages = ["src/perfattr"]
 testpaths = ["tests"]
 
 [tool.pyright]
-include = ["src/perfattr", "tests"]
+include = ["src/perfattr", "tests", "scripts"]
 extraPaths = ["src"]
 pythonVersion = "3.11"
 venvPath = "."

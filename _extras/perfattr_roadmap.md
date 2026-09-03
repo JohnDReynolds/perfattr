@@ -286,11 +286,14 @@ adding only a few tens of milliseconds to a normal user workflow.
 
 ### Current status
 
-Steps 1 through 9 are complete. `perfattr==0.1.0a3` supplies the standalone core, and
+Steps 1 through 10 are complete. `perfattr==0.1.0a3` supplies the standalone core, and
 `ppar` commit `1a0ddc8` completes the shared result boundary, opt-in pandas adapter,
 cross-engine differential matrix, exact demonstration-artifact checks, and an
-additional pandas-backed 500x integration command. The next roadmap item is Step 10:
-profile before optimizing.
+additional pandas-backed 500x integration command. Direct elapsed-time and peak-memory
+benchmarks now cover all four roadmap workloads. Profiling justified one simple,
+columnar NumPy conversion improvement at the `ppar` adapter boundary, recorded in
+`ppar` commit `8eb1a77`, and no added core complexity or dependencies. The next
+roadmap item is Step 11: reassess permanent dual-engine support.
 
 ### Agreed design decisions
 

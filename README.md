@@ -41,9 +41,20 @@ Run the initial checks:
 
 ```bash
 python -m pytest
-python -m pylint src/perfattr tests
+python -m pylint src/perfattr tests scripts
 python -m pyright
 ```
+
+Run the four roadmap performance workloads:
+
+```bash
+python scripts/benchmark_core.py --samples 5
+python scripts/benchmark_core.py --samples 5 --input-form authoritative
+```
+
+Add `--workload monthly_121260 --profile` to inspect one workload's cumulative
+call profile. The benchmark methodology and initial observations are recorded in
+[`docs/performance.md`](docs/performance.md).
 
 ## License
 
