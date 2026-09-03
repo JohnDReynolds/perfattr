@@ -9,6 +9,8 @@ calendar logic, and presentation are intentionally outside the package boundary.
 
 The project is in its initial specification and implementation phase. The governing
 roadmap is available in [`_extras/perfattr_roadmap.md`](_extras/perfattr_roadmap.md).
+The portable calculation contract is defined in
+[`docs/specification.md`](docs/specification.md).
 
 ## Development
 

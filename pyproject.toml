@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "perfattr"
-version = "0.1.0a1"
+dynamic = ["version"]
 description = "Auditable portfolio performance attribution using pandas and NumPy."
 authors = [{ name = "John Reynolds" }]
 readme = "README.md"
@@ -44,6 +44,9 @@ dev = [
 
 [project.urls]
 Repository = "https://github.com/JohnDReynolds/perfattr"
+
+[tool.hatch.version]
+path = "src/perfattr/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

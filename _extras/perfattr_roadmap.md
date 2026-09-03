@@ -92,11 +92,16 @@ reporting period.
 | `identifier` | Security or already-resolved classification identifier |
 | `weight` | Period exposure weight |
 | `return` | Compoundable holding or group return; nullable when mathematically undefined |
-| `contribution` | Authoritative additive contribution |
+| `contribution` | Optional authoritative additive contribution |
 | `quantity_of_days` | Observed period days used when calculating overall weights |
 
-Contribution should be a first-class input rather than always being recalculated as
-weight multiplied by return. This is required to preserve linked contributions after
+Contribution should be a first-class optional input. When its column is absent, the
+core should derive every row as weight multiplied by return; a zero-weight row with a
+null return derives zero contribution. When the column is present, every value must be
+non-null and finite and must be treated as authoritative. Portfolio and benchmark may
+independently use either form. Partial contribution columns are invalid.
+
+The optional authoritative form is required to preserve linked contributions after
 frequency consolidation, zero-net-weight groups with nonzero contribution, and future
 fee, financing, cash, or derivative treatments.
 
