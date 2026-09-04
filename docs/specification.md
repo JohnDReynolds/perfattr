@@ -6,6 +6,10 @@ This document defines the calculation contract for the first `perfattr` release.
 is normative for the portable pandas implementation. The project roadmap governs
 sequencing and scope; this specification governs calculation behavior.
 
+Roadmap 2's upstream preparation contract is defined separately in
+`docs/preparation_specification.md`. That layer produces the prepared frames consumed
+by this calculation contract without changing the calculation core's responsibility.
+
 The words **must**, **must not**, **should**, and **may** describe requirements with
 their ordinary technical meanings.
 

@@ -90,8 +90,8 @@ assume authoritative contribution equals weight multiplied by return.
 
 ### `ppar` retirement matrix
 
-- **Canonical CSV loading:** `perfattr` owns performance and classification loading.
-  `ppar` may retain only an algorithm-free compatibility call into `perfattr`.
+- **Canonical CSV loading:** `perfattr` owns performance, mapping, and classification
+  loading. `ppar` may retain only an algorithm-free compatibility call into `perfattr`.
 - **Normalized validation:** `perfattr` owns source-neutral schema and financial
   validation. `ppar` retains vendor validation before normalization and host-output
   validation.
@@ -130,8 +130,8 @@ would put vendor or accounting policy into the portable package:
 - Do not import `ppar` or Polars into `perfattr`.
 - Do not add a plugin framework, abstract adapter hierarchy, or speculative extension
   points.
-- Accept in-memory pandas frames first. Add only the two canonical CSV readers defined
-  in this roadmap after the in-memory pipeline is stable.
+- Accept in-memory pandas frames first. Add only the three canonical CSV readers
+  defined in this roadmap after the in-memory pipeline is stable.
 - Accept holiday dates as data. Do not add a market-calendar dependency or embed one
   market's holidays.
 - Do not mutate caller-supplied frames.
@@ -164,16 +164,28 @@ Implementation begins with a written portable preparation specification covering
 8. **Errors and warnings.** Distinguish invalid data from valid but incomplete coverage
    and make every truncation or exclusion explicit.
 
-The first classification implementation may be static, but classification must occur
-before consolidation. Static mapping produces the same result either way; this order
-also permits a future classification change inside a reporting bucket to be handled
-correctly.
+The first classification implementation may be static, but classification assignments
+must be resolved before consolidation. Weight and contribution aggregation must remain
+equivalent to static mapping after consolidation, including its effective-return
+semantics. This order also permits a future classification change inside a reporting
+bucket to be handled correctly.
+
+## Current status
+
+- The roadmap structure was committed in `02dbc22`.
+- `docs/preparation_specification.md` contains the first specification draft.
+- The migration ledger below inventories the current `ppar` transfer and retirement
+  targets.
+- No preparation implementation has begun. Specification review and acceptance is the
+  next gate.
 
 ## Implementation sequence
 
 ### 1. Write the portable preparation specification
 
 - Record the schemas, policies, formulas, errors, ordering, and ownership rules above.
+- Use `docs/preparation_specification.md` as the normative preparation contract after
+  it is reviewed and accepted.
 - Decide public names only after representative examples make the boundary concrete.
 - Inventory related `ppar` behavior and document license and fixture provenance before
   reusing any material in the MIT-licensed package.
@@ -226,8 +238,8 @@ correctly.
 
 ### 7. Add canonical CSV loading
 
-- Add thin performance and classification CSV readers for the documented canonical
-  schemas.
+- Add thin performance, mapping, and classification CSV readers for the documented
+  canonical schemas.
 - Keep column translation, file discovery, URL access, vendor conventions, and holiday
   file loading in host adapters.
 - Do not add another runtime dependency.
@@ -257,6 +269,172 @@ correctly.
 - Publish only after all standalone and `ppar` integration gates pass.
 - Record release commits, tags, versions, and measured performance before marking this
   roadmap complete.
+
+## `ppar` migration ledger
+
+The status values are **pending**, **implemented**, **delegated**, and **retired**. An
+item is not complete until it reaches **retired**: `perfattr` is tested, `ppar`
+delegates to it, and the superseded `ppar` implementation and implementation-only
+tests are deleted. All items are currently **pending**.
+
+### Normalized performance loading and validation — pending
+
+`perfattr` replacement:
+
+- canonical performance CSV loading;
+- source-period normalization and validation;
+- contribution derivation and source-period totals;
+- date-window filtering; and
+- preparation reconciliation evidence.
+
+Superseded `ppar` implementation to retire or reduce to delegation:
+
+- `src/ppar/performance.py`: `Performance._load_data`;
+- `Performance._clean_and_validate_columns`;
+- `Performance._cast_and_validate_columns`;
+- `Performance._clean_and_validate_dates`;
+- `Performance._filter_date_range`;
+- `Performance._calculate_rows`; and
+- the source-neutral portions of `Performance.audit` and
+  `Performance.audit_performances`.
+
+Permitted `ppar` remainder:
+
+- an algorithm-free `Performance` compatibility container if still required by risk,
+  reporting, or supported imports;
+- Polars/pandas translation; and
+- validation of host objects after translation.
+
+### Portfolio-code selection — pending
+
+`perfattr` replacement:
+
+- exact selection from a normalized in-memory multi-portfolio frame.
+
+There is no general in-memory selector to retire from the current `ppar` calculation
+path. Axys/APX code discovery, partitioning, composite expansion, and lazy predicate
+pushdown remain in `ppar` because they are source-specific and avoid materializing
+unselected vendor rows.
+
+### Calendar arithmetic and period alignment — pending
+
+`perfattr` replacement:
+
+- `Frequency`;
+- nominal and effective bucket endpoints;
+- bucket labels and completeness checks;
+- gapless coverage validation;
+- native-period intersection; and
+- fixed-frequency portfolio/benchmark alignment.
+
+Superseded `ppar` implementation to retire:
+
+- `src/ppar/frequency.py`: `date_matches_frequency`;
+- `frequency_bucket`;
+- `frequency_bucket_end`;
+- `frequency_bucket_effective_end`;
+- `frequency_bucket_label`;
+- `validate_frequency_coverage`;
+- `completed_frequency_bucket_ends`;
+- `fixed_frequency_coverage_start`;
+- `src/ppar/core.py`: `_period_tuples` and `_formatted_periods`; and
+- `Analytics._calculate_subperiod_dates`.
+
+Permitted `ppar` remainder:
+
+- `load_holidays` for the existing path-based host API;
+- `periods_per_year` for host risk calculations; and
+- an algorithm-free `Frequency` re-export for compatibility.
+
+### Classification and mapping loading — pending
+
+`perfattr` replacement:
+
+- canonical mapping and classification CSV loading;
+- normalized pair validation, deterministic deduplication, and conflict detection; and
+- identity fallback for an unmapped source identifier.
+
+Superseded `ppar` implementation to retire or reduce to delegation:
+
+- `src/ppar/mapping.py`: the `Mapping` algorithm and generic loading;
+- `src/ppar/classification.py`: generic classification-file loading; and
+- `src/ppar/utilities.py`: `load_datasource` once no generic caller remains.
+
+`utilities._deduplicate_identifier_pairs` is also superseded for normalized portable
+pairs. Its Axys/APX callers must either delegate after translation or use validation
+narrowly tied to the vendor source. A shared generic Polars copy must not remain.
+
+Permitted `ppar` remainder:
+
+- classification display metadata and host-facing compatibility containers;
+- Axys/APX classification extraction and security-identity construction; and
+- source-specific validation before normalization.
+
+### Classification roll-up — pending
+
+`perfattr` replacement:
+
+- independent portfolio and benchmark mapping at source-period granularity;
+- aggregation of mapped weights and authoritative contributions; and
+- defined, zero, or null mapped effective returns.
+
+Superseded `ppar` implementation to retire:
+
+- `src/ppar/core.py`: `Analytics._map_performance`.
+
+Permitted `ppar` remainder:
+
+- mapping-source selection and translation in the host adapter; and
+- joining classification display names for presentation.
+
+### Reporting-frequency consolidation — pending
+
+`perfattr` replacement:
+
+- source-to-reporting-period assignment;
+- geometric total and identifier returns;
+- observed-day-weighted exposures;
+- logarithmically linked authoritative contributions; and
+- consolidation reconciliation.
+
+Superseded `ppar` implementation to retire:
+
+- `src/ppar/core.py`: `Analytics._consolidate_all_subperiods`;
+- `Analytics._source_periods_match_reporting_periods`;
+- `Analytics._consolidate_subperiods`;
+- consolidation-only uses of `Performance._replace_calculated_rows`;
+- `Performance.subperiods_have_been_consolidated`; and
+- `Performance.linking_coefficients` plus any overall helper left unused after the
+  transfer.
+
+Permitted `ppar` remainder:
+
+- a host container for prepared Polars rows if risk or presentation still needs it;
+  and
+- conversion to and from the pandas preparation result.
+
+### Composition and final retirement — pending
+
+`perfattr` replacement:
+
+- one public composition API returning prepared portfolio, benchmark, and
+  reconciliation frames.
+
+Superseded `ppar` implementation to retire or reduce to delegation:
+
+- preparation orchestration inside `Analytics.__init__`; and
+- unit tests that call only a retired Polars algorithm.
+
+Permitted `ppar` remainder:
+
+- `Analytics` as the host-facing coordinator;
+- `_perfattr_adapter.py` or its replacement as one thin translation boundary;
+- host error translation needed to preserve supported exceptions; and
+- end-to-end tests proving the public `ppar` workflow delegates correctly.
+
+At final review, repository search must confirm that every retired symbol is absent or
+is an algorithm-free compatibility facade. The ledger must then record the `perfattr`
+and `ppar` commits that supplied and retired each responsibility.
 
 ## Verification gates
 

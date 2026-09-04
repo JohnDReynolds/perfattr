@@ -16,8 +16,9 @@ portable preparation work is governed by
 [`_extras/perfattr_roadmap_2.md`](_extras/perfattr_roadmap_2.md), while later candidates
 are kept in the noncommitted
 [`_extras/perfattr_roadmap_3.md`](_extras/perfattr_roadmap_3.md). The complete portable
-calculation contract is defined in
-[`docs/specification.md`](docs/specification.md).
+calculation contract is defined in [`docs/specification.md`](docs/specification.md),
+and the draft roadmap 2 preparation contract is in
+[`docs/preparation_specification.md`](docs/preparation_specification.md).
 
 ```python
 from perfattr import calculate_attribution
