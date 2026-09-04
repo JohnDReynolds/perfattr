@@ -177,10 +177,11 @@ bucket to be handled correctly.
   normative preparation contract.
 - The migration ledger below inventories the current `ppar` transfer and retirement
   targets.
-- Roadmap steps 1 through 3 are complete. Source-period normalization, financial
+- Roadmap steps 1 through 4 are complete. Source-period normalization, financial
   validation, exact in-memory portfolio selection, portable calendar rules, and
-  portfolio/benchmark period alignment now live in `perfattr`; classification mapping
-  is next.
+  portfolio/benchmark period alignment now live in `perfattr`. Static classification
+  mapping and source-period roll-up are also implemented; reporting-frequency
+  consolidation is next.
 
 ## Implementation sequence
 
@@ -217,6 +218,8 @@ bucket to be handled correctly.
 - Cover weekends, supplied holidays, leap days, month ends, and year ends.
 
 ### 4. Add classification mapping
+
+**Status:** Complete September 4, 2026.
 
 - Map portfolio and benchmark independently at source-period granularity.
 - Specify behavior for missing mappings and already-classified identifiers.
@@ -282,8 +285,8 @@ bucket to be handled correctly.
 The status values are **pending**, **implemented**, **delegated**, and **retired**. An
 item is not complete until it reaches **retired**: `perfattr` is tested, `ppar`
 delegates to it, and the superseded `ppar` implementation and implementation-only
-tests are deleted. Step 2 has implemented its two `perfattr` responsibilities; their
-`ppar` delegation and retirement remain for step 8.
+tests are deleted. Roadmap steps 2 through 4 have implemented their `perfattr`
+responsibilities; their `ppar` delegation and retirement remain for step 8.
 
 ### Normalized performance validation — implemented
 
@@ -358,31 +361,47 @@ Permitted `ppar` remainder:
 The portable implementation is complete in `perfattr`. Delegation from `ppar` and
 deletion of its superseded implementations remain for step 8.
 
-### Classification and mapping loading — pending
+### Static mapping validation — implemented
 
 `perfattr` replacement:
 
-- canonical mapping and classification CSV loading;
 - normalized pair validation, deterministic deduplication, and conflict detection; and
 - identity fallback for an unmapped source identifier.
 
 Superseded `ppar` implementation to retire or reduce to delegation:
 
-- `src/ppar/mapping.py`: the `Mapping` algorithm and generic loading;
-- `src/ppar/classification.py`: generic classification-file loading; and
-- `src/ppar/utilities.py`: `load_datasource` once no generic caller remains.
+- `src/ppar/mapping.py`: the `Mapping` algorithm and generic validation; and
+- `src/ppar/utilities.py`: `_deduplicate_identifier_pairs` for normalized portable
+  pairs.
 
-`utilities._deduplicate_identifier_pairs` is also superseded for normalized portable
-pairs. Its Axys/APX callers must either delegate after translation or use validation
-narrowly tied to the vendor source. A shared generic Polars copy must not remain.
+Axys/APX callers of `_deduplicate_identifier_pairs` must either delegate after
+translation or use validation narrowly tied to the vendor source. A shared generic
+Polars copy must not remain.
 
 Permitted `ppar` remainder:
 
-- classification display metadata and host-facing compatibility containers;
 - Axys/APX classification extraction and security-identity construction; and
 - source-specific validation before normalization.
 
-### Classification roll-up — pending
+### Canonical mapping and classification loading — pending
+
+`perfattr` replacement:
+
+- canonical mapping and classification CSV loading; and
+- normalized classification-name metadata validation.
+
+Superseded `ppar` implementation to retire or reduce to delegation:
+
+- `src/ppar/mapping.py`: generic file loading;
+- `src/ppar/classification.py`: generic classification-file loading; and
+- `src/ppar/utilities.py`: `load_datasource` once no generic caller remains.
+
+Permitted `ppar` remainder:
+
+- classification display metadata and host-facing compatibility containers; and
+- source-specific file translation before canonical loading.
+
+### Classification roll-up — implemented
 
 `perfattr` replacement:
 
@@ -398,6 +417,9 @@ Permitted `ppar` remainder:
 
 - mapping-source selection and translation in the host adapter; and
 - joining classification display names for presentation.
+
+The portable static implementation is complete in `perfattr`. Delegation from `ppar`
+and deletion of `Analytics._map_performance` remain for step 8.
 
 ### Reporting-frequency consolidation — pending
 

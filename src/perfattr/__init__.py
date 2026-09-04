@@ -5,10 +5,9 @@ from perfattr.attribution import (
     AttributionResult,
     calculate_attribution,
 )
+from perfattr._exceptions import PreparationError, PreparationWarning
 from perfattr.frequency import Frequency
 from perfattr.preparation import (
-    PreparationError,
-    PreparationWarning,
     select_portfolio,
 )
 

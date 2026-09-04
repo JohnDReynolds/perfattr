@@ -17,6 +17,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from perfattr._exceptions import PreparationError, PreparationWarning
 from perfattr.frequency import (
     Frequency,
     _date_matches_frequency,
@@ -25,6 +26,7 @@ from perfattr.frequency import (
     _frequency_bucket_end,
     _frequency_bucket_label,
 )
+from perfattr._schemas import NORMALIZED_PERFORMANCE_COLUMNS
 from perfattr._validation import (
     float_array as _float_array,
     has_true as _has_true,
@@ -34,6 +36,7 @@ from perfattr._validation import (
     normalize_numeric,
     normalize_reconciliation_tolerance,
     raise_invalid,
+    sum_by_period as _sum_by_period,
 )
 
 
@@ -44,19 +47,6 @@ _OPTIONAL_COLUMNS = (
     "portfolio_code",
     "name",
 )
-_NORMALIZED_COLUMNS = tuple(
-    "from_date thru_date quantity_of_days identifier weight return contribution".split()
-)
-
-
-class PreparationError(ValueError):
-    """Report invalid preparation input or a failed preparation invariant."""
-
-
-class PreparationWarning(RuntimeWarning):
-    """Report valid preparation input truncated before an incomplete bucket."""
-
-
 _DatePeriod = tuple[dt.date, dt.date]
 
 
@@ -669,16 +659,7 @@ def _validate_period_totals(
         PreparationError: If a period weight does not sum to one or contribution
             summation overflows to a non-finite value.
     """
-    grouped = frame.groupby(
-        ["from_date", "thru_date"],
-        sort=False,
-        observed=True,
-    )
-    summed = cast(
-        pd.DataFrame,
-        grouped[["weight", "contribution"]].sum(),
-    )
-    totals = summed.reset_index()
+    totals = _sum_by_period(frame, ("weight", "contribution"))
     weights = _float_array(totals, "weight")
     contributions = _float_array(totals, "contribution")
     if not np.isfinite(weights).all():
@@ -873,7 +854,7 @@ def _normalize_performance(
     _normalize_source_columns(normalized, context)
     contribution_was_supplied = _normalize_contributions(normalized, context)
     _validate_period_totals(normalized, context, tolerance)
-    ordered_columns = [*_NORMALIZED_COLUMNS]
+    ordered_columns = [*NORMALIZED_PERFORMANCE_COLUMNS]
     ordered_columns.extend(
         column for column in ("portfolio_code", "name") if column in normalized.columns
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import NoReturn, cast
 
 import numpy as np
@@ -29,6 +30,28 @@ def is_close(
     difference = np.abs(actual - expected)
     scale = np.maximum(np.abs(actual), np.abs(expected))
     return difference <= np.maximum(tolerance * scale, tolerance)
+
+
+def sum_by_period(
+    frame: pd.DataFrame,
+    columns: Sequence[str],
+) -> pd.DataFrame:
+    """Sum numeric columns by deterministic inclusive period boundaries.
+
+    Args:
+        frame: Frame containing normalized ``from_date`` and ``thru_date`` columns.
+        columns: Numeric columns to sum.
+
+    Returns:
+        One chronologically ordered row per inclusive period.
+    """
+    grouped = frame.groupby(
+        ["from_date", "thru_date"],
+        sort=True,
+        observed=True,
+    )
+    summed = cast(pd.DataFrame, grouped[list(columns)].sum())
+    return summed.reset_index()
 
 
 def raise_invalid(

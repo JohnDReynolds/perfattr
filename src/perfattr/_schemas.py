@@ -1,5 +1,14 @@
 """Stable column and reconciliation ordering for portable result frames."""
 
+NORMALIZED_PERFORMANCE_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "quantity_of_days",
+    "identifier",
+    "weight",
+    "return",
+    "contribution",
+)
 PERIOD_DETAIL_COLUMNS = (
     "from_date",
     "thru_date",
