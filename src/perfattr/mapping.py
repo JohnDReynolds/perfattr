@@ -58,6 +58,24 @@ def _normalize_mapping(mapping: pd.DataFrame, context: str) -> pd.DataFrame:
     )
 
 
+def normalize_mapping(mapping: pd.DataFrame) -> pd.DataFrame:
+    """Validate and normalize a static classification mapping.
+
+    Args:
+        mapping: DataFrame containing exactly ``identifier`` and
+            ``classification_identifier`` columns.
+
+    Returns:
+        An independently owned, deduplicated mapping in deterministic order.
+
+    Raises:
+        TypeError: If ``mapping`` is not a pandas DataFrame.
+        PreparationError: If its schema, identities, or one-to-one mapping contract
+            is invalid.
+    """
+    return _normalize_mapping(mapping, "mapping input")
+
+
 def _mapped_identifiers(
     performance: pd.DataFrame,
     mapping: pd.DataFrame,
@@ -229,4 +247,4 @@ def _map_performance(
     return mapped
 
 
-__all__: list[str] = []
+__all__ = ["normalize_mapping"]

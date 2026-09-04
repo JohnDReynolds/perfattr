@@ -75,13 +75,23 @@ def select_portfolio(
 ) -> pd.DataFrame:
     ...
 
-def read_performance_csv(path: str | os.PathLike[str]) -> pd.DataFrame:
+def read_performance_csv(
+    path: str | os.PathLike[str],
+    *,
+    reconciliation_tolerance: float = 1e-12,
+) -> pd.DataFrame:
     ...
 
 def read_mapping_csv(path: str | os.PathLike[str]) -> pd.DataFrame:
     ...
 
 def read_classification_csv(path: str | os.PathLike[str]) -> pd.DataFrame:
+    ...
+
+def normalize_mapping(mapping: pd.DataFrame) -> pd.DataFrame:
+    ...
+
+def normalize_classification(classification: pd.DataFrame) -> pd.DataFrame:
     ...
 ```
 

@@ -12,7 +12,7 @@ import pandas as pd
 
 from perfattr._exceptions import PreparationError
 from perfattr._schemas import PREPARED_REQUIRED_COLUMNS
-from perfattr._validation import normalize_identity
+from perfattr._validation import normalize_identity, normalize_reconciliation_tolerance
 from perfattr.classification import _normalize_classification
 from perfattr.mapping import _normalize_mapping
 from perfattr.preparation import _NormalizedPerformance, _normalize_performance
@@ -188,10 +188,17 @@ def _read_performance_frame(
     return frame
 
 
-def _normalize_performance_streams(frame: pd.DataFrame) -> _NormalizedPerformance:
+def _normalize_performance_streams(
+    frame: pd.DataFrame,
+    reconciliation_tolerance: float,
+) -> _NormalizedPerformance:
     """Normalize one ordinary stream or every code in a master performance frame."""
     if "portfolio_code" not in frame.columns:
-        return _normalize_performance(frame, "performance CSV")
+        return _normalize_performance(
+            frame,
+            "performance CSV",
+            reconciliation_tolerance,
+        )
 
     source = frame.copy(deep=True)
     source["portfolio_code"] = normalize_identity(
@@ -201,7 +208,11 @@ def _normalize_performance_streams(frame: pd.DataFrame) -> _NormalizedPerformanc
         PreparationError,
     )
     streams = [
-        _normalize_performance(group, f"performance CSV portfolio {code!r}")
+        _normalize_performance(
+            group,
+            f"performance CSV portfolio {code!r}",
+            reconciliation_tolerance,
+        )
         for code, group in source.groupby(
             "portfolio_code", sort=True, observed=True, dropna=False
         )
@@ -237,11 +248,17 @@ def _performance_reader_output(
     return result.sort_values(order, kind="stable").reset_index(drop=True)
 
 
-def read_performance_csv(path: str | os.PathLike[str]) -> pd.DataFrame:
+def read_performance_csv(
+    path: str | os.PathLike[str],
+    *,
+    reconciliation_tolerance: float = 1e-12,
+) -> pd.DataFrame:
     """Read and validate canonical source-period performance CSV data.
 
     Args:
         path: Path to an existing local UTF-8 CSV with a header row.
+        reconciliation_tolerance: Positive relative and absolute tolerance for each
+            source-period weight total.
 
     Returns:
         Independently owned normalized source columns. A source contribution column is
@@ -250,7 +267,8 @@ def read_performance_csv(path: str | os.PathLike[str]) -> pd.DataFrame:
         for subsequent ``select_portfolio`` calls.
 
     Raises:
-        TypeError: If ``path`` is not string-compatible path data.
+        TypeError: If ``path`` is not string-compatible path data or the tolerance is
+            not a real number.
         PreparationError: If the path, CSV structure, schema, values, or financial
             invariants violate the canonical performance contract.
 
@@ -258,10 +276,14 @@ def read_performance_csv(path: str | os.PathLike[str]) -> pd.DataFrame:
         The reader validates each portfolio code as its own performance stream. It
         never chooses a code, applies a date window, or interprets vendor columns.
     """
+    tolerance = normalize_reconciliation_tolerance(
+        reconciliation_tolerance,
+        PreparationError,
+    )
     local_path = _local_csv_path(path, "performance CSV")
     header, header_line_number = _performance_header(local_path)
     frame = _read_performance_frame(local_path, header, header_line_number)
-    return _performance_reader_output(_normalize_performance_streams(frame))
+    return _performance_reader_output(_normalize_performance_streams(frame, tolerance))
 
 
 def read_mapping_csv(path: str | os.PathLike[str]) -> pd.DataFrame:

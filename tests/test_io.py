@@ -121,6 +121,23 @@ def test_performance_reader_ignores_blank_records(tmp_path: Path) -> None:
     assert performance.loc[0, "identifier"] == "A"
 
 
+def test_performance_reader_accepts_an_explicit_host_tolerance(tmp_path: Path) -> None:
+    """A host may preserve a documented looser source-weight acceptance policy."""
+    path = _write(
+        tmp_path / "rounded_weights.csv",
+        "from_date,thru_date,identifier,weight,return\n"
+        "2024-01-01,2024-01-31,A,0.4999999999,0.01\n"
+        "2024-01-01,2024-01-31,B,0.4999999999,0.02\n",
+    )
+
+    with pytest.raises(PreparationError, match="weights must sum to 1.0"):
+        read_performance_csv(path)
+
+    performance = read_performance_csv(path, reconciliation_tolerance=5e-9)
+
+    assert len(performance) == 2
+
+
 @pytest.mark.parametrize(
     ("contents", "message"),
     [

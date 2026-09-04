@@ -46,4 +46,25 @@ def _normalize_classification(
     )
 
 
-__all__: list[str] = []
+def normalize_classification(classification: pd.DataFrame) -> pd.DataFrame:
+    """Validate and normalize source-neutral classification display metadata.
+
+    Args:
+        classification: DataFrame containing exactly ``classification_identifier``
+            and ``classification_name`` columns.
+
+    Returns:
+        An independently owned, deduplicated metadata frame in deterministic order.
+
+    Raises:
+        TypeError: If ``classification`` is not a pandas DataFrame.
+        PreparationError: If its schema, identities, or one-to-one naming contract is
+            invalid.
+
+    Notes:
+        Display names remain host metadata and do not enter preparation calculations.
+    """
+    return _normalize_classification(classification)
+
+
+__all__ = ["normalize_classification"]

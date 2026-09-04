@@ -31,3 +31,5 @@ def test_package_exposes_step_seven_csv_readers() -> None:
     assert callable(perfattr.read_performance_csv)
     assert callable(perfattr.read_mapping_csv)
     assert callable(perfattr.read_classification_csv)
+    assert callable(perfattr.normalize_mapping)
+    assert callable(perfattr.normalize_classification)
