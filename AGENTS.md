@@ -136,6 +136,15 @@ Apply these conventions when modifying or creating code in this project.
 
 - Comment non-obvious intent, business rules, financial interpretation, assumptions,
   sign conventions, and important edge cases.
+- Give every nontrivial mathematical implementation a docstring that explains its
+  financial purpose, formula, assumptions, numerical limits, and important edge cases.
+  Cite the governing primary reference when the formula comes from an external
+  methodology.
+- Give every test case a useful docstring stating the financial behavior or contract it
+  proves. For nontrivial mathematics, document the independent hand calculation,
+  expected identity, and why the selected values expose the intended behavior.
+- Comment material intermediate expected values in mathematical tests so their
+  derivation can be audited without consulting the production implementation.
 - Avoid comments that simply paraphrase straightforward code.
 - Favor explicit names and intermediate variables when they improve financial
   interpretability or auditability.

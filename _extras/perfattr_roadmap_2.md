@@ -173,11 +173,12 @@ bucket to be handled correctly.
 ## Current status
 
 - The roadmap structure was committed in `02dbc22`.
-- `docs/preparation_specification.md` contains the first specification draft.
+- `docs/preparation_specification.md` was accepted on September 4, 2026 and is the
+  normative preparation contract.
 - The migration ledger below inventories the current `ppar` transfer and retirement
   targets.
-- No preparation implementation has begun. Specification review and acceptance is the
-  next gate.
+- Roadmap step 1 is complete. No preparation implementation has begun; normalized
+  validation and selection is the next step.
 
 ## Implementation sequence
 

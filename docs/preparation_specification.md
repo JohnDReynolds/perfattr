@@ -2,9 +2,10 @@
 
 ## Status
 
-This document is the draft normative contract for roadmap 2. It must be reviewed and
-accepted before preparation code is implemented. The words **must**, **must not**,
-**should**, and **may** have their ordinary technical meanings.
+**Status:** Accepted September 4, 2026.
+
+This document is the normative preparation contract for roadmap 2. The words **must**,
+**must not**, **should**, and **may** have their ordinary technical meanings.
 
 `docs/specification.md` continues to govern the calculation core. This specification
 governs only the upstream preparation that produces the core's existing input frames.
@@ -525,6 +526,12 @@ and cite primary financial references where a formula requires external authorit
 Each migration-ledger entry must record the commits that add the MIT implementation
 and remove its proprietary predecessor.
 
+Every implementation of nontrivial mathematics must explain the financial purpose,
+formula, assumptions, sign convention, numerical limits, and important edge cases in
+its docstring and focused inline comments. Cite the governing primary reference in the
+docstring when the formula comes from an external methodology. Comments must explain
+why the calculation is correct rather than merely restating its Python operations.
+
 ## Verification requirements
 
 Independent fixtures must cover at least:
@@ -545,6 +552,12 @@ Independent fixtures must cover at least:
 - returns approaching but not reaching `-1.0`;
 - non-mutation, deterministic row order, and stable dtypes; and
 - every preparation reconciliation identity.
+
+Every test case must have a useful docstring stating the financial behavior or
+contract it proves. Tests involving nontrivial mathematics must also document the
+independent hand calculation, expected identity, and reason the selected values expose
+the intended behavior. Supporting comments should make each material intermediate
+expected value auditable without consulting the production implementation.
 
 If consolidation would produce a nonzero identifier weight with a null compoundable
 return, preparation must fail rather than inventing a return. This can arise when an
