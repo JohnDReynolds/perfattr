@@ -73,6 +73,12 @@ workload completed in 1.51 versus 2.15 seconds (1.424x) and 1.34 versus 2.11 sec
 (1.571x). Both runs passed the unchanged 1.58x warning and 1.65x failure boundaries;
 all large-source artifacts remained byte-identical.
 
+The `0.2.2` patch performs the independent reporting-return reconciliation against
+compact source-period arrays instead of repeatedly filtering complete identifier-level
+frames. Two consecutive warm-state integration measurements completed in 1.39 versus
+2.11 seconds (1.520x) and 1.31 versus 2.03 seconds (1.553x). Both passed the unchanged
+boundaries without changing the financial checks or `ppar` report content.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,

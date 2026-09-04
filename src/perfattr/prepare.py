@@ -343,19 +343,40 @@ def _mapped_reconciliation(
     return rows
 
 
-def _reporting_source_rows(
-    source: pd.DataFrame,
-    reporting_period: _DatePeriod,
-) -> pd.DataFrame:
-    """Return source rows contained in a validated reporting period."""
-    start = pd.Timestamp(reporting_period[0])
-    end = pd.Timestamp(reporting_period[1])
-    return cast(
-        pd.DataFrame,
-        source.loc[
-            (source["from_date"] >= start) & (source["thru_date"] <= end)
-        ],
+def _reporting_return_expectations(
+    source_period_totals: pd.DataFrame,
+    aligned: _AlignedPeriods,
+) -> dict[_DatePeriod, float]:
+    """Compound source totals for reporting periods that require linking.
+
+    Args:
+        source_period_totals: Chronological contribution totals by source period.
+        aligned: Validated reporting-period boundaries.
+
+    Returns:
+        Independently compounded expected returns keyed by reporting period. Exact
+        one-source-period matches are omitted because they require no linking check.
+
+    Notes:
+        Boolean selection operates on the small period-total arrays, not the complete
+        identifier-level source. ``_compound_returns`` retains the same chronological
+        log-space formula used by the scalar reconciliation path.
+    """
+    source_from = source_period_totals["from_date"].to_numpy(
+        dtype="datetime64[ns]"
     )
+    source_thru = source_period_totals["thru_date"].to_numpy(
+        dtype="datetime64[ns]"
+    )
+    source_returns = _float_array(source_period_totals, "contribution")
+    expectations: dict[_DatePeriod, float] = {}
+    for period in aligned.periods:
+        reporting_start = np.datetime64(period[0], "ns")
+        reporting_end = np.datetime64(period[1], "ns")
+        contained = (source_from >= reporting_start) & (source_thru <= reporting_end)
+        if int(np.count_nonzero(contained)) > 1:
+            expectations[period] = _compound_returns(source_returns[contained])
+    return expectations
 
 
 def _reporting_reconciliation(
@@ -379,6 +400,9 @@ def _reporting_reconciliation(
     all_source_period_totals = _period_totals(
         state.source, ("contribution",)
     )
+    expected_returns = _reporting_return_expectations(
+        all_source_period_totals, aligned
+    )
     rows: list[_ReconciliationRow] = []
     for period in aligned.periods:
         total = totals_by_period[period]
@@ -393,13 +417,7 @@ def _reporting_reconciliation(
                 tolerance,
             )
         )
-        source_period_totals = _reporting_source_rows(
-            all_source_period_totals, period
-        )
-        if len(source_period_totals) > 1:
-            expected_return = _compound_returns(
-                _float_array(source_period_totals, "contribution")
-            )
+        if period in expected_returns:
             rows.append(
                 _reconciliation_row(
                     "reporting",
@@ -407,7 +425,7 @@ def _reporting_reconciliation(
                     period,
                     "linked_contribution",
                     _row_float(total, "contribution"),
-                    expected_return,
+                    expected_returns[period],
                     tolerance,
                 )
             )
