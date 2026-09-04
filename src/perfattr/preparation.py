@@ -1,19 +1,30 @@
-"""Normalize source-period performance data before attribution preparation.
+"""Validate and align source-period performance before attribution preparation.
 
 This module starts the portable preparation boundary defined by roadmap 2. It
-validates source-neutral pandas inputs and selects one portfolio from an already
-loaded frame. Calendar alignment, classification mapping, and consolidation are
-added by later roadmap steps.
+validates source-neutral pandas inputs, selects one portfolio from an already-loaded
+frame, and aligns portfolio and benchmark source periods. Classification mapping and
+consolidation are added by later roadmap steps.
 """
 
 from __future__ import annotations
 
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
+import datetime as dt
 from typing import cast
+import warnings
 
 import numpy as np
 import pandas as pd
 
+from perfattr.frequency import (
+    Frequency,
+    _date_matches_frequency,
+    _frequency_bucket,
+    _frequency_bucket_effective_end,
+    _frequency_bucket_end,
+    _frequency_bucket_label,
+)
 from perfattr._validation import (
     float_array as _float_array,
     has_true as _has_true,
@@ -46,6 +57,57 @@ class PreparationWarning(RuntimeWarning):
     """Report valid preparation input truncated before an incomplete bucket."""
 
 
+_DatePeriod = tuple[dt.date, dt.date]
+
+
+@dataclass(frozen=True)
+class _AlignedPeriods:
+    """Hold common reporting periods selected for later consolidation.
+
+    Attributes:
+        periods: Common inclusive reporting-period boundaries.
+        buckets: Ordered fixed-frequency bucket identifiers. This is empty for
+            native-frequency alignment.
+    """
+
+    periods: tuple[_DatePeriod, ...]
+    buckets: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class _FrequencyTruncation:
+    """Describe the first incomplete nonterminal fixed-frequency bucket.
+
+    Attributes:
+        bucket: Ordered identifier of the incomplete reporting bucket.
+        actual_end: Latest source endpoint, or ``None`` when none ends in the bucket.
+        expected_end: Effective business endpoint required for completion.
+    """
+
+    bucket: int
+    actual_end: dt.date | None
+    expected_end: dt.date
+
+
+@dataclass(frozen=True)
+class _CoverageRequest:
+    """Group the calendar policy and boundaries for one coverage check.
+
+    Attributes:
+        bucket: Fixed-frequency bucket being aligned.
+        endpoint: Required common actual endpoint.
+        previous_endpoint: Prior accepted common endpoint, if any.
+        frequency: Fixed reporting frequency.
+        holidays: Validated nonbusiness dates.
+    """
+
+    bucket: int
+    endpoint: dt.date
+    previous_endpoint: dt.date | None
+    frequency: Frequency
+    holidays: frozenset[dt.date]
+
+
 @dataclass
 class _NormalizedPerformance:
     """Hold one validated source-period performance stream.
@@ -62,6 +124,501 @@ class _NormalizedPerformance:
 
     frame: pd.DataFrame
     contribution_was_supplied: bool
+
+
+def _normalize_holidays(
+    holidays: Collection[dt.date],
+) -> frozenset[dt.date]:
+    """Validate caller-supplied nonbusiness dates and remove duplicates.
+
+    Args:
+        holidays: Date values to treat as nonbusiness days.
+
+    Returns:
+        Validated unique dates.
+
+    Raises:
+        TypeError: If ``holidays`` is not a collection.
+        PreparationError: If an item is not a plain ``datetime.date`` value.
+
+    Notes:
+        ``datetime.datetime`` and pandas ``Timestamp`` values are deliberately
+        rejected even though they subclass ``datetime.date``. Calendar policy accepts
+        dates only and never silently removes time or timezone information.
+    """
+    if isinstance(holidays, str | bytes) or not isinstance(holidays, Collection):
+        raise TypeError("holidays must be a collection of datetime.date values")
+
+    normalized: set[dt.date] = set()
+    for holiday in holidays:
+        if isinstance(holiday, dt.datetime) or not isinstance(holiday, dt.date):
+            raise PreparationError(
+                "holidays must contain only datetime.date values, not datetime, "
+                "strings, nulls, or other types"
+            )
+        normalized.add(holiday)
+    return frozenset(normalized)
+
+
+def _source_periods(frame: pd.DataFrame) -> tuple[_DatePeriod, ...]:
+    """Extract deterministic unique date pairs from a normalized source frame."""
+    period_frame = cast(
+        pd.DataFrame,
+        frame[["from_date", "thru_date"]].drop_duplicates(),
+    ).sort_values(["thru_date", "from_date"], kind="stable")
+    return tuple(
+        (
+            cast(pd.Timestamp, from_value).date(),
+            cast(pd.Timestamp, thru_value).date(),
+        )
+        for from_value, thru_value in period_frame.itertuples(index=False, name=None)
+    )
+
+
+def _format_periods(periods: Sequence[_DatePeriod]) -> str:
+    """Format inclusive periods for a deterministic alignment error."""
+    return "[" + ", ".join(
+        f"({from_date.isoformat()}, {thru_date.isoformat()})"
+        for from_date, thru_date in periods
+    ) + "]"
+
+
+def _validate_fixed_frequency_coverage(
+    periods: Sequence[_DatePeriod],
+    frequency: Frequency,
+    context: str,
+) -> None:
+    """Require source coverage in every fixed bucket between the observed bounds.
+
+    A source interval contributes coverage to every calendar bucket it intersects.
+    This distinguishes a truly absent bucket, which is invalid, from a bucket having
+    data but an incomplete endpoint, which follows the truncation policy.
+
+    Args:
+        periods: Validated ordered source-period boundaries.
+        frequency: Fixed reporting frequency.
+        context: Human-readable side included in errors.
+
+    Raises:
+        PreparationError: If one or more intervening reporting buckets have no source
+            coverage.
+    """
+    covered: set[int] = set()
+    for from_date, thru_date in periods:
+        covered.update(
+            range(
+                _frequency_bucket(from_date, frequency),
+                _frequency_bucket(thru_date, frequency) + 1,
+            )
+        )
+    first_bucket = min(_frequency_bucket(period[0], frequency) for period in periods)
+    last_bucket = max(_frequency_bucket(period[1], frequency) for period in periods)
+    missing = [
+        bucket
+        for bucket in range(first_bucket, last_bucket + 1)
+        if bucket not in covered
+    ]
+    if missing:
+        labels = [_frequency_bucket_label(bucket, frequency) for bucket in missing]
+        _raise_invalid(
+            context,
+            f"is missing {frequency.value.lower()} coverage for {labels}",
+        )
+
+
+def _validate_source_period_boundaries(
+    periods: Sequence[_DatePeriod],
+    frequency: Frequency,
+    holidays: frozenset[dt.date],
+    context: str,
+) -> None:
+    """Reject a source interval extending before its permitted reporting range.
+
+    Args:
+        periods: Validated ordered source-period boundaries.
+        frequency: Fixed reporting frequency.
+        holidays: Validated nonbusiness dates.
+        context: Human-readable side included in errors.
+
+    Raises:
+        PreparationError: If a source interval begins before the calendar tail that
+            may legitimately follow the prior bucket's effective endpoint.
+
+    Notes:
+        A period assigned by its end date may begin after the preceding effective
+        endpoint, including on intervening weekend or holiday dates. It cannot begin
+        earlier because that would fold prior reporting-bucket coverage into this one.
+    """
+    for from_date, thru_date in periods:
+        bucket = _frequency_bucket(thru_date, frequency)
+        earliest_start = _frequency_bucket_effective_end(
+            bucket - 1,
+            frequency,
+            holidays,
+        ) + dt.timedelta(days=1)
+        if from_date < earliest_start:
+            _raise_invalid(
+                context,
+                f"source period {from_date.isoformat()} to {thru_date.isoformat()} "
+                "extends outside the permitted reporting range for "
+                f"{_frequency_bucket_label(bucket, frequency)}",
+            )
+
+
+def _completed_bucket_ends(
+    periods: Sequence[_DatePeriod],
+    frequency: Frequency,
+    holidays: frozenset[dt.date],
+    context: str,
+) -> tuple[dict[int, dt.date], _FrequencyTruncation | None, int | None]:
+    """Return the contiguous prefix of complete fixed-frequency buckets.
+
+    Args:
+        periods: Validated ordered source-period boundaries.
+        frequency: Fixed reporting frequency.
+        holidays: Validated nonbusiness dates.
+        context: Human-readable side included in errors.
+
+    Returns:
+        Complete bucket endpoints, an optional incomplete interior bucket, and an
+        optional incomplete terminal bucket identifier.
+    """
+    _validate_source_period_boundaries(periods, frequency, holidays, context)
+    _validate_fixed_frequency_coverage(periods, frequency, context)
+    latest_end_by_bucket: dict[int, dt.date] = {}
+    for _, thru_date in periods:
+        bucket = _frequency_bucket(thru_date, frequency)
+        latest_end_by_bucket[bucket] = max(
+            thru_date,
+            latest_end_by_bucket.get(bucket, dt.date.min),
+        )
+
+    first_bucket = min(latest_end_by_bucket)
+    last_bucket = max(latest_end_by_bucket)
+    complete: dict[int, dt.date] = {}
+    for bucket in range(first_bucket, last_bucket + 1):
+        actual_end = latest_end_by_bucket.get(bucket)
+        if actual_end is not None and _date_matches_frequency(
+            actual_end,
+            frequency,
+            holidays,
+        ):
+            complete[bucket] = actual_end
+            continue
+        if bucket == last_bucket:
+            return complete, None, bucket
+        return (
+            complete,
+            _FrequencyTruncation(
+                bucket=bucket,
+                actual_end=actual_end,
+                expected_end=_frequency_bucket_effective_end(
+                    bucket,
+                    frequency,
+                    holidays,
+                ),
+            ),
+            None,
+        )
+    return complete, None, None
+
+
+def _validate_gapless_periods(
+    periods: Sequence[_DatePeriod],
+    label: str,
+    context: str,
+) -> None:
+    """Require consecutive inclusive source intervals inside one bucket."""
+    for (_, prior_end), (next_start, _) in zip(periods[:-1], periods[1:]):
+        expected_start = prior_end + dt.timedelta(days=1)
+        if next_start != expected_start:
+            _raise_invalid(
+                context,
+                f"coverage for {label} is not gapless: expected "
+                f"{expected_start.isoformat()} after {prior_end.isoformat()}, "
+                f"received {next_start.isoformat()}",
+            )
+
+
+def _coverage_start_bounds(
+    request: _CoverageRequest,
+) -> tuple[dt.date, dt.date, str]:
+    """Return the permitted start range and its explanatory error phrase."""
+    if request.previous_endpoint is None:
+        earliest_start = _frequency_bucket_effective_end(
+            request.bucket - 1,
+            request.frequency,
+            request.holidays,
+        ) + dt.timedelta(days=1)
+        requirement = "a complete first reporting bucket must start"
+    else:
+        earliest_start = request.previous_endpoint + dt.timedelta(days=1)
+        requirement = "after the preceding aligned endpoint, the next bucket must start"
+    latest_start = _frequency_bucket_end(
+        request.bucket - 1,
+        request.frequency,
+    ) + dt.timedelta(days=1)
+    return earliest_start, latest_start, requirement
+
+
+def _fixed_frequency_coverage_start(
+    periods: Sequence[_DatePeriod],
+    request: _CoverageRequest,
+    context: str,
+) -> dt.date:
+    """Validate one source's gapless bucket coverage and return its actual start.
+
+    Args:
+        periods: Validated ordered source-period boundaries.
+        request: Calendar policy and reporting boundaries for this check.
+        context: Human-readable side included in errors.
+
+    Returns:
+        First actual date covered in the reporting bucket.
+
+    Raises:
+        PreparationError: If periods are missing, cross the permitted reporting
+            boundary, leave an internal gap, or do not cover a complete first bucket.
+    """
+    label = _frequency_bucket_label(request.bucket, request.frequency)
+    bucket_periods = [
+        period
+        for period in periods
+        if _frequency_bucket(period[1], request.frequency) == request.bucket
+    ]
+    if not bucket_periods:
+        _raise_invalid(context, f"has no source periods for {label}")
+    if bucket_periods[-1][1] != request.endpoint:
+        _raise_invalid(
+            context,
+            f"coverage for {label} ends {bucket_periods[-1][1].isoformat()}, not "
+            f"the aligned endpoint {request.endpoint.isoformat()}",
+        )
+
+    _validate_gapless_periods(bucket_periods, label, context)
+    actual_start = bucket_periods[0][0]
+    earliest_start, latest_start, requirement = _coverage_start_bounds(request)
+    if not earliest_start <= actual_start <= latest_start:
+        _raise_invalid(
+            context,
+            f"coverage for {label} starts {actual_start.isoformat()}; {requirement} "
+            f"between {earliest_start.isoformat()} and {latest_start.isoformat()}",
+        )
+    return actual_start
+
+
+def _align_native_periods(
+    portfolio_periods: tuple[_DatePeriod, ...],
+    benchmark_periods: tuple[_DatePeriod, ...],
+) -> _AlignedPeriods:
+    """Align exact common native periods and reject mismatches inside their window."""
+    portfolio_set = set(portfolio_periods)
+    benchmark_set = set(benchmark_periods)
+    common_set = portfolio_set.intersection(benchmark_set)
+    common = tuple(sorted(common_set, key=lambda period: (period[1], period[0])))
+    if not common:
+        raise PreparationError("no common performance periods were found")
+
+    comparison_start = common[0][0]
+    comparison_end = common[-1][1]
+    unmatched_portfolio = tuple(
+        period
+        for period in portfolio_periods
+        if period not in common_set
+        and period[1] >= comparison_start
+        and period[0] <= comparison_end
+    )
+    unmatched_benchmark = tuple(
+        period
+        for period in benchmark_periods
+        if period not in common_set
+        and period[1] >= comparison_start
+        and period[0] <= comparison_end
+    )
+    if unmatched_portfolio or unmatched_benchmark:
+        raise PreparationError(
+            "unmatched native-frequency periods exist inside the common comparison "
+            f"window; portfolio-only periods: {_format_periods(unmatched_portfolio)}; "
+            f"benchmark-only periods: {_format_periods(unmatched_benchmark)}"
+        )
+    return _AlignedPeriods(periods=common, buckets=())
+
+
+def _truncation_message(
+    truncations: Sequence[_FrequencyTruncation],
+    frequency: Frequency,
+) -> str | None:
+    """Return one warning message for the earliest incomplete interior bucket."""
+    if not truncations:
+        return None
+    truncation = min(truncations, key=lambda item: item.bucket)
+    actual_end = (
+        truncation.actual_end.isoformat()
+        if truncation.actual_end is not None
+        else "missing"
+    )
+    return (
+        f"{frequency.value} output was truncated before "
+        f"{_frequency_bucket_label(truncation.bucket, frequency)}: source endpoint "
+        f"{actual_end} did not match expected endpoint "
+        f"{truncation.expected_end.isoformat()}"
+    )
+
+
+def _validate_terminal_completeness(
+    results: tuple[
+        tuple[dict[int, dt.date], _FrequencyTruncation | None, int | None],
+        tuple[dict[int, dt.date], _FrequencyTruncation | None, int | None],
+    ],
+    frequency: Frequency,
+) -> None:
+    """Reject a terminal bucket completed by only one aligned source."""
+    complete_by_side = (results[0][0], results[1][0])
+    for source_index, result in enumerate(results):
+        incomplete_terminal = result[2]
+        other_complete = complete_by_side[1 - source_index]
+        if incomplete_terminal is not None and incomplete_terminal in other_complete:
+            raise PreparationError(
+                "portfolio and benchmark terminal-bucket completeness differs for "
+                f"{_frequency_bucket_label(incomplete_terminal, frequency)}"
+            )
+
+
+def _align_fixed_bucket(
+    portfolio_periods: tuple[_DatePeriod, ...],
+    benchmark_periods: tuple[_DatePeriod, ...],
+    request: _CoverageRequest,
+    benchmark_endpoint: dt.date,
+) -> _DatePeriod:
+    """Validate equal endpoint and start coverage for one common fixed bucket."""
+    label = _frequency_bucket_label(request.bucket, request.frequency)
+    if benchmark_endpoint != request.endpoint:
+        raise PreparationError(
+            f"portfolio and benchmark effective endpoints differ for {label}"
+        )
+    portfolio_start = _fixed_frequency_coverage_start(
+        portfolio_periods,
+        request,
+        "portfolio input",
+    )
+    benchmark_start = _fixed_frequency_coverage_start(
+        benchmark_periods,
+        request,
+        "benchmark input",
+    )
+    if portfolio_start != benchmark_start:
+        raise PreparationError(
+            "portfolio and benchmark actual source coverage starts differ for "
+            f"{label}: {portfolio_start.isoformat()} versus "
+            f"{benchmark_start.isoformat()}"
+        )
+    return portfolio_start, request.endpoint
+
+
+def _align_fixed_periods(
+    portfolio_periods: tuple[_DatePeriod, ...],
+    benchmark_periods: tuple[_DatePeriod, ...],
+    frequency: Frequency,
+    holidays: frozenset[dt.date],
+) -> _AlignedPeriods:
+    """Align complete fixed-frequency buckets with identical inclusive coverage."""
+    results = (
+        _completed_bucket_ends(
+            portfolio_periods,
+            frequency,
+            holidays,
+            "portfolio input",
+        ),
+        _completed_bucket_ends(
+            benchmark_periods,
+            frequency,
+            holidays,
+            "benchmark input",
+        ),
+    )
+    _validate_terminal_completeness(results, frequency)
+    complete_by_side = (results[0][0], results[1][0])
+
+    common_buckets = tuple(
+        sorted(set(complete_by_side[0]).intersection(complete_by_side[1]))
+    )
+    reporting_periods: list[_DatePeriod] = []
+    previous_endpoint: dt.date | None = None
+    for bucket in common_buckets:
+        endpoint = complete_by_side[0][bucket]
+        request = _CoverageRequest(
+            bucket=bucket,
+            endpoint=endpoint,
+            previous_endpoint=previous_endpoint,
+            frequency=frequency,
+            holidays=holidays,
+        )
+        reporting_period = _align_fixed_bucket(
+            portfolio_periods,
+            benchmark_periods,
+            request,
+            complete_by_side[1][bucket],
+        )
+        reporting_periods.append(reporting_period)
+        previous_endpoint = endpoint
+
+    if not reporting_periods:
+        raise PreparationError("no complete common reporting buckets were found")
+
+    warning_message = _truncation_message(
+        tuple(
+            result[1]
+            for result in results
+            if result[1] is not None
+        ),
+        frequency,
+    )
+    if warning_message is not None:
+        warnings.warn(warning_message, PreparationWarning, stacklevel=3)
+    return _AlignedPeriods(tuple(reporting_periods), common_buckets)
+
+
+def _align_periods(
+    portfolio: pd.DataFrame,
+    benchmark: pd.DataFrame,
+    frequency: Frequency = Frequency.AS_OFTEN_AS_POSSIBLE,
+    holidays: Collection[dt.date] = (),
+) -> _AlignedPeriods:
+    """Align validated portfolio and benchmark source-period boundaries.
+
+    Args:
+        portfolio: Normalized source-period portfolio rows.
+        benchmark: Normalized source-period benchmark rows.
+        frequency: Native or fixed reporting frequency.
+        holidays: Dates treated as nonbusiness days for fixed endpoints.
+
+    Returns:
+        Common reporting periods and fixed bucket identifiers. The input frames are
+        never mutated.
+
+    Raises:
+        TypeError: If ``frequency`` is not a ``Frequency`` or holidays is not a
+            collection.
+        PreparationError: If holidays, native periods, fixed-frequency coverage, or
+            aligned boundaries violate the preparation specification.
+
+    Notes:
+        Source frames must already have passed ``_normalize_performance``. This step
+        selects reporting boundaries only; it does not consolidate financial values.
+    """
+    if not isinstance(frequency, Frequency):
+        raise TypeError("frequency must be a Frequency")
+    normalized_holidays = _normalize_holidays(holidays)
+    portfolio_periods = _source_periods(portfolio)
+    benchmark_periods = _source_periods(benchmark)
+    if frequency == Frequency.AS_OFTEN_AS_POSSIBLE:
+        return _align_native_periods(portfolio_periods, benchmark_periods)
+    return _align_fixed_periods(
+        portfolio_periods,
+        benchmark_periods,
+        frequency,
+        normalized_holidays,
+    )
 
 
 def _raise_invalid(context: str, message: str) -> None:

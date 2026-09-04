@@ -177,9 +177,10 @@ bucket to be handled correctly.
   normative preparation contract.
 - The migration ledger below inventories the current `ppar` transfer and retirement
   targets.
-- Roadmap steps 1 and 2 are complete. Source-period normalization, financial
-  validation, contribution handling, and exact in-memory portfolio selection now live
-  in `perfattr`; calendar rules and period alignment are next.
+- Roadmap steps 1 through 3 are complete. Source-period normalization, financial
+  validation, exact in-memory portfolio selection, portable calendar rules, and
+  portfolio/benchmark period alignment now live in `perfattr`; classification mapping
+  is next.
 
 ## Implementation sequence
 
@@ -207,6 +208,8 @@ bucket to be handled correctly.
   weights, and zero-weight nonzero contribution.
 
 ### 3. Add calendar rules and period alignment
+
+**Status:** Complete September 4, 2026.
 
 - Implement frequency buckets using explicit caller-supplied holidays.
 - Support exact common source periods and documented fixed-frequency alignment.
@@ -322,7 +325,7 @@ path. Axys/APX code discovery, partitioning, composite expansion, and lazy predi
 pushdown remain in `ppar` because they are source-specific and avoid materializing
 unselected vendor rows.
 
-### Calendar arithmetic and period alignment — pending
+### Calendar arithmetic and period alignment — implemented
 
 `perfattr` replacement:
 
@@ -351,6 +354,9 @@ Permitted `ppar` remainder:
 - `load_holidays` for the existing path-based host API;
 - `periods_per_year` for host risk calculations; and
 - an algorithm-free `Frequency` re-export for compatibility.
+
+The portable implementation is complete in `perfattr`. Delegation from `ppar` and
+deletion of its superseded implementations remain for step 8.
 
 ### Classification and mapping loading — pending
 

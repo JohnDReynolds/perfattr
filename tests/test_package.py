@@ -13,3 +13,8 @@ def test_package_exposes_step_two_preparation_api() -> None:
     assert perfattr.PreparationError is not None
     assert perfattr.PreparationWarning is not None
     assert callable(perfattr.select_portfolio)
+
+
+def test_package_exposes_step_three_frequency_api() -> None:
+    """The root package should expose the accepted reporting-frequency enum."""
+    assert perfattr.Frequency.MONTHLY.value == "Monthly"
