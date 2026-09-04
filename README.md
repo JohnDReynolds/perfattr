@@ -4,15 +4,19 @@
 library built with pandas and NumPy.
 
 The 0.1.0 release provides a reusable Brinson-Fachler calculation core for
-prepared reporting-period data. Source loading, portfolio accounting, vendor schemas,
-calendar logic, and presentation are intentionally outside the package boundary.
+prepared reporting-period data. Portfolio accounting, vendor schemas, and
+presentation remain outside the package boundary.
 
 The calculation core accepts one or more prepared reporting periods and provides
 input validation, universe equalization, Brinson-Fachler allocation and selection,
 logarithmic contribution linking, Carino active-effect linking, cumulative and
-full-horizon results, and financial reconciliation. The governing roadmap is available
-in [`_extras/perfattr_roadmap.md`](_extras/perfattr_roadmap.md), and the complete
-portable calculation contract is defined in
+full-horizon results, and financial reconciliation. The completed initial roadmap is
+recorded in [`_extras/perfattr_roadmap_1.md`](_extras/perfattr_roadmap_1.md). The
+portable preparation work is governed by
+[`_extras/perfattr_roadmap_2.md`](_extras/perfattr_roadmap_2.md), while later candidates
+are kept in the noncommitted
+[`_extras/perfattr_roadmap_3.md`](_extras/perfattr_roadmap_3.md). The complete portable
+calculation contract is defined in
 [`docs/specification.md`](docs/specification.md).
 
 ```python

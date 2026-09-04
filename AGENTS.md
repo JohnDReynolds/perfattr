@@ -4,13 +4,24 @@ Apply these conventions when modifying or creating code in this project.
 
 ## Roadmap Authority
 
-- Treat `_extras/perfattr_roadmap.md` as the governing product and implementation
-  roadmap for the initial release.
-- Use this file for engineering conduct and the roadmap for product scope, calculation
-  contracts, sequencing, and boundaries. Do not expand the initial scope unless the
+- Treat `_extras/perfattr_roadmap_2.md` as the active governing product and
+  implementation roadmap.
+- Treat `_extras/perfattr_roadmap_1.md` as completed historical context and
+  `_extras/perfattr_roadmap_3.md` as a noncommitted backlog. A roadmap 3 item does not
+  authorize implementation until it is deliberately promoted into an active roadmap.
+- Use this file for engineering conduct and the active roadmap for product scope,
+  contracts, sequencing, and boundaries. Do not expand the active scope unless the
   roadmap is deliberately amended.
-- Keep source loading, vendor-specific behavior, portfolio accounting, calendars,
-  classification loading, and presentation outside the reusable calculation core.
+- Keep the reusable calculation core independent from preparation. Portable,
+  source-neutral preparation may live in a separate `perfattr` layer as authorized by
+  roadmap 2.
+- Keep vendor-specific loading and behavior, portfolio accounting, holiday-file
+  loading, source-specific reconciliation, and presentation outside `perfattr`.
+- Treat every portable preparation implementation added under roadmap 2 as the sole
+  permanent authority. After `ppar` integration passes its parity and performance
+  gates, remove the superseded `ppar` implementation rather than maintaining two
+  engines. An algorithm-free compatibility facade or data-translation adapter may
+  remain where required by `ppar`'s public API.
 
 ## Model Reasoning Guidance
 
@@ -44,8 +55,13 @@ Apply these conventions when modifying or creating code in this project.
   standard library.
 - Never import `ppar` or Polars from the reusable core. `ppar` integration belongs in
   a thin host adapter outside the portable calculation package.
-- Keep file and URL access, vendor schemas, portfolio accounting, holiday calendars,
-  charts, HTML, templates, CLI behavior, and report management outside the core.
+- Keep file and URL access, vendor schemas, portfolio accounting, holiday-file
+  loading, charts, HTML, templates, CLI behavior, and report management outside the
+  calculation core. Any generic file readers authorized by roadmap 2 belong in a
+  separate I/O module and must use source-neutral schemas.
+- Calendar arithmetic, reporting-frequency rules, period alignment, consolidation,
+  and classification mapping belong in the portable preparation layer, not the
+  calculation core.
 - Do not mutate caller-supplied DataFrames. Document ownership of returned DataFrames
   without describing an ordinary or frozen dataclass as making them immutable.
 

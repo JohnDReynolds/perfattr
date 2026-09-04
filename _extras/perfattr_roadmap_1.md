@@ -1,6 +1,9 @@
-# perfattr Roadmap
+# perfattr Roadmap 1: Initial Calculation Core
 
-**Status:** Completed September 4, 2026.
+**Status:** Complete and historical as of September 4, 2026.
+
+This roadmap records the completed initial implementation. It no longer governs new
+work. `_extras/perfattr_roadmap_2.md` is the active roadmap.
 
 ## First-step implementation plan
 
