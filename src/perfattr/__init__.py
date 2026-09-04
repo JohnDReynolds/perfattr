@@ -19,7 +19,7 @@ from perfattr.preparation import (
     select_portfolio,
 )
 
-__version__ = "0.3.0a1"
+__version__ = "0.3.0"
 
 __all__ = [
     "AttributionError",
