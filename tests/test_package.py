@@ -5,7 +5,7 @@ import perfattr
 
 def test_package_exposes_version() -> None:
     """The installed package should expose its distribution version."""
-    assert perfattr.__version__ == "0.1.0"
+    assert perfattr.__version__ == "0.2.0"
 
 
 def test_package_exposes_step_two_preparation_api() -> None:

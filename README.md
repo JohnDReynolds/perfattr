@@ -21,14 +21,54 @@ and the roadmap 2 preparation contract is in
 [`docs/preparation_specification.md`](docs/preparation_specification.md).
 
 ```python
-from perfattr import calculate_attribution, prepare_attribution, read_performance_csv
+import pandas as pd
 
-portfolio = read_performance_csv("portfolio.csv")
-benchmark = read_performance_csv("benchmark.csv")
+from perfattr import calculate_attribution, prepare_attribution
+
+portfolio = pd.DataFrame(
+    [
+        {
+            "from_date": "2024-01-01",
+            "thru_date": "2024-01-31",
+            "identifier": "Equity",
+            "weight": 0.60,
+            "return": 0.04,
+        },
+        {
+            "from_date": "2024-01-01",
+            "thru_date": "2024-01-31",
+            "identifier": "Bonds",
+            "weight": 0.40,
+            "return": 0.01,
+        },
+    ]
+)
+benchmark = pd.DataFrame(
+    [
+        {
+            "from_date": "2024-01-01",
+            "thru_date": "2024-01-31",
+            "identifier": "Equity",
+            "weight": 0.50,
+            "return": 0.03,
+        },
+        {
+            "from_date": "2024-01-01",
+            "thru_date": "2024-01-31",
+            "identifier": "Bonds",
+            "weight": 0.50,
+            "return": 0.015,
+        },
+    ]
+)
+
 prepared = prepare_attribution(portfolio, benchmark)
 result = calculate_attribution(prepared.portfolio, prepared.benchmark)
 print(result.period_detail)
 ```
+
+Canonical CSV inputs can be loaded with `read_performance_csv`; optional mapping and
+classification readers are also available at the package root.
 
 ## Development
 

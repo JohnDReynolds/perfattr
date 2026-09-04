@@ -43,6 +43,29 @@ Profiling the largest workload placed most core time in required input validatio
 normalization. The absolute time was already modest, so no core refactor or additional
 dependency was justified.
 
+## 0.2.0 release-candidate observations
+
+These observations were collected on September 4, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Each elapsed result is the
+median of five samples.
+
+| Workload | Input form | Median elapsed | Prepared inputs | Peak traced allocation |
+| --- | --- | ---: | ---: | ---: |
+| `normal` | derived | 0.0314 s | 2.0 MiB | 4.6 MiB |
+| `selected_10x` | derived | 0.1066 s | 20.4 MiB | 44.6 MiB |
+| `monthly_121260` | derived | 0.1782 s | 40.7 MiB | 89.1 MiB |
+| `history_25y` | derived | 0.0598 s | 10.2 MiB | 22.4 MiB |
+| `normal` | authoritative | 0.0290 s | 2.1 MiB | 4.6 MiB |
+| `selected_10x` | authoritative | 0.1040 s | 21.3 MiB | 44.6 MiB |
+| `monthly_121260` | authoritative | 0.1831 s | 42.6 MiB | 89.1 MiB |
+| `history_25y` | authoritative | 0.0616 s | 10.6 MiB | 22.4 MiB |
+
+The required `ppar` 500x integration gate also passed after the complete preparation
+migration. The large-source workflow processed 12,126 and 6,063,000 source rows in
+10.30 and 10.47 seconds respectively, with byte-identical artifacts. The 10x selected
+workload took 1.65 and 2.55 seconds. The 5x long-history workload took 10.27 and 13.79
+seconds, a 1.343x ratio below its 1.58x warning and 1.65x failure gates.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
