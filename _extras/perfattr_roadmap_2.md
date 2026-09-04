@@ -177,12 +177,14 @@ bucket to be handled correctly.
   normative preparation contract.
 - The migration ledger below inventories the current `ppar` transfer and retirement
   targets.
-- Roadmap steps 1 through 7 are complete. Source-period normalization, financial
+- Roadmap steps 1 through 8 are complete. Source-period normalization, financial
   validation, exact in-memory portfolio selection, portable calendar rules, and
   portfolio/benchmark period alignment now live in `perfattr`. Static classification
   mapping, source-period roll-up, and reporting-frequency consolidation are also
   implemented behind one public composition API, together with canonical performance,
-  mapping, and classification CSV loading. `ppar` integration is next.
+  mapping, and classification CSV loading. `ppar` now delegates through one adapter,
+  and its superseded portable implementations have been retired. Release and roadmap
+  closure are next.
 
 ## Implementation sequence
 
@@ -263,6 +265,8 @@ bucket to be handled correctly.
 
 ### 8. Integrate through `ppar`
 
+**Status:** Complete September 4, 2026.
+
 - Update `ppar`'s engineering instructions to identify `perfattr` as the sole authority
   for portable preparation and prohibit a permanent local fallback.
 - Place translation at one boundary: Polars to canonical pandas input and portable
@@ -292,10 +296,9 @@ bucket to be handled correctly.
 The status values are **pending**, **implemented**, **delegated**, and **retired**. An
 item is not complete until it reaches **retired**: `perfattr` is tested, `ppar`
 delegates to it, and the superseded `ppar` implementation and implementation-only
-tests are deleted. Roadmap steps 2 through 7 have implemented their `perfattr`
-responsibilities; their `ppar` delegation and retirement remain for step 8.
+tests are deleted. Every Step 8 migration item below has reached that state.
 
-### Normalized performance validation — implemented
+### Normalized performance validation — retired
 
 `perfattr` replacement:
 
@@ -321,11 +324,11 @@ Permitted `ppar` remainder:
 - Polars/pandas translation; and
 - validation of host objects after translation.
 
-Date-window filtering, preparation reconciliation evidence, and canonical performance
-CSV loading are implemented. Delegation from `ppar` and retirement of the superseded
-host implementations remain for step 8.
+`ppar` now delegates canonical loading, date-window filtering, normalization, and
+financial validation through its sole adapter. `Performance` remains only as a
+Polars-facing host container with translated-output checks.
 
-### Portfolio-code selection — implemented
+### Portfolio-code selection — retired (no duplicate implementation)
 
 `perfattr` replacement:
 
@@ -336,7 +339,7 @@ path. Axys/APX code discovery, partitioning, composite expansion, and lazy predi
 pushdown remain in `ppar` because they are source-specific and avoid materializing
 unselected vendor rows.
 
-### Calendar arithmetic and period alignment — implemented
+### Calendar arithmetic and period alignment — retired
 
 `perfattr` replacement:
 
@@ -366,10 +369,11 @@ Permitted `ppar` remainder:
 - `periods_per_year` for host risk calculations; and
 - an algorithm-free `Frequency` re-export for compatibility.
 
-The portable implementation is complete in `perfattr`. Delegation from `ppar` and
-deletion of its superseded implementations remain for step 8.
+`ppar.frequency.Frequency` is now an algorithm-free re-export. Holiday-file loading
+and risk-period counts remain host responsibilities; all portable calendar and
+alignment helpers were deleted.
 
-### Static mapping validation — implemented
+### Static mapping validation — retired
 
 `perfattr` replacement:
 
@@ -391,7 +395,11 @@ Permitted `ppar` remainder:
 - Axys/APX classification extraction and security-identity construction; and
 - source-specific validation before normalization.
 
-### Canonical CSV loading — implemented
+The unsupported direct `ppar.mapping` module and shared generic Polars pair validator
+were deleted. Host mapping sources and Axys/APX extracted pairs now cross the same
+portable normalization boundary.
+
+### Canonical CSV loading — retired
 
 `perfattr` replacement:
 
@@ -409,11 +417,11 @@ Permitted `ppar` remainder:
 - classification display metadata and host-facing compatibility containers; and
 - source-specific file translation before canonical loading.
 
-The three portable readers and classification metadata validation are complete in
-`perfattr`. Delegation from `ppar` and reduction or removal of its superseded generic
-loading functions remain for step 8.
+The three portable readers and classification metadata validation are used through
+the adapter. The superseded generic `ppar.utilities.load_datasource` implementation
+was deleted.
 
-### Classification roll-up — implemented
+### Classification roll-up — retired
 
 `perfattr` replacement:
 
@@ -430,10 +438,10 @@ Permitted `ppar` remainder:
 - mapping-source selection and translation in the host adapter; and
 - joining classification display names for presentation.
 
-The portable static implementation is complete in `perfattr`. Delegation from `ppar`
-and deletion of `Analytics._map_performance` remain for step 8.
+`Analytics` delegates both portfolio and benchmark mapping through `perfattr`;
+`Analytics._map_performance` was deleted.
 
-### Reporting-frequency consolidation — implemented
+### Reporting-frequency consolidation — retired
 
 `perfattr` replacement:
 
@@ -459,10 +467,11 @@ Permitted `ppar` remainder:
   and
 - conversion to and from the pandas preparation result.
 
-The portable consolidation implementation is complete in `perfattr`. Delegation from
-`ppar` and deletion of its superseded consolidation algorithms remain for step 8.
+The portable consolidation implementation is the only remaining implementation.
+`ppar`'s consolidation methods, state flag, and local logarithmic-linking helpers were
+deleted.
 
-### Composition and final retirement — composition implemented, retirement pending
+### Composition and final retirement — retired
 
 `perfattr` replacement:
 
@@ -481,13 +490,18 @@ Permitted `ppar` remainder:
 - host error translation needed to preserve supported exceptions; and
 - end-to-end tests proving the public `ppar` workflow delegates correctly.
 
-`PreparationResult` and `prepare_attribution` now compose the portable stages and
-return stable prepared and reconciliation frames. `ppar` delegation and retirement of
-its superseded orchestration remain for step 8.
+`PreparationResult` and `prepare_attribution` compose the portable stages and return
+stable prepared and reconciliation frames. `ppar` delegates through
+`src/ppar/_perfattr_adapter.py`; no source-neutral fallback remains.
 
-At final review, repository search must confirm that every retired symbol is absent or
-is an algorithm-free compatibility facade. The ledger must then record the `perfattr`
-and `ppar` commits that supplied and retired each responsibility.
+Step 8 is recorded by `perfattr` commit `2c260cf` and `ppar` commit `4456b89`. The
+`ppar` commit remains local until Step 9 publishes the required `perfattr` preparation
+release and updates `ppar`'s dependency floor; this sequencing prevents a remote
+commit whose CI cannot install its required API.
+
+Final repository review confirmed that every retired symbol is absent or replaced by
+an algorithm-free compatibility facade. The commits above record the `perfattr`
+support and `ppar` retirement work.
 
 ## Verification gates
 
