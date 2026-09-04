@@ -1,5 +1,7 @@
 # perfattr Roadmap
 
+**Status:** Completed September 4, 2026.
+
 ## First-step implementation plan
 
 ### Objective
@@ -270,17 +272,21 @@ adding only a few tens of milliseconds to a normal user workflow.
 
 ### Current status
 
-Steps 1 through 11 are complete. `perfattr==0.1.0` supplies the standalone core, and
-`ppar` commit `1a0ddc8` completes the shared result boundary, opt-in pandas adapter,
-cross-engine differential matrix, exact demonstration-artifact checks, and an
-additional pandas-backed 500x integration command. Direct elapsed-time and peak-memory
-benchmarks now cover all four roadmap workloads. Profiling justified one simple,
-columnar NumPy conversion improvement at the `ppar` adapter boundary, recorded in
-`ppar` commit `8eb1a77`, and no added core complexity or dependencies. The completed
-reassessment selects `perfattr` as `ppar`'s sole attribution calculator. The legacy
-Polars financial calculator and the unreleased engine-selection API are retired while
-Polars remains the host's preparation and presentation format, as recorded in `ppar`
-commit `075c513`. The stable `perfattr` release precedes the next `ppar` release.
+Steps 1 through 11 are complete. `perfattr==0.1.0` was published from commit `c5e847b`
+and tagged `v0.1.0`. In `ppar`, commit `1a0ddc8` completed the shared result boundary,
+opt-in pandas adapter, cross-engine differential matrix, exact demonstration-artifact
+checks, and an additional pandas-backed 500x integration command. Direct elapsed-time
+and peak-memory benchmarks cover all four roadmap workloads. Profiling justified one
+simple, columnar NumPy conversion improvement at the `ppar` adapter boundary, recorded
+in commit `8eb1a77`, without added core complexity or dependencies.
+
+The completed reassessment selected `perfattr` as `ppar`'s sole attribution
+calculator. Commit `075c513` retired the legacy Polars financial calculator and the
+unreleased engine-selection API while retaining Polars as the host's preparation and
+presentation format. After the stable `perfattr` release, `ppar==0.3.0` was published
+from commit `2ecfc4d` and tagged `v0.3.0`.
+
+This roadmap is complete. Future product work should be scoped in a separate roadmap.
 
 ### Agreed design decisions
 

@@ -6,6 +6,7 @@
 
 88EE-AE4E
 ##################################################### OBSOLETE ABOVE HERE
+CHECK OUT pybrinson on PyPi.  Fill in the gaps.
 
 
 #################################################### COMMANDS
