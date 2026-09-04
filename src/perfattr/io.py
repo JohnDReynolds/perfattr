@@ -170,7 +170,10 @@ def _read_performance_frame(
         raise PreparationError(
             "performance CSV is not a readable canonical UTF-8 CSV file"
         ) from error
-    nonblank = cast(pd.Series, frame.map(str.strip).ne("").any(axis=1))
+    nonblank = pd.Series(False, index=frame.index, dtype="bool")
+    for column in frame.columns:
+        values = cast(pd.Series, frame[column])
+        nonblank = cast(pd.Series, nonblank | values.str.strip().ne(""))
     frame = cast(pd.DataFrame, frame.loc[nonblank].copy(deep=True))
     for column in ("weight", "return", "contribution"):
         if column not in header:
