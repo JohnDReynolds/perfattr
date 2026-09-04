@@ -16,9 +16,9 @@ completed portable preparation work is recorded in
 [`_extras/perfattr_roadmap_2.md`](_extras/perfattr_roadmap_2.md), while later candidates
 are kept in the noncommitted
 [`_extras/perfattr_roadmap_3.md`](_extras/perfattr_roadmap_3.md). Effective-dated
-classification is the first promoted candidate and is governed by the accepted
-[`_extras/perfattr_roadmap_4.md`](_extras/perfattr_roadmap_4.md), with its contract in
-[`docs/effective_dated_classification_specification.md`][effective-spec].
+classification was the first promoted candidate and its completed work is recorded in
+[`_extras/perfattr_roadmap_4.md`](_extras/perfattr_roadmap_4.md), with its accepted
+contract in [`docs/effective_dated_classification_specification.md`][effective-spec].
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).

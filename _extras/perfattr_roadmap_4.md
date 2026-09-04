@@ -1,9 +1,8 @@
 # perfattr Roadmap 4: Effective-Dated Classification
 
-**Status:** Accepted September 4, 2026. Steps 1–7 are complete; the Step 8
-`0.3.0a1` release candidate has passed its prepublication gates.
+**Status:** Completed September 4, 2026. Released as `perfattr==0.3.0a1`.
 
-This is the governing implementation roadmap for the first unresolved feature promoted
+This records the completed implementation of the first unresolved feature promoted
 from roadmap 3. The user approved this roadmap and
 `docs/effective_dated_classification_specification.md` on September 4, 2026.
 
@@ -177,12 +176,12 @@ passes byte-identical large-site output, 10x selected-workload equivalence, and 
 long-history gate at 1.567x, below its 1.58x warning and 1.65x failure boundaries. No
 speculative Axys/APX behavior was added.
 
-The `ppar` integration was verified with the locally built `perfattr` wheel because
-the feature is not published yet. `ppar`'s released dependency range remains
-`perfattr>=0.2.2,<0.3`; it must be raised to the Step 8 minor prerelease before these
-host changes are committed for release.
+The `ppar` integration gate was initially verified with the locally built `perfattr`
+wheel before publication. `ppar`'s dependency range remains `perfattr>=0.2.2,<0.3`;
+it must be raised to `perfattr>=0.3.0a1,<0.4` and verified against the public wheel
+before the host changes are committed for release.
 
-### 8. Release the feature
+### 8. Release the feature — complete
 
 - Review public documentation, changelog text, fixture provenance, and license notes.
 - Build and validate the source distribution and wheel.
@@ -198,9 +197,14 @@ reviewed. All 247 tests pass; Pyright reports zero errors and warnings; Pylint r
 Twine accepts both artifacts. A clean Python 3.11 environment installed the wheel and
 passed a public-import and effective-dated CSV-to-quarterly-preparation smoke test.
 
-**Gate:** Publication was explicitly approved on September 4, 2026. Publish only from
-the clean release commit containing this evidence. Record the final tag, GitHub
-prerelease, workflow, and PyPI verification after publication.
+**Publication evidence:** Released September 4, 2026 from clean, approved commit
+`e138467` under annotated tag and GitHub prerelease `v0.3.0a1`. GitHub Actions run
+`33915803896` successfully built both distributions and published them to PyPI using
+trusted publishing. A second clean Python 3.11 environment installed
+`perfattr==0.3.0a1` from the public PyPI index and passed the public-import and
+effective-dated CSV-to-quarterly-preparation smoke test.
+
+**Gate:** Passed. All roadmap completion criteria are satisfied.
 
 ## Required verification
 

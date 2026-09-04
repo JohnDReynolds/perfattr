@@ -4,11 +4,10 @@ Apply these conventions when modifying or creating code in this project.
 
 ## Roadmap Authority
 
-- Treat `_extras/perfattr_roadmap_1.md` and `_extras/perfattr_roadmap_2.md` as completed
-  historical context.
-- Treat `_extras/perfattr_roadmap_4.md` and
-  `docs/effective_dated_classification_specification.md` as the governing roadmap and
-  contract for the current effective-dated classification work.
+- Treat `_extras/perfattr_roadmap_1.md`, `_extras/perfattr_roadmap_2.md`, and
+  `_extras/perfattr_roadmap_4.md` as completed historical context. The accepted
+  `docs/effective_dated_classification_specification.md` remains the contract for the
+  released effective-dated classification behavior.
 - Treat unpromoted items in `_extras/perfattr_roadmap_3.md` as a noncommitted backlog.
   A roadmap 3 item does not authorize implementation until it is deliberately promoted
   into a new active roadmap.

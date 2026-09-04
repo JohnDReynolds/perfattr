@@ -4,11 +4,11 @@
 
 **Status:** Accepted September 4, 2026.
 
-**Implementation:** Mapping normalization, source-period assignment, end-to-end
-preparation composition, reconciliation verification, canonical CSV support,
-cross-version performance verification, and the approved narrow `ppar` generic
-adapter exposure are complete through roadmap 4 Step 7. The `0.3.0a1` Step 8 release
-candidate has passed its prepublication gates.
+**Implementation:** Complete and released in `perfattr==0.3.0a1` on September 4, 2026.
+Mapping normalization, source-period assignment, end-to-end preparation composition,
+reconciliation verification, canonical CSV support, cross-version performance
+verification, and the approved narrow `ppar` generic adapter exposure all satisfy
+roadmap 4.
 
 The user approved this specification and roadmap 4 on September 4, 2026. This document
 supplements `docs/preparation_specification.md`; unchanged preparation and calculation

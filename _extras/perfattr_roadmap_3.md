@@ -70,7 +70,8 @@ this backlog is effective-dated classification.
 
 ### Effective-dated classifications
 
-**Status:** Promoted into accepted roadmap 4 and specification on September 4, 2026.
+**Status:** Released in `perfattr==0.3.0a1` on September 4, 2026. The completed
+implementation record is roadmap 4 and its accepted specification.
 
 - Resolve classification assignments for each source period before consolidation.
 - Define overlap, gap, boundary-date, and missing-assignment behavior.
