@@ -2,8 +2,8 @@
 
 This module starts the portable preparation boundary defined by roadmap 2. It
 validates source-neutral pandas inputs, selects one portfolio from an already-loaded
-frame, and aligns portfolio and benchmark source periods. Classification mapping and
-consolidation are added by later roadmap steps.
+frame, and aligns portfolio and benchmark source periods. Dedicated modules own the
+subsequent classification mapping and consolidation stages.
 """
 
 from __future__ import annotations

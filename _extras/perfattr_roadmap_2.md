@@ -177,11 +177,11 @@ bucket to be handled correctly.
   normative preparation contract.
 - The migration ledger below inventories the current `ppar` transfer and retirement
   targets.
-- Roadmap steps 1 through 4 are complete. Source-period normalization, financial
+- Roadmap steps 1 through 5 are complete. Source-period normalization, financial
   validation, exact in-memory portfolio selection, portable calendar rules, and
   portfolio/benchmark period alignment now live in `perfattr`. Static classification
-  mapping and source-period roll-up are also implemented; reporting-frequency
-  consolidation is next.
+  mapping, source-period roll-up, and reporting-frequency consolidation are also
+  implemented; the composition API is next.
 
 ## Implementation sequence
 
@@ -229,6 +229,8 @@ bucket to be handled correctly.
   one permanent classification for all time.
 
 ### 5. Add reporting-frequency consolidation
+
+**Status:** Complete September 4, 2026.
 
 - Consolidate only after period alignment and classification mapping.
 - Compound returns and calculate observed-day-weighted exposures.
@@ -421,7 +423,7 @@ Permitted `ppar` remainder:
 The portable static implementation is complete in `perfattr`. Delegation from `ppar`
 and deletion of `Analytics._map_performance` remain for step 8.
 
-### Reporting-frequency consolidation — pending
+### Reporting-frequency consolidation — implemented
 
 `perfattr` replacement:
 
@@ -446,6 +448,9 @@ Permitted `ppar` remainder:
 - a host container for prepared Polars rows if risk or presentation still needs it;
   and
 - conversion to and from the pandas preparation result.
+
+The portable consolidation implementation is complete in `perfattr`. Delegation from
+`ppar` and deletion of its superseded consolidation algorithms remain for step 8.
 
 ### Composition and final retirement — pending
 
