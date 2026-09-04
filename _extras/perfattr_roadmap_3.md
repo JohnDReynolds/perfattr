@@ -28,26 +28,39 @@ comparative design reference rather than the calculation authority: verify formu
 against primary sources, make independent design decisions for `perfattr`, and complete
 the required license and fixture-provenance review before reusing code or test data.
 
-## 1. Harden supported modeling conventions
+## 1. Record supported modeling conventions
 
-These items are substantially representable by the existing authoritative-contribution
-contract. Start with documentation and fixtures; add calculation behavior only if a
-real gap remains.
+**Status:** Existing conventions documented as of September 4, 2026; cash and
+unexposed-charge behavior are covered by focused tests.
 
-### Explicit cash
+These are existing input representations, not future calculation features. They use
+the released formulas, schemas, and reconciliation rules without special numerical
+treatment. Host accounting adapters remain responsible for deciding what a source row
+means and supplying the appropriate facts. The first unresolved feature candidate in
+this backlog is effective-dated classification.
 
-- Document cash as an attributable identifier rather than a hidden residual.
-- Test positive, negative, and zero cash weights and their reconciliation behavior.
-- Leave decisions about identifying or synthesizing cash to host accounting adapters.
+### Explicit cash — supported
 
-### Fees and financing
+- Cash is an ordinary attributable identifier and may be mapped to a Cash
+  classification like any other identifier.
+- Positive, negative, and zero cash weights use the ordinary attribution and
+  reconciliation formulas.
+- `perfattr` does not identify or synthesize cash, calculate a separate cash-drag
+  effect, or use cash as a hidden residual. Those decisions belong to host adapters.
 
-- Document authoritative contribution with zero weight and an undefined return.
-- Preserve nonzero contribution rather than forcing weight-times-return reconstruction.
-- Add semantic labels only outside stable numerical result schemas unless a later
-  methodology requires them.
+### Fees and financing — supported
 
-### Derivative exposure
+- A charge without attributable exposure is represented by zero weight, authoritative
+  nonzero contribution, and null return.
+- The contribution is preserved rather than reconstructed. With zero active weight,
+  its allocation effect is zero and the released selection convention carries its
+  active contribution so the effects reconcile.
+- Financing with an attributable exposure and return may instead be represented as an
+  ordinary identifier using those supplied facts.
+- `perfattr` does not infer fee or financing rows from identifier text, calculate the
+  charge, or add semantic labels to the stable numerical result schemas.
+
+### Derivative exposure — supported boundary convention
 
 - Require the host adapter to supply the selected exposure basis.
 - Do not infer market value, notional, delta-adjusted exposure, or another convention.
@@ -57,13 +70,21 @@ real gap remains.
 
 ### Effective-dated classifications
 
+**Status:** Promoted into accepted roadmap 4 and specification on September 4, 2026.
+
 - Resolve classification assignments for each source period before consolidation.
 - Define overlap, gap, boundary-date, and missing-assignment behavior.
 - Permit portfolio and benchmark to use different source identifiers and mappings.
 - Reconcile results when an identifier changes classification inside a reporting
   period.
 
-Roadmap 2 establishes the required pipeline order but does not commit this feature.
+Roadmap 2 establishes the required pipeline order. The accepted governing contract is
+in [`perfattr_roadmap_4.md`](perfattr_roadmap_4.md) and
+[`effective_dated_classification_specification.md`][effective-spec].
+Implementation is authorized only in the dependency order and within the boundaries
+of roadmap 4.
+
+[effective-spec]: ../docs/effective_dated_classification_specification.md
 
 ### Multi-level hierarchical roll-up
 

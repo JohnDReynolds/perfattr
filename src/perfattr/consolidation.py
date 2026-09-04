@@ -130,17 +130,20 @@ def _assign_reporting_periods(
 def _reporting_groups(frame: pd.DataFrame) -> dict[int, pd.DataFrame]:
     """Group assigned rows once and remove the internal reporting index."""
     selected = frame.loc[frame[_REPORTING_INDEX] >= 0]
-    return {
-        int(reporting_index): cast(
+    groups: dict[int, pd.DataFrame] = {}
+    for reporting_index, group in selected.groupby(
+        _REPORTING_INDEX, sort=True, observed=True
+    ):
+        # pandas exposes a group key as Hashable, while _assign_reporting_periods
+        # establishes this private column as an integer index.
+        index = int(cast(int, reporting_index))
+        groups[index] = cast(
             pd.DataFrame,
             group.drop(columns=_REPORTING_INDEX)
             .sort_values(["thru_date", "identifier"], kind="stable")
             .reset_index(drop=True),
         )
-        for reporting_index, group in selected.groupby(
-            _REPORTING_INDEX, sort=True, observed=True
-        )
-    }
+    return groups
 
 
 def _all_source_period_totals(

@@ -22,6 +22,14 @@ The four workloads correspond to the roadmap shapes:
 The default `derived` form supplies weights and returns. The `authoritative` form also
 supplies contribution, matching the accounting-integrated contract.
 
+[`scripts/benchmark_preparation.py`](../scripts/benchmark_preparation.py) uses the same
+four selected-history sizes with monthly returns-only source rows. It measures the
+complete public `prepare_attribution` boundary: normalization, alignment, independent
+mapping of both sides, quarterly consolidation, and reconciliation. The static form
+maps each identifier to one of twenty classifications. The effective form gives every
+identifier two inclusive assignments and changes its classification at a month
+boundary inside a quarter. Source frames and mappings are constructed before timing.
+
 ## Initial standalone baseline
 
 These observations were collected on September 3, 2026, on an Apple arm64 machine
@@ -79,6 +87,38 @@ frames. Two consecutive warm-state integration measurements completed in 1.39 ve
 2.11 seconds (1.520x) and 1.31 versus 2.03 seconds (1.553x). Both passed the unchanged
 boundaries without changing the financial checks or `ppar` report content.
 
+## Effective-dated preparation baseline
+
+These observations were collected on September 4, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Each elapsed result is the
+median of five samples. Input memory includes both source histories and both mappings;
+peak memory is the incremental Python-tracked allocation while preparation runs.
+
+| Workload | Mapping | Median elapsed | Inputs | Peak traced allocation |
+| --- | --- | ---: | ---: | ---: |
+| `normal` | static | 0.0935 s | 1.2 MiB | 1.7 MiB |
+| `normal` | effective | 0.1227 s | 1.3 MiB | 2.9 MiB |
+| `selected_10x` | static | 0.1487 s | 12.4 MiB | 15.3 MiB |
+| `selected_10x` | effective | 0.4647 s | 13.0 MiB | 15.4 MiB |
+| `monthly_121260` | static | 0.2582 s | 24.6 MiB | 30.5 MiB |
+| `monthly_121260` | effective | 0.8773 s | 25.1 MiB | 30.6 MiB |
+| `history_25y` | static | 0.2524 s | 6.1 MiB | 8.4 MiB |
+| `history_25y` | effective | 0.3978 s | 6.2 MiB | 9.6 MiB |
+
+Effective assignment costs more elapsed time because it validates and resolves an
+inclusive interval for every mapped source row. The largest absolute difference was
+0.6191 seconds for 121,260 rows per side, whose effective run remained below one
+second. Peak traced allocation for that workload increased by 0.1 MiB. The normal
+selected history added 0.0292 seconds and 1.2 MiB. These are initial observations, not
+release thresholds. The absolute results do not justify complicating the resolver or
+adding a dependency; profile again if a real workflow identifies this stage as a
+bottleneck.
+
+The complete 247-test functional suite also passed in isolated environments under
+each supported CI interpreter family: Python 3.11, 3.12, 3.13, and 3.14. Pyright
+reported zero errors and warnings, and Pylint reported 10.00/10 with no messages on
+the project's Python 3.11 development environment.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
@@ -94,3 +134,11 @@ The large-source workflow took 1.41 seconds at both 12,126 and 6,063,000 source 
 the selected-input workflow grew from 0.23 to 0.47 seconds at 10x rows; and the
 long-history workflow grew from 1.28 to 1.85 seconds at 5x history. These timings are
 observations, not thresholds.
+
+The effective-dated generic mapping exposure was subsequently tested through the
+unchanged complete `ppar` release-candidate workflow against the adjacent `perfattr`
+wheel. The suite passed 332 tests and 501 subtests, and the 500x scenarios retained
+byte-identical large-site output and financial equivalence. Large-site elapsed time
+was 1.46 versus 1.53 seconds; the 10x selected workload was 0.41 versus 0.83 seconds;
+and the 5x long-history workload was 1.46 versus 2.28 seconds. Its 1.567x ratio passed
+the unchanged 1.58x warning and 1.65x failure boundaries.

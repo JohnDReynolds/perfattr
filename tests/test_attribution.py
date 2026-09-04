@@ -121,8 +121,62 @@ def test_result_frames_follow_the_specified_contract() -> None:
     assert list(result.reconciliation["check"]) == expected_checks
 
 
+@pytest.mark.parametrize("cash_weight", [0.10, -0.10, 0.0])
+def test_cash_uses_ordinary_identifier_effects(cash_weight: float) -> None:
+    """Positive, negative, and zero cash should use the ordinary Brinson formulas.
+
+    The benchmark has no cash row, so universe equalization supplies zero benchmark
+    cash exposure and return. With an 8% total benchmark return, cash allocation is
+    ``cash_weight * (0% - 8%)``. Portfolio-weighted selection is the cash contribution
+    itself, and their sum is the cash total effect. This independently demonstrates
+    that neither the identifier text nor the sign of its weight activates special
+    cash handling.
+    """
+    columns = """from_date thru_date identifier weight return
+    quantity_of_days""".split()
+    portfolio = pd.DataFrame(
+        [
+            ("2024-01-01", "2024-01-31", "ASSET", 1.0 - cash_weight, 0.10, 31),
+            ("2024-01-01", "2024-01-31", "CASH_USD", cash_weight, 0.01, 31),
+        ],
+        columns=columns,
+    )
+    benchmark = pd.DataFrame(
+        [("2024-01-01", "2024-01-31", "ASSET", 1.0, 0.08, 31)],
+        columns=columns,
+    )
+
+    result = calculate_attribution(portfolio, benchmark)
+
+    cash = result.period_detail.loc[
+        result.period_detail["identifier"] == "CASH_USD"
+    ].iloc[0]
+    expected_contribution = cash_weight * 0.01
+    expected_allocation = cash_weight * (0.0 - 0.08)
+    expected_selection = expected_contribution
+    expected_effective_return = 0.01 if cash_weight != 0.0 else 0.0
+    assert cash["portfolio_weight"] == pytest.approx(cash_weight)
+    assert cash["portfolio_return"] == pytest.approx(expected_effective_return)
+    assert cash["portfolio_contribution"] == pytest.approx(expected_contribution)
+    assert cash["benchmark_weight"] == 0.0
+    assert cash["benchmark_return"] == 0.0
+    assert cash["allocation_effect"] == pytest.approx(expected_allocation)
+    assert cash["selection_effect"] == pytest.approx(expected_selection)
+    assert cash["total_effect"] == pytest.approx(
+        expected_allocation + expected_selection
+    )
+    assert all(result.reconciliation["passed"])
+
+
 def test_authoritative_contribution_preserves_distinct_return_semantics() -> None:
-    """Effective period returns must not replace supplied overall returns."""
+    """Authoritative input returns and unexposed charges retain distinct semantics.
+
+    The asset's supplied 5.0% return remains its compoundable horizon return even
+    though its authoritative period contribution implies a 5.1% effective return. The
+    independently prepared fixture also assigns a -0.1% fee no exposure and therefore
+    no effective return. Zero active weight makes allocation zero; the released
+    selection convention carries the full -0.1% active contribution.
+    """
     portfolio, benchmark = _read_inputs("single_period_authoritative")
 
     result = calculate_attribution(portfolio, benchmark)
@@ -136,9 +190,17 @@ def test_authoritative_contribution_preserves_distinct_return_semantics() -> Non
     fee = result.overall_detail.loc[
         result.overall_detail["identifier"] == "FEE"
     ].iloc[0]
+    period_fee = result.period_detail.loc[
+        result.period_detail["identifier"] == "FEE"
+    ].iloc[0]
     assert period_asset["portfolio_return"] == pytest.approx(0.051)
     assert overall_asset["portfolio_return"] == pytest.approx(0.05)
     assert overall_asset["linked_portfolio_contribution"] == pytest.approx(0.051)
+    assert period_fee["portfolio_weight"] == 0.0
+    assert period_fee["portfolio_contribution"] == pytest.approx(-0.001)
+    assert period_fee["allocation_effect"] == 0.0
+    assert period_fee["selection_effect"] == pytest.approx(-0.001)
+    assert period_fee["total_effect"] == pytest.approx(-0.001)
     assert pd.isna(fee["portfolio_return"])
     assert pd.isna(fee["active_return"])
     assert fee["linked_portfolio_contribution"] == pytest.approx(-0.001)

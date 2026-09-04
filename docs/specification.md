@@ -176,14 +176,38 @@ effective_return = null                     when weight == 0 and contribution !=
 Exact zero determines which branch applies; numerical tolerance does not convert a
 small exposure into zero.
 
-### Prepared special cases
+### Cash, fees, financing, and other prepared cases
 
-- Cash is an ordinary explicit identifier.
-- Fees and financing may use zero weight, nonzero contribution, and null return.
-- A derivatives adapter must supply its chosen exposure basis as weight; the core
-  never infers market value, notional, or delta-adjusted exposure.
-- Classification identifiers are period-specific and may change between periods.
-- External-flow adjustment belongs to the host accounting layer.
+Cash receives no special numerical treatment. It is an ordinary explicit identifier
+with caller-supplied weight, return, and optional authoritative contribution. It may
+also be mapped into a Cash classification like any other identifier. Positive,
+negative, and zero cash weights follow the same validation, attribution, linking, and
+reconciliation rules as all other rows. The core does not identify or synthesize cash,
+calculate a distinct cash-drag effect, or use cash as a hidden residual; those choices
+belong to the host accounting adapter. In particular, exact zero cash weight and zero
+contribution produce the ordinary defined effective return of zero under the
+effective-return branch above.
+
+A fee or financing charge without attributable exposure is represented by zero
+weight, authoritative nonzero contribution, and null return. Its effective and active
+returns are null, but its contribution remains part of the portfolio or benchmark
+total and is linked normally. Because its active weight is zero, its allocation effect
+is zero. Under the released portfolio-weighted-selection convention, its active
+contribution is carried by selection so that the effect components reconcile. The
+core does not infer fee or financing semantics from identifier text or calculate the
+charge. Financing with an attributable exposure and return may instead be supplied as
+an ordinary identifier using those facts.
+
+Semantic labels, gross-to-net policy, accrual calculations, and decisions about
+whether a charge belongs to the portfolio, benchmark, or both remain host accounting
+responsibilities. Mapping a zero-weight charge into a classification with nonzero
+exposure combines its authoritative contribution with that classification under the
+ordinary mapping rules.
+
+A derivatives adapter must supply its chosen exposure basis as weight; the core never
+infers market value, notional, or delta-adjusted exposure. Classification identifiers
+are period-specific and may change between periods. External-flow adjustment belongs
+to the host accounting layer.
 
 ## Notation
 

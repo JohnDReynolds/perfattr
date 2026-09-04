@@ -24,7 +24,10 @@ _PERFORMANCE_OPTIONAL_COLUMNS = (
     "portfolio_code",
     "name",
 )
-_MAPPING_COLUMNS = ("identifier", "classification_identifier")
+_MAPPING_COLUMNS_BY_WIDTH = {
+    2: ("identifier", "classification_identifier"),
+    4: ("from_date", "thru_date", "identifier", "classification_identifier"),
+}
 _CLASSIFICATION_COLUMNS = (
     "classification_identifier",
     "classification_name",
@@ -119,6 +122,36 @@ def _read_pair_csv(
                 f"{context} row {line_number} must contain exactly two columns; "
                 f"received {len(row)}"
             )
+    return pd.DataFrame(rows, columns=columns, dtype="string[python]")
+
+
+def _read_mapping_frame(path: str | os.PathLike[str]) -> pd.DataFrame:
+    """Read one uniformly static or effective-dated headerless mapping CSV."""
+    context = "mapping CSV"
+    local_path = _local_csv_path(path, context)
+    rows = _read_nonblank_rows(local_path, context)
+    if not rows:
+        return pd.DataFrame(
+            columns=_MAPPING_COLUMNS_BY_WIDTH[2], dtype="string[python]"
+        )
+
+    width = len(rows[0])
+    columns = _MAPPING_COLUMNS_BY_WIDTH.get(width)
+    if columns is None:
+        raise PreparationError(
+            f"{context} row 1 must contain exactly two or four columns; "
+            f"received {width}"
+        )
+
+    for line_number, row in enumerate(rows, start=1):
+        if len(row) != width:
+            raise PreparationError(
+                f"{context} uses mixed column counts; row {line_number} has "
+                f"{len(row)} columns but row 1 has {width}"
+            )
+        if tuple(value.strip() for value in row) == columns:
+            raise PreparationError(f"{context} must be headerless")
+
     return pd.DataFrame(rows, columns=columns, dtype="string[python]")
 
 
@@ -287,19 +320,28 @@ def read_performance_csv(
 
 
 def read_mapping_csv(path: str | os.PathLike[str]) -> pd.DataFrame:
-    """Read and validate a canonical headerless static mapping CSV.
+    """Read and validate a canonical headerless mapping CSV.
 
     Args:
-        path: Path to an existing local UTF-8 two-column CSV.
+        path: Path to an existing local UTF-8 CSV. Every nonblank row must use
+            either the static ``identifier, classification_identifier`` form or the
+            effective-dated ``from_date, thru_date, identifier,
+            classification_identifier`` form.
 
     Returns:
-        Independently owned normalized identifier and classification pairs.
+        An independently owned normalized static or effective-dated mapping frame,
+        with the schema selected by the uniform row width.
 
     Raises:
         TypeError: If ``path`` is not string-compatible path data.
-        PreparationError: If the path, row structure, or mapping values are invalid.
+        PreparationError: If the path, row structure, headerless contract, or mapping
+            values are invalid.
+
+    Notes:
+        Blank records are ignored. Mixing the two supported forms in one file is not
+        allowed. Effective dates are closed and inclusive.
     """
-    mapping = _read_pair_csv(path, _MAPPING_COLUMNS, "mapping CSV")
+    mapping = _read_mapping_frame(path)
     return _normalize_mapping(mapping, "mapping CSV")
 
 

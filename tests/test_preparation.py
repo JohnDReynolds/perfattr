@@ -91,16 +91,19 @@ def test_returns_only_normalization_derives_contribution_and_days() -> None:
     pd.testing.assert_frame_equal(source, source_before)
 
 
-def test_authoritative_normalization_preserves_fee_contribution() -> None:
-    """A zero-weight fee should retain contribution and an undefined return."""
+@pytest.mark.parametrize("charge_identifier", ["FEE", "FINANCING"])
+def test_authoritative_normalization_preserves_unexposed_charge(
+    charge_identifier: str,
+) -> None:
+    """A fee or financing charge should retain contribution without exposure."""
     source = pd.DataFrame(
         {
             "from_date": ["2024-02-01", "2024-02-01"],
             "thru_date": ["2024-02-29", "2024-02-29"],
-            "identifier": ["ASSET", "FEE"],
+            "identifier": ["ASSET", charge_identifier],
             "weight": [1.0, 0.0],
             "return": [0.05, np.nan],
-            # The 5.1% asset contribution less a 0.1% fee reconciles to 5.0%.
+            # The 5.1% asset contribution less a 0.1% charge reconciles to 5.0%.
             "contribution": [0.051, -0.001],
         }
     )

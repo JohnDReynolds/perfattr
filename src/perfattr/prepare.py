@@ -531,8 +531,9 @@ def prepare_attribution(
         holidays: Plain dates treated as nonbusiness days for fixed endpoints.
         from_date: Optional inclusive lower bound on source-period ``thru_date``.
         thru_date: Optional inclusive upper bound on source-period ``thru_date``.
-        portfolio_mapping: Optional static portfolio identifier mapping.
-        benchmark_mapping: Optional independent static benchmark identifier mapping.
+        portfolio_mapping: Optional static or effective-dated portfolio mapping.
+        benchmark_mapping: Optional independent static or effective-dated benchmark
+            mapping.
         reconciliation_tolerance: Positive relative and absolute tolerance used by
             preparation conservation checks.
 
@@ -552,6 +553,8 @@ def prepare_attribution(
         map each side independently, then consolidate to the aligned periods.
         Contribution is derived only when absent from the source; supplied values stay
         authoritative throughout mapping and logarithmic linking.
+        Effective-dated mappings resolve complete source periods and never split or
+        prorate their financial values.
 
     Examples:
         Prepare ordinary weights-and-returns inputs and calculate attribution::

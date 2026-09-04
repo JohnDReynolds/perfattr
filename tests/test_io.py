@@ -223,20 +223,115 @@ def test_empty_mapping_csv_returns_a_valid_empty_mapping(tmp_path: Path) -> None
     assert all(str(mapping[column].dtype) == "string" for column in mapping.columns)
 
 
+def test_effective_mapping_reader_normalizes_deduplicates_and_sorts(
+    tmp_path: Path,
+) -> None:
+    """Four-column rows should produce the canonical effective-dated mapping.
+
+    The deliberately reversed input order and repeated January assignment prove that
+    CSV loading delegates to the same deterministic normalization contract as an
+    in-memory mapping. Leading zeroes remain identity text, while dates become pandas
+    timestamps for exact inclusive-period comparisons during preparation.
+    """
+    path = _write(
+        tmp_path / "effective_mapping.csv",
+        "2024-02-01,2024-02-29,A,FI\n"
+        "2024-01-01,2024-01-31, A , EQ \n"
+        "2024-01-01,2024-01-31,A,EQ\n"
+        "2024-01-01,2024-12-31,001,010\n",
+    )
+
+    mapping = read_mapping_csv(path)
+
+    expected = pd.DataFrame(
+        {
+            "from_date": pd.Series(
+                pd.to_datetime(["2024-01-01", "2024-01-01", "2024-02-01"]),
+                dtype="datetime64[ns]",
+            ),
+            "thru_date": pd.Series(
+                pd.to_datetime(["2024-12-31", "2024-01-31", "2024-02-29"]),
+                dtype="datetime64[ns]",
+            ),
+            "identifier": pd.Series(["001", "A", "A"], dtype="string[python]"),
+            "classification_identifier": pd.Series(
+                ["010", "EQ", "FI"], dtype="string[python]"
+            ),
+        }
+    )
+    pd.testing.assert_frame_equal(mapping, expected)
+
+
 def test_mapping_reader_rejects_conflicts_and_wrong_field_counts(
     tmp_path: Path,
 ) -> None:
-    """A source key must have one target and every nonblank row must have two fields."""
+    """Static conflicts and every unsupported width class must fail explicitly."""
     conflict = _write(tmp_path / "conflict.csv", "A,EQ\nA,FI\n")
-    too_many = _write(tmp_path / "too_many.csv", "A,EQ,EXTRA\n")
-    too_few = _write(tmp_path / "too_few.csv", "A\n")
+    unsupported = [
+        (_write(tmp_path / "one.csv", "A\n"), 1),
+        (_write(tmp_path / "three.csv", "A,EQ,EXTRA\n"), 3),
+        (_write(tmp_path / "five.csv", "2024-01-01,2024-01-31,A,EQ,EXTRA\n"), 5),
+    ]
 
     with pytest.raises(PreparationError, match="multiple classifications.*A"):
         read_mapping_csv(conflict)
-    with pytest.raises(PreparationError, match="exactly two columns; received 3"):
-        read_mapping_csv(too_many)
-    with pytest.raises(PreparationError, match="exactly two columns; received 1"):
-        read_mapping_csv(too_few)
+    for path, width in unsupported:
+        with pytest.raises(
+            PreparationError,
+            match=rf"two or four columns; received {width}",
+        ):
+            read_mapping_csv(path)
+
+
+@pytest.mark.parametrize(
+    "contents",
+    [
+        pytest.param("A,EQ\n2024-01-01,2024-01-31,A,EQ\n", id="static-then-effective"),
+        pytest.param("2024-01-01,2024-01-31,A,EQ\nA,EQ\n", id="effective-then-static"),
+    ],
+)
+def test_mapping_reader_rejects_mixed_supported_widths(
+    tmp_path: Path,
+    contents: str,
+) -> None:
+    """One canonical file cannot mix static pairs with dated assignments."""
+    path = _write(tmp_path / "mixed_mapping.csv", contents)
+
+    with pytest.raises(PreparationError, match="uses mixed column counts; row 2"):
+        read_mapping_csv(path)
+
+
+@pytest.mark.parametrize(
+    "contents",
+    [
+        pytest.param(
+            "identifier,classification_identifier\nA,EQ\n",
+            id="static-header",
+        ),
+        pytest.param(
+            "from_date,thru_date,identifier,classification_identifier\n"
+            "2024-01-01,2024-01-31,A,EQ\n",
+            id="effective-header",
+        ),
+    ],
+)
+def test_mapping_reader_rejects_headers(tmp_path: Path, contents: str) -> None:
+    """Both canonical mapping forms are deliberately headerless."""
+    path = _write(tmp_path / "header.csv", contents)
+
+    with pytest.raises(PreparationError, match="mapping CSV must be headerless"):
+        read_mapping_csv(path)
+
+
+def test_effective_mapping_reader_rejects_invalid_values(tmp_path: Path) -> None:
+    """Four-column loading must apply the full effective-interval value contract."""
+    path = _write(
+        tmp_path / "invalid_effective_mapping.csv",
+        "not-a-date,2024-01-31,A,EQ\n",
+    )
+
+    with pytest.raises(PreparationError, match="from_date.*invalid date"):
+        read_mapping_csv(path)
 
 
 def test_classification_reader_normalizes_metadata_and_quoted_commas(
@@ -365,13 +460,28 @@ def test_mapping_reader_rejects_malformed_csv_quoting(tmp_path: Path) -> None:
         read_mapping_csv(malformed)
 
 
-def test_reader_returns_owned_data_and_closes_the_file(tmp_path: Path) -> None:
-    """Returned data should be independent and the source path reusable immediately."""
-    path = _write(tmp_path / "mapping.csv", "A,EQ\n")
+@pytest.mark.parametrize(
+    ("contents", "replacement"),
+    [
+        pytest.param("A,EQ\n", "A,FI\n", id="static"),
+        pytest.param(
+            "2024-01-01,2024-01-31,A,EQ\n",
+            "2024-01-01,2024-01-31,A,FI\n",
+            id="effective",
+        ),
+    ],
+)
+def test_mapping_reader_returns_owned_data_and_closes_the_file(
+    tmp_path: Path,
+    contents: str,
+    replacement: str,
+) -> None:
+    """Both mapping forms should be owned and leave their source file reusable."""
+    path = _write(tmp_path / "mapping.csv", contents)
 
     first = read_mapping_csv(path)
     first.loc[0, "classification_identifier"] = "CHANGED"
-    path.write_text("A,FI\n", encoding="utf-8")
+    path.write_text(replacement, encoding="utf-8")
     second = read_mapping_csv(path)
 
     assert first.loc[0, "classification_identifier"] == "CHANGED"

@@ -9,6 +9,10 @@ This document is the normative preparation contract for roadmap 2. The words **m
 
 `docs/specification.md` continues to govern the calculation core. This specification
 governs only the upstream preparation that produces the core's existing input frames.
+The accepted effective-dated classification extension is governed by
+`docs/effective_dated_classification_specification.md` and roadmap 4. Until its
+implementation steps are complete, the released preparation API supports only the
+static mapping contract documented here.
 
 ## Design principles
 
@@ -189,6 +193,30 @@ weight multiplied by return.
 For either input form, the source-period total return is the sum of contributions. It
 must be finite and greater than `-1.0` when logarithmic consolidation is required.
 
+### Cash, fees, and financing
+
+Cash is prepared as an ordinary identifier. Preparation neither detects nor creates
+cash, and an optional classification mapping may roll a source identifier such as
+`CASH_USD` into a Cash classification using the same rules as any other mapping.
+Positive, negative, and zero cash weights receive no special validation or
+consolidation behavior beyond the ordinary contracts above. Preparation can preserve
+a supplied compoundable return when no roll-up requires deriving a new one; at the
+calculation boundary, exact zero cash weight and zero contribution produce the same
+defined effective period return of zero as any other zero-exposure row.
+
+A fee or financing charge without attributable exposure requires the authoritative-
+contribution form: weight is zero, contribution contains the signed charge, and return
+is null because contribution divided by weight is undefined. The row is preserved
+through alignment and consolidation. If it remains its own mapped group, its effective
+return remains null; if it is mapped into a group with nonzero net exposure, the
+group's ordinary effective return is total authoritative contribution divided by total
+weight.
+
+Preparation does not recognize special identifier names, calculate charges, choose
+gross or net performance, or determine which portfolio or benchmark should contain a
+charge. Those are host accounting responsibilities. Financing associated with an
+explicit exposure and return may instead use the ordinary weighted-return form.
+
 ### Date-window filtering
 
 `from_date` and `thru_date` are optional inclusive bounds on source-period `thru_date`,
@@ -272,7 +300,10 @@ collapse. Conflicting names for one identifier are invalid. The preparation and
 calculation results do not propagate display names; a host may join this metadata for
 presentation.
 
-Roadmap 2 does not implement effective-dated mappings. That remains a roadmap 3 item.
+Roadmap 2 did not implement effective-dated mappings. The user approved that extension
+on September 4, 2026; its additional normative contract is in
+`docs/effective_dated_classification_specification.md`, and implementation is governed
+by `_extras/perfattr_roadmap_4.md`.
 
 ## Frequency and holiday contract
 
@@ -493,11 +524,21 @@ input. Identity columns are read as strings so leading zeroes are preserved.
 
 ### Mapping CSV
 
-The mapping CSV is headerless and contains exactly two columns in this order:
+The mapping CSV is headerless. Every nonblank row in one file must use exactly one of
+the two supported forms. The static form contains these columns:
 
 ```text
 identifier,classification_identifier
 ```
+
+The effective-dated form contains these columns and uses closed, inclusive dates:
+
+```text
+from_date,thru_date,identifier,classification_identifier
+```
+
+Headers, mixed two- and four-column records, and every other record width are invalid.
+The normalized result uses the schema selected by the file width.
 
 ### Classification CSV
 
@@ -617,6 +658,18 @@ prepared = prepare_attribution(
     benchmark_mapping=mapping,
 )
 ```
+
+The same workflow accepts an effective-dated mapping file. For example,
+`security_to_sector.csv` can contain these headerless records:
+
+```text
+2024-01-01,2024-01-31,ASSET,Equity
+2024-02-01,2024-12-31,ASSET,Fixed Income
+```
+
+Each retained source period for `ASSET` must fit wholly within exactly one assignment.
+The mapping is applied before reporting-frequency consolidation; a source period is
+never split or prorated across a classification boundary.
 
 No convenience API should combine loading, selection, preparation, calculation, and
 presentation until repeated real usage shows that another public entry point is worth

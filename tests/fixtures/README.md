@@ -14,7 +14,7 @@ The cases are deliberately small:
 | Case | Contract covered |
 |---|---|
 | `single_period_derived` | Derived contribution, missing identifiers, signed weight, and an explicit zero-weight/null-return input |
-| `single_period_authoritative` | Independently optional contribution columns and a zero-weight, nonzero-contribution row with undefined return |
+| `single_period_authoritative` | Independently optional contribution columns and a zero-weight fee or financing-style charge with undefined return |
 | `multi_period_linking` | Multiple periods, unequal day counts, logarithmic contribution linking, and Carino effect linking |
 | `linking_boundaries` | Exact zero/equal-return limits, near-equal returns, and returns close to -100% |
 

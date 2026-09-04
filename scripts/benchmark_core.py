@@ -9,54 +9,32 @@ from __future__ import annotations
 
 import argparse
 import cProfile
-import gc
+from functools import partial
 import platform
 import pstats
 import statistics
-import time
-import tracemalloc
-from calendar import monthrange
-from dataclasses import dataclass
-from datetime import date
-from typing import Final, Literal
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 
+from benchmark_support import (
+    BenchmarkWorkload,
+    WORKLOADS,
+    add_common_arguments,
+    deep_frame_mebibytes,
+    measure_elapsed,
+    measure_peak_mebibytes,
+    month_bounds,
+    require_positive_samples,
+)
 from perfattr import AttributionResult, calculate_attribution
 
-_MEBIBYTE: Final = 1024 * 1024
+
 _InputForm = Literal["derived", "authoritative"]
 
 
-@dataclass(frozen=True)
-class _Workload:
-    """Describe one deterministic roadmap benchmark workload."""
-
-    name: str
-    rows_per_side: int
-    periods: int
-
-
-_WORKLOADS: Final = {
-    "normal": _Workload("normal", rows_per_side=6_063, periods=60),
-    "selected_10x": _Workload("selected_10x", rows_per_side=60_630, periods=60),
-    "monthly_121260": _Workload(
-        "monthly_121260", rows_per_side=121_260, periods=120
-    ),
-    "history_25y": _Workload("history_25y", rows_per_side=30_300, periods=300),
-}
-
-
-def _month_bounds(month_index: int) -> tuple[date, date]:
-    """Return inclusive month boundaries starting with January 2000."""
-    absolute_month = 2000 * 12 + month_index
-    year, zero_based_month = divmod(absolute_month, 12)
-    month = zero_based_month + 1
-    return date(year, month, 1), date(year, month, monthrange(year, month)[1])
-
-
-def _period_row_counts(workload: _Workload) -> list[int]:
+def _period_row_counts(workload: BenchmarkWorkload) -> list[int]:
     """Distribute the exact requested row count as evenly as possible."""
     base_count, extra_rows = divmod(workload.rows_per_side, workload.periods)
     return [
@@ -66,7 +44,7 @@ def _period_row_counts(workload: _Workload) -> list[int]:
 
 
 def _make_side(
-    workload: _Workload,
+    workload: BenchmarkWorkload,
     *,
     side: Literal["portfolio", "benchmark"],
     input_form: _InputForm,
@@ -101,7 +79,7 @@ def _make_period_frame(
     input_form: _InputForm,
 ) -> pd.DataFrame:
     """Build one side of one benchmark period."""
-    from_date, thru_date = _month_bounds(period_index)
+    from_date, thru_date = month_bounds(period_index)
     positions = np.arange(row_count, dtype=np.int64)
     identifier_shift = 0 if side == "portfolio" else max(1, row_count // 10)
     identifiers = [f"security_{value:06d}" for value in positions + identifier_shift]
@@ -134,37 +112,9 @@ def _calculate(
     return calculate_attribution(portfolio, benchmark)
 
 
-def _elapsed_samples(
-    portfolio: pd.DataFrame, benchmark: pd.DataFrame, sample_count: int
-) -> list[float]:
-    """Measure calculation wall time after one unrecorded warm-up run."""
-    _calculate(portfolio, benchmark)
-    samples: list[float] = []
-    for _ in range(sample_count):
-        started_at = time.perf_counter()
-        _calculate(portfolio, benchmark)
-        samples.append(time.perf_counter() - started_at)
-    return samples
-
-
-def _peak_mebibytes(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> float:
-    """Measure peak Python-tracked allocation during one calculation."""
-    gc.collect()
-    tracemalloc.start()
-    try:
-        result = _calculate(portfolio, benchmark)
-        del result
-        _, peak_bytes = tracemalloc.get_traced_memory()
-    finally:
-        tracemalloc.stop()
-    return peak_bytes / _MEBIBYTE
-
-
 def _input_mebibytes(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> float:
     """Return the deep in-memory size of both prepared input frames."""
-    input_bytes = portfolio.memory_usage(index=True, deep=True).sum()
-    input_bytes += benchmark.memory_usage(index=True, deep=True).sum()
-    return float(input_bytes) / _MEBIBYTE
+    return deep_frame_mebibytes((portfolio, benchmark))
 
 
 def _profile(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> None:
@@ -179,34 +129,27 @@ def _profile(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> None:
 def _parse_args() -> argparse.Namespace:
     """Parse benchmark command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--workload",
-        action="append",
-        choices=tuple(_WORKLOADS),
-        help="Workload to run; repeat to select several. The default runs all.",
-    )
+    add_common_arguments(parser)
     parser.add_argument(
         "--input-form",
         choices=("derived", "authoritative"),
         default="derived",
         help="Use weight/return input or include authoritative contribution.",
     )
-    parser.add_argument("--samples", type=int, default=3, help="Recorded timing samples.")
     parser.add_argument(
         "--profile",
         action="store_true",
         help="Print cProfile results after measuring each selected workload.",
     )
     args = parser.parse_args()
-    if args.samples < 1:
-        parser.error("--samples must be at least 1")
+    require_positive_samples(parser, args.samples)
     return args
 
 
 def main() -> None:
     """Run selected roadmap workloads and print reproducible measurements."""
     args = _parse_args()
-    workload_names = args.workload or list(_WORKLOADS)
+    workload_names = args.workload or list(WORKLOADS)
     input_form: _InputForm = args.input_form
 
     print(
@@ -219,11 +162,12 @@ def main() -> None:
     )
 
     for workload_name in workload_names:
-        workload = _WORKLOADS[workload_name]
+        workload = WORKLOADS[workload_name]
         portfolio = _make_side(workload, side="portfolio", input_form=input_form)
         benchmark = _make_side(workload, side="benchmark", input_form=input_form)
-        samples = _elapsed_samples(portfolio, benchmark, args.samples)
-        peak_mebibytes = _peak_mebibytes(portfolio, benchmark)
+        operation = partial(_calculate, portfolio, benchmark)
+        samples = measure_elapsed(operation, args.samples)
+        peak_mebibytes = measure_peak_mebibytes(operation)
 
         print(
             f"{workload.name}: form={input_form}, rows/side={workload.rows_per_side:,}, "

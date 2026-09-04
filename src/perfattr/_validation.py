@@ -218,6 +218,45 @@ def normalize_identity(
     return normalized
 
 
+def require_exact_columns(
+    frame: pd.DataFrame,
+    columns: Sequence[str],
+    context: str,
+    error_type: type[ValueError],
+) -> None:
+    """Require a DataFrame to contain exactly one set of unique column labels.
+
+    Args:
+        frame: Candidate pandas boundary frame.
+        columns: Exact required column labels.
+        context: Human-readable boundary included in errors.
+        error_type: Domain error raised for an invalid schema.
+
+    Raises:
+        TypeError: If ``frame`` is not a pandas DataFrame.
+        ValueError: Using ``error_type`` for duplicate, missing, or additional labels.
+    """
+    if not isinstance(frame, pd.DataFrame):
+        raise TypeError(f"{context} must be a pandas DataFrame")
+    if frame.columns.has_duplicates:
+        raise_invalid(error_type, context, "contains duplicate column labels")
+
+    missing = [column for column in columns if column not in frame.columns]
+    extra = [column for column in frame.columns if column not in columns]
+    if missing or extra:
+        details: list[str] = []
+        if missing:
+            details.append(f"missing columns: {', '.join(missing)}")
+        if extra:
+            labels = ", ".join(str(column) for column in extra)
+            details.append(f"unexpected columns: {labels}")
+        raise_invalid(
+            error_type,
+            context,
+            "must contain exactly the required columns; " + "; ".join(details),
+        )
+
+
 def normalize_identity_pairs(
     frame: pd.DataFrame,
     columns: tuple[str, str],
@@ -242,24 +281,7 @@ def normalize_identity_pairs(
         ValueError: Using ``error_type`` for invalid schema, identities, or conflicting
             pairs.
     """
-    if not isinstance(frame, pd.DataFrame):
-        raise TypeError(f"{context} must be a pandas DataFrame")
-    if frame.columns.has_duplicates:
-        raise_invalid(error_type, context, "contains duplicate column labels")
-
-    missing = [column for column in columns if column not in frame.columns]
-    extra = [column for column in frame.columns if column not in columns]
-    if missing or extra:
-        details: list[str] = []
-        if missing:
-            details.append(f"missing columns: {', '.join(missing)}")
-        if extra:
-            details.append(f"unexpected columns: {', '.join(extra)}")
-        raise_invalid(
-            error_type,
-            context,
-            "must contain exactly the required columns; " + "; ".join(details),
-        )
+    require_exact_columns(frame, columns, context, error_type)
 
     normalized = cast(pd.DataFrame, frame.loc[:, list(columns)].copy(deep=True))
     for column in columns:

@@ -79,6 +79,92 @@ def _mapped_monthly_inputs() -> tuple[
     return portfolio, benchmark, portfolio_mapping, benchmark_mapping
 
 
+def _effective_quarterly_inputs() -> tuple[
+    pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
+]:
+    """Return independent dated mappings and three monthly returns-only periods.
+
+    Portfolio P_A changes from EQ to FI after January; benchmark B_A changes after
+    February. P_B and B_B remain BOND throughout. The source weights sum to one each
+    month, and the deliberately simple returns produce portfolio monthly contributions
+    of 4%, 3%, and 0% and benchmark contributions of 3%, 2%, and 1%.
+    """
+    from_dates = ["2024-01-01"] * 2 + ["2024-02-01"] * 2 + ["2024-03-01"] * 2
+    thru_dates = ["2024-01-31"] * 2 + ["2024-02-29"] * 2 + ["2024-03-31"] * 2
+    portfolio = pd.DataFrame(
+        {
+            "from_date": from_dates,
+            "thru_date": thru_dates,
+            "identifier": ["P_A", "P_B"] * 3,
+            "weight": [0.6, 0.4, 0.5, 0.5, 0.4, 0.6],
+            # P_A contributes 3%, 2%, and -1%; P_B contributes 1% each month.
+            "return": [0.05, 0.025, 0.04, 0.02, -0.025, 1.0 / 60.0],
+        }
+    )
+    benchmark = pd.DataFrame(
+        {
+            "from_date": from_dates,
+            "thru_date": thru_dates,
+            "identifier": ["B_A", "B_B"] * 3,
+            "weight": [0.5, 0.5, 0.4, 0.6, 0.3, 0.7],
+            # B_A contributes 2%, 1%, and 1%; B_B contributes 1%, 1%, and 0%.
+            "return": [0.04, 0.02, 0.025, 1.0 / 60.0, 1.0 / 30.0, 0.0],
+        }
+    )
+    portfolio_mapping = pd.DataFrame(
+        {
+            "from_date": ["2024-01-01", "2024-02-01", "2024-01-01"],
+            "thru_date": ["2024-01-31", "2024-03-31", "2024-03-31"],
+            "identifier": ["P_A", "P_A", "P_B"],
+            "classification_identifier": ["EQ", "FI", "BOND"],
+        }
+    )
+    benchmark_mapping = pd.DataFrame(
+        {
+            "from_date": ["2024-01-01", "2024-03-01", "2024-01-01"],
+            "thru_date": ["2024-02-29", "2024-03-31", "2024-03-31"],
+            "identifier": ["B_A", "B_A", "B_B"],
+            "classification_identifier": ["EQ", "FI", "BOND"],
+        }
+    )
+    return portfolio, benchmark, portfolio_mapping, benchmark_mapping
+
+
+# These expected vectors were calculated directly from the formulas documented in the
+# effective-dated quarterly test. Keeping them outside the test makes each financial
+# assertion concise without deriving an expected value from production code.
+_EFFECTIVE_PORTFOLIO_WEIGHTS = (
+    0.5,
+    0.20439560439560436,
+    0.2956043956043956,
+)
+_EFFECTIVE_PORTFOLIO_CONTRIBUTIONS = (
+    0.030701838891117304,
+    0.03045072461418916,
+    0.010047436494693534,
+)
+_EFFECTIVE_PORTFOLIO_RETURNS = (
+    0.06140367778223461,
+    0.14897935160705453,
+    0.033989469182792255,
+)
+_EFFECTIVE_BENCHMARK_WEIGHTS = (
+    0.6,
+    0.2978021978021978,
+    0.10219780219780218,
+)
+_EFFECTIVE_BENCHMARK_CONTRIBUTIONS = (
+    0.02035183332527551,
+    0.030502828439161737,
+    0.01025133823556274,
+)
+_EFFECTIVE_BENCHMARK_RETURNS = (
+    0.03391972220879252,
+    0.10242647188058,
+    0.10030879348776446,
+)
+
+
 def test_prepare_native_returns_only_composes_with_calculation_core() -> None:
     """The ordinary weights-and-returns workflow should need one preparation call.
 
@@ -194,6 +280,121 @@ def test_prepare_maps_then_consolidates_authoritative_inputs() -> None:
     assert prepared.benchmark.loc[0, "return"] == pytest.approx(0.0504)
     assert prepared.benchmark.loc[0, "contribution"] == pytest.approx(0.0504)
     assert prepared.portfolio.loc[0, "quantity_of_days"] == 31
+
+
+def test_prepare_resolves_effective_mappings_before_quarterly_consolidation() -> None:
+    """Independent dated assignments should consolidate and reconcile end to end.
+
+    Hand calculation uses ``s(x) = log1p(x) / x``. Portfolio monthly returns of 4%,
+    3%, and 0% compound to 7.12%, with linking coefficients
+    ``[1.0150241538063054, 1.0199677949249262, 1.0351919403804988]``. Benchmark
+    monthly returns of 3%, 2%, and 1% compound to 6.1106%, with coefficients
+    ``[1.0150995113886225, 1.0200838211389285, 1.025133823556274]``.
+
+    P_A maps to EQ only in January and to FI in February and March. B_A independently
+    maps to EQ through February and to FI in March. BOND remains unchanged. Applying
+    the coefficients to each explicitly documented monthly contribution produces the
+    expected class contributions below; dividing by the 91-day weighted class weights
+    produces the expected effective returns. Each side's contributions reconcile to
+    its compounded quarterly return before the prepared frames enter the calculation
+    core.
+    """
+    portfolio, benchmark, portfolio_mapping, benchmark_mapping = (
+        _effective_quarterly_inputs()
+    )
+
+    prepared = prepare_attribution(
+        portfolio,
+        benchmark,
+        frequency=Frequency.QUARTERLY,
+        portfolio_mapping=portfolio_mapping,
+        benchmark_mapping=benchmark_mapping,
+    )
+
+    expected_identifiers = ["BOND", "EQ", "FI"]
+    assert list(prepared.portfolio.columns) == list(PREPARED_PERFORMANCE_COLUMNS)
+    assert list(prepared.benchmark.columns) == list(PREPARED_PERFORMANCE_COLUMNS)
+    assert list(prepared.portfolio["identifier"]) == expected_identifiers
+    assert list(prepared.benchmark["identifier"]) == expected_identifiers
+    assert list(prepared.portfolio["from_date"].dt.date.unique()) == [
+        dt.date(2024, 1, 1)
+    ]
+    assert list(prepared.portfolio["thru_date"].dt.date.unique()) == [
+        dt.date(2024, 3, 31)
+    ]
+    assert list(prepared.portfolio["quantity_of_days"]) == [91, 91, 91]
+    assert list(prepared.benchmark["quantity_of_days"]) == [91, 91, 91]
+
+    # Portfolio weights are day-weighted from BOND [40%, 50%, 60%], EQ [60%, 0%, 0%],
+    # and FI [0%, 50%, 40%] over month lengths [31, 29, 31].
+    # Linked contributions are BOND=.01*(L1+L2+L3), EQ=.03*L1, and
+    # FI=.02*L2-.01*L3. Their sum is the independently compounded 7.12%.
+    np.testing.assert_allclose(
+        prepared.portfolio["weight"],
+        _EFFECTIVE_PORTFOLIO_WEIGHTS,
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        prepared.portfolio["contribution"],
+        _EFFECTIVE_PORTFOLIO_CONTRIBUTIONS,
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        prepared.portfolio["return"],
+        _EFFECTIVE_PORTFOLIO_RETURNS,
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+    # Benchmark weights are BOND [50%, 60%, 70%], EQ [50%, 40%, 0%], and
+    # FI [0%, 0%, 30%] over the same source-period day counts.
+    # Linked contributions are BOND=.01*(L1+L2), EQ=.02*L1+.01*L2, and FI=.01*L3.
+    # They sum to the independently compounded 6.1106% benchmark return.
+    np.testing.assert_allclose(
+        prepared.benchmark["weight"],
+        _EFFECTIVE_BENCHMARK_WEIGHTS,
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        prepared.benchmark["contribution"],
+        _EFFECTIVE_BENCHMARK_CONTRIBUTIONS,
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        prepared.benchmark["return"],
+        _EFFECTIVE_BENCHMARK_RETURNS,
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+    reconciliation = prepared.reconciliation
+    assert list(reconciliation.columns) == list(PREPARATION_RECONCILIATION_COLUMNS)
+    assert len(reconciliation) == 28
+    assert bool(np.asarray(reconciliation["passed"], dtype=np.bool_).all())
+    np.testing.assert_allclose(reconciliation["residual"], 0.0, atol=1e-12)
+    assert list(reconciliation["stage"]) == (
+        ["source"] * 12 + ["mapped"] * 12 + ["reporting"] * 4
+    )
+    assert list(reconciliation["check"]) == (
+        ["weight_sum", "derived_contribution"] * 6
+        + ["mapped_weight", "mapped_contribution"] * 6
+        + ["weight_sum", "linked_contribution"] * 2
+    )
+    linked = reconciliation.loc[
+        reconciliation["check"] == "linked_contribution"
+    ]
+    np.testing.assert_allclose(linked["actual"], [0.0712, 0.061106], atol=1e-12)
+    np.testing.assert_allclose(linked["expected"], [0.0712, 0.061106], atol=1e-12)
+
+    attribution = calculate_attribution(prepared.portfolio, prepared.benchmark)
+    summary = attribution.period_summary.iloc[0]
+    assert summary["portfolio_return"] == pytest.approx(0.0712, abs=1e-12)
+    assert summary["benchmark_return"] == pytest.approx(0.061106, abs=1e-12)
+    assert summary["active_return"] == pytest.approx(0.010094, abs=1e-12)
 
 
 def test_prepare_accepts_different_source_partitions_with_common_coverage() -> None:
