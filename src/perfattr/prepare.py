@@ -373,6 +373,12 @@ def _reporting_reconciliation(
     }
     if tuple(totals_by_period) != aligned.periods:
         raise PreparationError("reporting reconciliation changed aligned period keys")
+    # Build independently calculated source-period totals once. Refiltering and
+    # regrouping the complete identifier-level source for every reporting period is
+    # equivalent but grows unnecessarily with both row count and history length.
+    all_source_period_totals = _period_totals(
+        state.source, ("contribution",)
+    )
     rows: list[_ReconciliationRow] = []
     for period in aligned.periods:
         total = totals_by_period[period]
@@ -387,8 +393,9 @@ def _reporting_reconciliation(
                 tolerance,
             )
         )
-        source = _reporting_source_rows(state.source, period)
-        source_period_totals = _period_totals(source, ("contribution",))
+        source_period_totals = _reporting_source_rows(
+            all_source_period_totals, period
+        )
         if len(source_period_totals) > 1:
             expected_return = _compound_returns(
                 _float_array(source_period_totals, "contribution")

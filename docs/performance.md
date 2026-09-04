@@ -66,6 +66,13 @@ migration. The large-source workflow processed 12,126 and 6,063,000 source rows 
 workload took 1.65 and 2.55 seconds. The 5x long-history workload took 10.27 and 13.79
 seconds, a 1.343x ratio below its 1.58x warning and 1.65x failure gates.
 
+The `0.2.1` patch batches reporting-period assignment, consolidation, and independent
+reconciliation across the complete history while retaining the same formulas and
+checks. In two consecutive warm-state integration measurements, the 5x long-history
+workload completed in 1.51 versus 2.15 seconds (1.424x) and 1.34 versus 2.11 seconds
+(1.571x). Both runs passed the unchanged 1.58x warning and 1.65x failure boundaries;
+all large-source artifacts remained byte-identical.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,

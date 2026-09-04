@@ -29,6 +29,7 @@ from perfattr.preparation import _AlignedPeriods
 _TOLERANCE = 1e-12
 _DatePeriod = tuple[dt.date, dt.date]
 _PERIOD_COLUMNS = ["from_date", "thru_date"]
+_REPORTING_INDEX = "_reporting_period_index"
 
 
 def _raise_invalid(context: str, message: str) -> None:
@@ -59,71 +60,108 @@ def _validate_aligned_periods(aligned: _AlignedPeriods) -> None:
         previous_end = thru_date
 
 
-def _reporting_source_rows(
-    performance: pd.DataFrame,
-    reporting_period: _DatePeriod,
+def _assign_reporting_periods(
+    source: pd.DataFrame,
+    aligned: _AlignedPeriods,
     context: str,
 ) -> pd.DataFrame:
-    """Select source rows wholly contained in one aligned reporting period.
+    """Assign each contained source period to one reporting period.
 
     Args:
-        performance: Normalized and optionally mapped source-period rows.
-        reporting_period: Inclusive aligned reporting boundaries.
+        source: Normalized source-period rows.
+        aligned: Ordered, nonoverlapping reporting periods.
         context: Human-readable side included in errors.
 
     Returns:
-        An independently owned subset in source-period order.
+        A new frame with an integer ``_reporting_period_index`` column. Rows outside
+        the aligned comparison window receive ``-1`` and are ignored later.
 
     Raises:
-        PreparationError: If no source rows cover the period or a source interval
-            crosses an aligned reporting boundary.
+        PreparationError: If a source interval crosses an aligned reporting boundary
+            or a reporting period contains no source rows.
+
+    Notes:
+        Assignment operates on unique source-period keys, then joins those assignments
+        to identifier rows once. This preserves the original boundary rules without
+        rescanning every identifier row for every reporting period.
     """
-    reporting_start = pd.Timestamp(reporting_period[0])
-    reporting_end = pd.Timestamp(reporting_period[1])
-    contained = (performance["from_date"] >= reporting_start) & (
-        performance["thru_date"] <= reporting_end
-    )
-    intersects = (performance["thru_date"] >= reporting_start) & (
-        performance["from_date"] <= reporting_end
-    )
-    if bool(np.asarray(intersects & ~contained, dtype=np.bool_).any()):
-        _raise_invalid(
-            context,
-            f"contains a source period crossing reporting boundaries "
-            f"{reporting_period[0].isoformat()} to {reporting_period[1].isoformat()}",
-        )
-    source = cast(
+    source_periods = cast(
         pd.DataFrame,
-        performance.loc[contained, list(NORMALIZED_PERFORMANCE_COLUMNS)].copy(
-            deep=True
-        ),
+        source.loc[:, _PERIOD_COLUMNS]
+        .drop_duplicates()
+        .sort_values(["thru_date", "from_date"], kind="stable")
+        .reset_index(drop=True),
     )
-    if source.empty:
-        _raise_invalid(
-            context,
-            f"has no source rows for reporting period "
-            f"{reporting_period[0].isoformat()} to {reporting_period[1].isoformat()}",
+    source_from = source_periods["from_date"].to_numpy(dtype="datetime64[ns]")
+    source_thru = source_periods["thru_date"].to_numpy(dtype="datetime64[ns]")
+    assignments = np.full(len(source_periods), -1, dtype=np.int64)
+
+    for reporting_index, reporting_period in enumerate(aligned.periods):
+        reporting_start = np.datetime64(reporting_period[0], "ns")
+        reporting_end = np.datetime64(reporting_period[1], "ns")
+        contained = (source_from >= reporting_start) & (source_thru <= reporting_end)
+        intersects = (source_thru >= reporting_start) & (source_from <= reporting_end)
+        if bool(np.asarray(intersects & ~contained, dtype=np.bool_).any()):
+            _raise_invalid(
+                context,
+                f"contains a source period crossing reporting boundaries "
+                f"{reporting_period[0].isoformat()} to "
+                f"{reporting_period[1].isoformat()}",
+            )
+        if not bool(np.asarray(contained, dtype=np.bool_).any()):
+            _raise_invalid(
+                context,
+                f"has no source rows for reporting period "
+                f"{reporting_period[0].isoformat()} to "
+                f"{reporting_period[1].isoformat()}",
+            )
+        assignments[contained] = reporting_index
+
+    source_periods[_REPORTING_INDEX] = assignments
+    return source.merge(
+        source_periods,
+        on=_PERIOD_COLUMNS,
+        how="left",
+        validate="many_to_one",
+        sort=False,
+    )
+
+
+def _reporting_groups(frame: pd.DataFrame) -> dict[int, pd.DataFrame]:
+    """Group assigned rows once and remove the internal reporting index."""
+    selected = frame.loc[frame[_REPORTING_INDEX] >= 0]
+    return {
+        int(reporting_index): cast(
+            pd.DataFrame,
+            group.drop(columns=_REPORTING_INDEX)
+            .sort_values(["thru_date", "identifier"], kind="stable")
+            .reset_index(drop=True),
         )
-    return source.sort_values(
-        ["thru_date", "identifier"], kind="stable"
-    ).reset_index(drop=True)
+        for reporting_index, group in selected.groupby(
+            _REPORTING_INDEX, sort=True, observed=True
+        )
+    }
 
 
-def _source_period_totals(source: pd.DataFrame, context: str) -> pd.DataFrame:
-    """Calculate and validate returns and inclusive days for source periods.
+def _all_source_period_totals(
+    assigned: pd.DataFrame,
+    context: str,
+) -> pd.DataFrame:
+    """Calculate source-period totals for all reporting periods in one grouping.
 
     Args:
-        source: Rows contained in one reporting period.
+        assigned: Normalized rows carrying their internal reporting-period index.
         context: Human-readable side included in errors.
 
     Returns:
-        Chronological source-period contribution totals and day counts.
+        Chronological source-period contribution totals and inclusive day counts.
 
     Raises:
-        PreparationError: If a total cannot enter logarithmic linking or rows disagree
-            about their source-period day count.
+        PreparationError: If rows disagree about a source-period day count or a total
+            return cannot enter logarithmic linking.
     """
-    grouped = source.groupby(_PERIOD_COLUMNS, sort=True, observed=True)
+    group_columns = [_REPORTING_INDEX, *_PERIOD_COLUMNS]
+    grouped = assigned.groupby(group_columns, sort=True, observed=True)
     day_counts = grouped["quantity_of_days"].agg(["first", "nunique"])
     if bool(np.asarray(day_counts["nunique"] != 1, dtype=np.bool_).any()):
         _raise_invalid(context, "has inconsistent source-period day counts")
@@ -131,6 +169,7 @@ def _source_period_totals(source: pd.DataFrame, context: str) -> pd.DataFrame:
         "period_return"
     )
     totals["quantity_of_days"] = day_counts["first"].astype("int64")
+    totals = totals.reset_index()
     period_returns = _float_array(totals, "period_return")
     if not np.isfinite(period_returns).all() or np.any(period_returns <= -1.0):
         _raise_invalid(
@@ -138,23 +177,61 @@ def _source_period_totals(source: pd.DataFrame, context: str) -> pd.DataFrame:
             "source-period total returns must be finite and greater than -1.0 "
             "for consolidation",
         )
-    return totals.reset_index()
+    return totals
 
 
-def _link_source_contributions(
-    source: pd.DataFrame,
+def _validate_reporting_days(
     period_totals: pd.DataFrame,
+    aligned: _AlignedPeriods,
     context: str,
-) -> tuple[pd.DataFrame, float]:
-    """Apply logarithmic coefficients to authoritative source contributions.
+) -> None:
+    """Require source-period days to cover each consolidated reporting period.
 
     Args:
-        source: Identifier rows from one reporting period.
-        period_totals: Chronological total returns for its source periods.
+        period_totals: One contribution total and day count per source period.
+        aligned: Validated reporting-period boundaries.
+        context: Human-readable side included in errors.
+
+    Raises:
+        PreparationError: If source-period day counts do not exactly cover a reporting
+            period's inclusive calendar days.
+    """
+    observed = cast(
+        pd.Series,
+        period_totals.groupby(_REPORTING_INDEX, sort=True, observed=True)[
+            "quantity_of_days"
+        ].sum(),
+    )
+    reporting_indices = np.asarray(observed.index, dtype=np.int64)
+    observed_day_counts = np.asarray(observed, dtype=np.int64)
+    for reporting_index, observed_days in zip(
+        reporting_indices, observed_day_counts, strict=True
+    ):
+        reporting_period = aligned.periods[reporting_index]
+        reporting_days = (reporting_period[1] - reporting_period[0]).days + 1
+        if int(observed_days) != reporting_days:
+            _raise_invalid(
+                context,
+                f"source-period days total {int(observed_days)}, not "
+                f"reporting-period days {reporting_days}",
+            )
+
+
+def _link_all_source_contributions(
+    assigned: pd.DataFrame,
+    period_totals: pd.DataFrame,
+    context: str,
+) -> pd.DataFrame:
+    """Link contributions for every consolidated reporting period at once.
+
+    Args:
+        assigned: Identifier rows carrying their reporting-period index.
+        period_totals: Source-period contribution totals and day counts.
         context: Human-readable side included in errors.
 
     Returns:
-        A working copy with linked contributions and the compounded total return.
+        Working rows with logarithmic coefficients, linked contributions, and their
+        reporting-period return.
 
     Raises:
         PreparationError: If compounding, smoothing, or contribution linking produces
@@ -162,36 +239,53 @@ def _link_source_contributions(
 
     Notes:
         For source period ``u`` and reporting period ``t``, the coefficient is
-        ``s(R[u]) / s(R[t])``, where ``s(x) = log1p(x) / x`` with exact-zero limit 1.
-        Multiplying each authoritative contribution by that coefficient makes their
-        reporting-period sum equal the geometrically compounded total return. This is
-        logarithmic contribution linking, not a reconstruction from weight and return.
+        ``s(R[u]) / s(R[t])``, where ``s(x) = log1p(x) / x`` and ``s(0) = 1``.
+        Applying it to authoritative source contribution makes linked contributions
+        sum to the geometrically compounded reporting return. The operation is batched
+        by reporting-period index; it does not reconstruct contribution from return.
     """
-    period_returns = _float_array(period_totals, "period_return")
-    # Preserve the summed log growth used to form the compound return. Recomputing
-    # log1p from a rounded return near -100% loses material precision and can break
-    # the contribution identity even though every source return remains valid.
+    totals = period_totals.copy(deep=True)
+    period_returns = _float_array(totals, "period_return")
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
-        log_growth = float(np.log1p(period_returns).sum(dtype=np.float64))
-        reporting_return = float(np.expm1(log_growth))
-    if not np.isfinite(reporting_return) or reporting_return <= -1.0:
+        totals["_log_growth"] = np.log1p(period_returns)
+    log_growth = cast(
+        pd.Series,
+        totals.groupby(_REPORTING_INDEX, sort=True, observed=True)[
+            "_log_growth"
+        ].sum(),
+    )
+    with np.errstate(over="ignore", invalid="ignore"):
+        reporting_returns = pd.Series(
+            np.expm1(np.asarray(log_growth, dtype=np.float64)),
+            index=log_growth.index,
+            dtype="float64",
+        )
+    invalid_returns = (~np.isfinite(reporting_returns)) | (reporting_returns <= -1.0)
+    if bool(np.asarray(invalid_returns, dtype=np.bool_).any()):
         _raise_invalid(
             context,
             "compounded reporting return must be finite and greater than -1.0",
         )
-    reporting_smoothing = (
-        1.0 if reporting_return == 0.0 else log_growth / reporting_return
-    )
+    reporting_smoothing = log_growth / reporting_returns
+    reporting_smoothing.loc[reporting_returns == 0.0] = 1.0
+    reporting_keys = pd.Index(totals[_REPORTING_INDEX])
+    denominators = reporting_smoothing.reindex(reporting_keys)
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
-        coefficients = _smoothing(period_returns) / reporting_smoothing
-    if not np.isfinite(coefficients).all():
+        totals["_linking_coefficient"] = (
+            _smoothing(period_returns)
+            / np.asarray(denominators, dtype=np.float64)
+        )
+    if not np.isfinite(_float_array(totals, "_linking_coefficient")).all():
         _raise_invalid(context, "contribution linking coefficients must be finite")
 
-    coefficient_frame = period_totals.loc[:, _PERIOD_COLUMNS].copy(deep=True)
-    coefficient_frame["_linking_coefficient"] = coefficients
-    working = source.merge(
-        coefficient_frame,
-        on=_PERIOD_COLUMNS,
+    coefficient_columns = [
+        _REPORTING_INDEX,
+        *_PERIOD_COLUMNS,
+        "_linking_coefficient",
+    ]
+    working = assigned.merge(
+        totals.loc[:, coefficient_columns],
+        on=[_REPORTING_INDEX, *_PERIOD_COLUMNS],
         how="left",
         validate="many_to_one",
         sort=False,
@@ -203,63 +297,147 @@ def _link_source_contributions(
         )
     if not np.isfinite(_float_array(working, "_linked_contribution")).all():
         _raise_invalid(context, "contribution linking produced a non-finite value")
-    return working, reporting_return
-
-
-def _compound_identifier_returns(source: pd.DataFrame) -> pd.Series:
-    """Compound present identifier returns and propagate any explicit null.
-
-    Absent source-period rows contribute the multiplicative identity and therefore
-    need no materialized row. A present null is different: it means the identifier
-    return is undefined and must remain null after consolidation.
-    """
-    working = source.loc[:, ["identifier", "return"]].copy(deep=True)
-    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
-        working["_log_return"] = np.log1p(_float_array(working, "return"))
-    grouped = working.groupby("identifier", sort=True, observed=True)
-    log_sums = cast(pd.Series, grouped["_log_return"].sum(min_count=1))
-    compounded = pd.Series(
-        np.expm1(np.asarray(log_sums, dtype=np.float64)),
-        index=log_sums.index,
-        dtype="float64",
+    working["_reporting_return"] = reporting_returns.reindex(
+        pd.Index(working[_REPORTING_INDEX])
+    ).to_numpy(
+        dtype=np.float64
     )
-    any_null = grouped["return"].count() != grouped.size()
-    compounded.loc[any_null] = np.nan
-    return compounded
+    return working
 
 
-def _aggregate_reporting_identifiers(
+def _aggregate_all_linked_periods(  # pylint: disable=too-many-locals
     working: pd.DataFrame,
-    source: pd.DataFrame,
-    reporting_days: int,
+    aligned: _AlignedPeriods,
     mapping_was_applied: bool,
     context: str,
-) -> pd.DataFrame:
-    """Aggregate linked values and calculate reporting-period identifier returns."""
+    tolerance: float,
+) -> dict[int, pd.DataFrame]:
+    """Aggregate all prelinked reporting periods with shared group operations.
+
+    Args:
+        working: Source rows with bulk-calculated linking values.
+        aligned: Validated reporting-period boundaries.
+        mapping_was_applied: Whether final returns use mapped effective-return rules.
+        context: Human-readable side included in errors.
+        tolerance: Relative and absolute reconciliation tolerance.
+
+    Returns:
+        Prepared reporting frames keyed by internal reporting-period index.
+
+    Raises:
+        PreparationError: If any financial value or reporting-period conservation
+            identity is invalid.
+
+    Notes:
+        Weights use inclusive-day weighting. Unmapped identifier returns compound in
+        log space and propagate an explicit null; mapped returns are derived from final
+        linked contribution and weight. Grouping all periods together changes only
+        execution shape, not the per-period formulas.
+    """
     working["_weighted_weight"] = (
         _float_array(working, "weight")
         * _float_array(working, "quantity_of_days")
     )
-    grouped = working.groupby("identifier", sort=True, observed=True)
+    group_columns = [_REPORTING_INDEX, "identifier"]
+    grouped = working.groupby(group_columns, sort=True, observed=True)
     consolidated = cast(
         pd.DataFrame,
         grouped[["_weighted_weight", "_linked_contribution"]].sum(),
     ).reset_index()
+    reporting_days = pd.Series(
+        [
+            (reporting_period[1] - reporting_period[0]).days + 1
+            for reporting_period in aligned.periods
+        ],
+        index=pd.Index(range(len(aligned.periods))),
+        dtype="int64",
+    )
+    denominators = reporting_days.reindex(
+        pd.Index(consolidated[_REPORTING_INDEX])
+    ).to_numpy(dtype=np.float64)
     consolidated["weight"] = (
-        _float_array(consolidated, "_weighted_weight") / reporting_days
+        _float_array(consolidated, "_weighted_weight") / denominators
     )
-    consolidated["contribution"] = consolidated["_linked_contribution"].astype(
-        "float64"
-    )
+    consolidated["contribution"] = consolidated[
+        "_linked_contribution"
+    ].astype("float64")
     if mapping_was_applied:
         consolidated["return"] = _derive_mapped_returns(consolidated, context)
     else:
-        compounded = _compound_identifier_returns(source)
-        identifiers = pd.Index(consolidated["identifier"])
-        consolidated["return"] = np.asarray(
-            compounded.reindex(identifiers), dtype=np.float64
+        returns = working.loc[:, [*group_columns, "return"]].copy(deep=True)
+        with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+            returns["_log_return"] = np.log1p(_float_array(returns, "return"))
+        return_groups = returns.groupby(group_columns, sort=True, observed=True)
+        log_sums = cast(pd.Series, return_groups["_log_return"].sum(min_count=1))
+        compounded = pd.Series(
+            np.expm1(np.asarray(log_sums, dtype=np.float64)),
+            index=log_sums.index,
+            name="return",
+            dtype="float64",
         )
-    return consolidated
+        any_null = return_groups["return"].count() != return_groups.size()
+        compounded.loc[any_null] = np.nan
+        consolidated = consolidated.merge(
+            compounded.reset_index(),
+            on=group_columns,
+            how="left",
+            validate="one_to_one",
+            sort=False,
+        )
+
+    reporting_returns = cast(
+        pd.Series,
+        working.groupby(_REPORTING_INDEX, sort=True, observed=True)[
+            "_reporting_return"
+        ].first(),
+    )
+    results: dict[int, pd.DataFrame] = {}
+    for reporting_index, group in consolidated.groupby(
+        _REPORTING_INDEX, sort=True, observed=True
+    ):
+        index = int(cast(int, reporting_index))
+        reporting_period = aligned.periods[index]
+        frame = group.drop(columns=_REPORTING_INDEX).reset_index(drop=True)
+        _validate_consolidated_values(
+            frame,
+            float(reporting_returns.loc[index]),
+            context,
+            tolerance,
+        )
+        frame["from_date"] = pd.Timestamp(reporting_period[0])
+        frame["thru_date"] = pd.Timestamp(reporting_period[1])
+        frame["quantity_of_days"] = int(reporting_days.loc[index])
+        results[index] = cast(
+            pd.DataFrame,
+            frame.loc[:, list(NORMALIZED_PERFORMANCE_COLUMNS)],
+        )
+    return results
+
+
+def _linked_reporting_groups(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    assigned: pd.DataFrame,
+    aligned: _AlignedPeriods,
+    consolidation_indices: tuple[int, ...],
+    mapping_was_applied: bool,
+    context: str,
+    tolerance: float,
+) -> dict[int, pd.DataFrame]:
+    """Prepare consolidated rows only for periods requiring linking."""
+    if not consolidation_indices:
+        return {}
+    selected = assigned.loc[
+        assigned[_REPORTING_INDEX].isin(consolidation_indices)
+    ]
+    period_totals = _all_source_period_totals(selected, context)
+    _validate_reporting_days(period_totals, aligned, context)
+    working = _link_all_source_contributions(selected, period_totals, context)
+    return _aggregate_all_linked_periods(
+        working,
+        aligned,
+        mapping_was_applied,
+        context,
+        tolerance,
+    )
 
 
 def _validate_consolidated_values(
@@ -308,61 +486,56 @@ def _validate_consolidated_values(
         )
 
 
-def _consolidate_multiple_periods(
-    source: pd.DataFrame,
-    reporting_period: _DatePeriod,
-    mapping_was_applied: bool,
-    context: str,
-    tolerance: float,
-) -> pd.DataFrame:
-    """Consolidate two or more source periods into one reporting period.
-
-    Args:
-        source: Source rows wholly contained in the reporting period.
-        reporting_period: Inclusive output boundaries.
-        mapping_was_applied: Whether source rows represent mapped groups whose final
-            return must be derived from consolidated contribution and weight.
-        context: Human-readable side included in errors.
-        tolerance: Relative and absolute reconciliation tolerance.
-
-    Returns:
-        Consolidated rows ordered by identifier.
-
-    Raises:
-        PreparationError: If coverage or any financial reconciliation fails.
-    """
-    period_totals = _source_period_totals(source, context)
-    reporting_days = (reporting_period[1] - reporting_period[0]).days + 1
-    observed_days = int(
-        np.asarray(period_totals["quantity_of_days"], dtype=np.int64).sum()
-    )
-    if observed_days != reporting_days:
-        _raise_invalid(
-            context,
-            f"source-period days total {observed_days}, not reporting-period days "
-            f"{reporting_days}",
+def _exact_reporting_indices(
+    assigned: pd.DataFrame,
+    aligned: _AlignedPeriods,
+) -> frozenset[int]:
+    """Return indices whose source already has the exact reporting boundary."""
+    source_periods = assigned.loc[
+        assigned[_REPORTING_INDEX] >= 0,
+        [_REPORTING_INDEX, *_PERIOD_COLUMNS],
+    ].drop_duplicates()
+    exact: set[int] = set()
+    for reporting_index, group in source_periods.groupby(
+        _REPORTING_INDEX, sort=True, observed=True
+    ):
+        if len(group) != 1:
+            continue
+        index = int(cast(int, reporting_index))
+        row = group.iloc[0]
+        boundary = (
+            cast(pd.Timestamp, row["from_date"]).date(),
+            cast(pd.Timestamp, row["thru_date"]).date(),
         )
+        if boundary == aligned.periods[index]:
+            exact.add(index)
+    return frozenset(exact)
 
-    working, reporting_return = _link_source_contributions(
-        source, period_totals, context
-    )
-    consolidated = _aggregate_reporting_identifiers(
-        working,
-        source,
-        reporting_days,
-        mapping_was_applied,
-        context,
-    )
-    _validate_consolidated_values(
-        consolidated, reporting_return, context, tolerance
-    )
 
-    consolidated["from_date"] = pd.Timestamp(reporting_period[0])
-    consolidated["thru_date"] = pd.Timestamp(reporting_period[1])
-    consolidated["quantity_of_days"] = reporting_days
-    return cast(
-        pd.DataFrame,
-        consolidated.loc[:, list(NORMALIZED_PERFORMANCE_COLUMNS)],
+def _exact_reporting_groups(
+    assigned: pd.DataFrame,
+    exact_indices: frozenset[int],
+) -> dict[int, pd.DataFrame]:
+    """Return original rows only for reporting periods needing no consolidation."""
+    if not exact_indices:
+        return {}
+    exact_rows = assigned.loc[
+        assigned[_REPORTING_INDEX].isin(tuple(sorted(exact_indices)))
+    ]
+    return _reporting_groups(exact_rows)
+
+
+def _source_period_sequence(source: pd.DataFrame) -> tuple[_DatePeriod, ...]:
+    """Return the source's chronological unique inclusive period boundaries."""
+    periods = source.loc[:, _PERIOD_COLUMNS].drop_duplicates().sort_values(
+        ["thru_date", "from_date"], kind="stable"
+    )
+    return tuple(
+        (
+            cast(pd.Timestamp, from_date).date(),
+            cast(pd.Timestamp, thru_date).date(),
+        )
+        for from_date, thru_date in periods.itertuples(index=False, name=None)
     )
 
 
@@ -410,28 +583,34 @@ def _consolidate_performance(
         pd.DataFrame,
         performance.loc[:, list(NORMALIZED_PERFORMANCE_COLUMNS)].copy(deep=True),
     )
+    if _source_period_sequence(source) == aligned.periods:
+        return source.sort_values(
+            ["thru_date", "identifier"], kind="stable"
+        ).reset_index(drop=True)
 
-    reporting_frames: list[pd.DataFrame] = []
-    for reporting_period in aligned.periods:
-        reporting_source = _reporting_source_rows(source, reporting_period, context)
-        source_periods = reporting_source[_PERIOD_COLUMNS].drop_duplicates()
-        if len(source_periods) == 1:
-            source_boundary = tuple(
-                cast(pd.Timestamp, value).date()
-                for value in source_periods.iloc[0]
-            )
-            if source_boundary == reporting_period:
-                reporting_frames.append(reporting_source)
-                continue
-        reporting_frames.append(
-            _consolidate_multiple_periods(
-                reporting_source,
-                reporting_period,
-                mapping_was_applied,
-                context,
-                tolerance,
-            )
-        )
+    assigned = _assign_reporting_periods(source, aligned, context)
+    exact_indices = _exact_reporting_indices(assigned, aligned)
+    source_groups = _exact_reporting_groups(assigned, exact_indices)
+    consolidation_indices = tuple(
+        index
+        for index in range(len(aligned.periods))
+        if index not in exact_indices
+    )
+    linked_groups = _linked_reporting_groups(
+        assigned,
+        aligned,
+        consolidation_indices,
+        mapping_was_applied,
+        context,
+        tolerance,
+    )
+
+    reporting_frames = [
+        source_groups[index]
+        if index not in linked_groups
+        else linked_groups[index]
+        for index, reporting_period in enumerate(aligned.periods)
+    ]
 
     result = pd.concat(reporting_frames, ignore_index=True)
     for column in ("from_date", "thru_date"):
