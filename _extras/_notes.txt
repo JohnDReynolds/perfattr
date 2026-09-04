@@ -51,10 +51,7 @@ Before creating a new roadmap(s), can you give me your thoughts.  Especially aro
 
 ##################################################### OBSOLETE ABOVE HERE
 
-I don't want to weaken any testing, but are there tests in ppar that are now redundantly tested in perfattr?
-If so, what would you think about removing those tests from ppar?
-
-Eventually go through the 4 "Codex Reviews" in both ppar and perfattr.
+Eventually go through the 4 "Codex Reviews" in perfattr.
 
 
 #################################################### COMMANDS
@@ -81,6 +78,3 @@ I'm looking for simple 80/20 wins, not micro-optimizations or complicated re-fac
 
 #################### 4. User View (Extra High)
 Approach the project as a user.  Look at documentation, workflow, user API, outputs.  What would a user think?
-
-#################### 5. Code Preferences
-See AGENTS.md

@@ -121,6 +121,65 @@ def test_result_frames_follow_the_specified_contract() -> None:
     assert list(result.reconciliation["check"]) == expected_checks
 
 
+def test_identical_inputs_have_zero_active_values_and_effects() -> None:
+    """Identical portfolio and benchmark facts must produce no active result.
+
+    This portable invariant previously had explicit coverage only through the ppar
+    host workflow. Keeping it beside the authoritative calculation protects every
+    consumer while allowing the host suite to retain only boundary-focused examples.
+    """
+    portfolio, _benchmark = _read_inputs("multi_period_linking")
+
+    result = calculate_attribution(portfolio, portfolio.copy(deep=True))
+
+    zero_columns = """active_weight active_return active_contribution
+    allocation_effect selection_effect total_effect linked_active_contribution
+    linked_allocation_effect linked_selection_effect linked_total_effect""".split()
+    for column in zero_columns:
+        assert result.period_detail[column].abs().max() == pytest.approx(0.0, abs=1e-12)
+    assert result.cumulative["cumulative_active_return"].abs().max() == pytest.approx(
+        0.0,
+        abs=1e-12,
+    )
+
+
+def test_portfolio_weighted_selection_absorbs_interaction() -> None:
+    """Released selection equals conventional selection plus interaction.
+
+    For identifier A, portfolio and benchmark weights are 70% and 40%, and their
+    returns are 10% and 6%. Conventional benchmark-weighted selection is 1.6%, while
+    interaction is 1.2%. The portable two-effect convention reports their 2.8% sum as
+    portfolio-weighted selection and does not expose a separate interaction column.
+    """
+    columns = """from_date thru_date identifier weight return
+    quantity_of_days""".split()
+    portfolio = pd.DataFrame(
+        [
+            ("2024-01-01", "2024-01-31", "A", 0.70, 0.10, 31),
+            ("2024-01-01", "2024-01-31", "B", 0.30, 0.02, 31),
+        ],
+        columns=columns,
+    )
+    benchmark = pd.DataFrame(
+        [
+            ("2024-01-01", "2024-01-31", "A", 0.40, 0.06, 31),
+            ("2024-01-01", "2024-01-31", "B", 0.60, 0.02, 31),
+        ],
+        columns=columns,
+    )
+
+    result = calculate_attribution(portfolio, benchmark)
+
+    detail = result.period_detail.set_index("identifier")
+    conventional_selection = 0.40 * (0.10 - 0.06)
+    conventional_interaction = (0.70 - 0.40) * (0.10 - 0.06)
+    assert detail.loc["A", "selection_effect"] == pytest.approx(
+        conventional_selection + conventional_interaction,
+        abs=1e-12,
+    )
+    assert "interaction_effect" not in result.period_detail.columns
+
+
 @pytest.mark.parametrize("cash_weight", [0.10, -0.10, 0.0])
 def test_cash_uses_ordinary_identifier_effects(cash_weight: float) -> None:
     """Positive, negative, and zero cash should use the ordinary Brinson formulas.
