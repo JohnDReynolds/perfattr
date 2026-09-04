@@ -12,7 +12,7 @@ input validation, universe equalization, Brinson-Fachler allocation and selectio
 logarithmic contribution linking, Carino active-effect linking, cumulative and
 full-horizon results, and financial reconciliation. The completed initial roadmap is
 recorded in [`_extras/perfattr_roadmap_1.md`](_extras/perfattr_roadmap_1.md). The
-portable preparation work is governed by
+completed portable preparation work is recorded in
 [`_extras/perfattr_roadmap_2.md`](_extras/perfattr_roadmap_2.md), while later candidates
 are kept in the noncommitted
 [`_extras/perfattr_roadmap_3.md`](_extras/perfattr_roadmap_3.md). The complete portable

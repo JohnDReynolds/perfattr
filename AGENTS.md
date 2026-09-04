@@ -4,14 +4,14 @@ Apply these conventions when modifying or creating code in this project.
 
 ## Roadmap Authority
 
-- Treat `_extras/perfattr_roadmap_2.md` as the active governing product and
-  implementation roadmap.
-- Treat `_extras/perfattr_roadmap_1.md` as completed historical context and
-  `_extras/perfattr_roadmap_3.md` as a noncommitted backlog. A roadmap 3 item does not
-  authorize implementation until it is deliberately promoted into an active roadmap.
-- Use this file for engineering conduct and the active roadmap for product scope,
-  contracts, sequencing, and boundaries. Do not expand the active scope unless the
-  roadmap is deliberately amended.
+- Treat `_extras/perfattr_roadmap_1.md` and `_extras/perfattr_roadmap_2.md` as completed
+  historical context.
+- Treat `_extras/perfattr_roadmap_3.md` as a noncommitted backlog. A roadmap 3 item does
+  not authorize implementation until it is deliberately promoted into a new active
+  roadmap.
+- Use this file for engineering conduct and any deliberately approved active roadmap
+  for product scope, contracts, sequencing, and boundaries. Do not infer new scope
+  from the completed roadmaps or noncommitted backlog.
 - Keep the reusable calculation core independent from preparation. Portable,
   source-neutral preparation may live in a separate `perfattr` layer as authorized by
   roadmap 2.
@@ -157,16 +157,17 @@ Apply these conventions when modifying or creating code in this project.
   fixtures into the standalone package unless their license and intended reuse have
   been explicitly verified.
 
-## Prerelease Gate
+## Release Gate
 
-Before publishing `perfattr==0.1.0a1`, require all of the following:
+Before publishing any `perfattr` version, require all of the following:
 
 - a successful source-distribution and wheel build;
 - package metadata validation;
 - installation into a clean environment;
 - a public-import smoke test;
-- passing functional calculation tests for the first vertical slice; and
-- completed outbound-license and fixture-provenance review.
+- passing functional calculation and preparation tests; and
+- completed outbound-license and fixture-provenance review for any newly introduced
+  material.
 
 ## Docstrings
 

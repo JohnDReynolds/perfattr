@@ -3,7 +3,7 @@
 **Status:** Complete and historical as of September 4, 2026.
 
 This roadmap records the completed initial implementation. It no longer governs new
-work. `_extras/perfattr_roadmap_2.md` is the active roadmap.
+work. `_extras/perfattr_roadmap_2.md` records the completed successor phase.
 
 ## First-step implementation plan
 

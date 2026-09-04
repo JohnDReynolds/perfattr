@@ -1,10 +1,10 @@
 # perfattr Roadmap 2: Portable Preparation Layer
 
-**Status:** Active and governing as of September 4, 2026.
+**Status:** Complete and historical as of September 4, 2026.
 
-Roadmap 1 records the completed calculation-core work. This roadmap governs the next
-implementation phase. Roadmap 3 is a noncommitted backlog and does not expand this
-roadmap's scope.
+Roadmap 1 records the completed calculation-core work. This roadmap records the
+completed portable-preparation phase. Roadmap 3 remains a noncommitted backlog and
+does not authorize further implementation.
 
 ## Objective
 
@@ -175,16 +175,16 @@ bucket to be handled correctly.
 - The roadmap structure was committed in `02dbc22`.
 - `docs/preparation_specification.md` was accepted on September 4, 2026 and is the
   normative preparation contract.
-- The migration ledger below inventories the current `ppar` transfer and retirement
-  targets.
-- Roadmap steps 1 through 8 are complete. Source-period normalization, financial
+- The migration ledger below records the completed `ppar` transfer and retirement
+  work.
+- All nine roadmap steps are complete. Source-period normalization, financial
   validation, exact in-memory portfolio selection, portable calendar rules, and
   portfolio/benchmark period alignment now live in `perfattr`. Static classification
   mapping, source-period roll-up, and reporting-frequency consolidation are also
   implemented behind one public composition API, together with canonical performance,
   mapping, and classification CSV loading. `ppar` now delegates through one adapter,
-  and its superseded portable implementations have been retired. Release and roadmap
-  closure are next.
+  and its superseded portable implementations have been retired. `perfattr==0.2.2`
+  and `ppar==0.3.1` are published, and the release evidence is recorded under Step 9.
 
 ## Implementation sequence
 
@@ -283,6 +283,8 @@ bucket to be handled correctly.
 
 ### 9. Release and close the roadmap
 
+**Status:** Complete September 4, 2026.
+
 - Update user documentation with a minimal weights-and-returns example starting from
   source periods.
 - Build and validate the source distribution and wheel, install them in a clean
@@ -290,6 +292,21 @@ bucket to be handled correctly.
 - Publish only after all standalone and `ppar` integration gates pass.
 - Record release commits, tags, versions, and measured performance before marking this
   roadmap complete.
+
+The portable preparation release is `perfattr==0.2.2`, tag `v0.2.2`, at commit
+`1fb21d4`. GitHub CI run `33895731983` passed the Python 3.11 through 3.14 matrix and
+distribution checks; trusted-publisher run `33895888126` published the release. A
+clean, no-cache installation from the public PyPI index confirmed the version and
+public preparation API.
+
+The integrated host release is `ppar==0.3.1`, tag `v0.3.1`, at commit `9a5887f`.
+Compatibility run `33896623834` passed Python 3.11.9, 3.12.1, 3.13, and 3.14. Release
+run `33897191588` passed the complete product and 500x gates before publishing its
+validated universal wheel. On that Linux runner, the 500x large-source observation
+was 2.46 to 3.11 seconds with byte-identical artifacts, and the 5x long-history gate
+was 2.46 to 3.98 seconds, or 1.619x, below the unchanged 1.65x failure boundary. A
+clean public-index installation confirmed `ppar==0.3.1`, `perfattr==0.2.2`, CLI
+version reporting, and a consistent dependency set.
 
 ## `ppar` migration ledger
 
@@ -494,10 +511,9 @@ Permitted `ppar` remainder:
 stable prepared and reconciliation frames. `ppar` delegates through
 `src/ppar/_perfattr_adapter.py`; no source-neutral fallback remains.
 
-Step 8 is recorded by `perfattr` commit `2c260cf` and `ppar` commit `4456b89`. The
-`ppar` commit remains local until Step 9 publishes the required `perfattr` preparation
-release and updates `ppar`'s dependency floor; this sequencing prevents a remote
-commit whose CI cannot install its required API.
+Step 8 is recorded by `perfattr` commit `2c260cf` and `ppar` commit `4456b89`. Step 9
+published the required preparation release, raised `ppar`'s dependency floor to
+`perfattr>=0.2.2,<0.3`, and published the integrated host release.
 
 Final repository review confirmed that every retired symbol is absent or replaced by
 an algorithm-free compatibility facade. The commits above record the `perfattr`
