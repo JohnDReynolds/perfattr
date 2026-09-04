@@ -177,8 +177,9 @@ bucket to be handled correctly.
   normative preparation contract.
 - The migration ledger below inventories the current `ppar` transfer and retirement
   targets.
-- Roadmap step 1 is complete. No preparation implementation has begun; normalized
-  validation and selection is the next step.
+- Roadmap steps 1 and 2 are complete. Source-period normalization, financial
+  validation, contribution handling, and exact in-memory portfolio selection now live
+  in `perfattr`; calendar rules and period alignment are next.
 
 ## Implementation sequence
 
@@ -195,6 +196,8 @@ bucket to be handled correctly.
   demonstrate that it contains no duplicated algorithm.
 
 ### 2. Add normalized validation and selection
+
+**Status:** Complete September 4, 2026.
 
 - Validate canonical source-period performance frames without vendor assumptions.
 - Select one portfolio identifier without scanning or interpreting vendor files.
@@ -276,17 +279,16 @@ bucket to be handled correctly.
 The status values are **pending**, **implemented**, **delegated**, and **retired**. An
 item is not complete until it reaches **retired**: `perfattr` is tested, `ppar`
 delegates to it, and the superseded `ppar` implementation and implementation-only
-tests are deleted. All items are currently **pending**.
+tests are deleted. Step 2 has implemented its two `perfattr` responsibilities; their
+`ppar` delegation and retirement remain for step 8.
 
-### Normalized performance loading and validation — pending
+### Normalized performance validation — implemented
 
 `perfattr` replacement:
 
-- canonical performance CSV loading;
 - source-period normalization and validation;
-- contribution derivation and source-period totals;
-- date-window filtering; and
-- preparation reconciliation evidence.
+- contribution derivation and authoritative-contribution preservation; and
+- source-period weight and contribution-total validation.
 
 Superseded `ppar` implementation to retire or reduce to delegation:
 
@@ -306,7 +308,10 @@ Permitted `ppar` remainder:
 - Polars/pandas translation; and
 - validation of host objects after translation.
 
-### Portfolio-code selection — pending
+Date-window filtering and preparation reconciliation evidence remain pending for the
+composition pipeline. Canonical performance CSV loading remains pending for step 7.
+
+### Portfolio-code selection — implemented
 
 `perfattr` replacement:
 

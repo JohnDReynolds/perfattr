@@ -10,9 +10,7 @@ from dataclasses import dataclass
 from typing import cast
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
-from pandas.api.types import is_bool_dtype, is_datetime64_dtype, is_numeric_dtype
 
 from perfattr._linking import _carino, _compound_returns, _smoothing
 from perfattr._schemas import (
@@ -23,6 +21,16 @@ from perfattr._schemas import (
     PERIOD_RECONCILIATION_CHECKS,
     PERIOD_SUMMARY_COLUMNS,
     RECONCILIATION_COLUMNS,
+)
+from perfattr._validation import (
+    float_array as _float_array,
+    has_true as _has_true,
+    is_close as _is_close,
+    normalize_dates,
+    normalize_identity,
+    normalize_numeric,
+    normalize_reconciliation_tolerance,
+    raise_invalid,
 )
 
 _TOLERANCE = 1e-12
@@ -61,67 +69,19 @@ class AttributionResult:
     reconciliation: pd.DataFrame
 
 
-def _float_array(frame: pd.DataFrame, column: str) -> npt.NDArray[np.float64]:
-    """Return a DataFrame column as a float64 NumPy array."""
-    return np.asarray(frame[column], dtype=np.float64)
-
-
-def _is_close(
-    actual: npt.NDArray[np.float64],
-    expected: npt.NDArray[np.float64],
-    tolerance: float,
-) -> npt.NDArray[np.bool_]:
-    """Vectorize the project's symmetric relative and absolute tolerance."""
-    difference = np.abs(actual - expected)
-    scale = np.maximum(np.abs(actual), np.abs(expected))
-    return difference <= np.maximum(tolerance * scale, tolerance)
-
-
 def _normalize_reconciliation_tolerance(value: float) -> float:
     """Require a finite, positive, non-boolean reconciliation tolerance."""
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        raise TypeError("reconciliation_tolerance must be a real number")
-    tolerance = float(value)
-    if not np.isfinite(tolerance) or tolerance <= 0.0:
-        raise AttributionError(
-            "reconciliation_tolerance must be finite and greater than zero"
-        )
-    return tolerance
-
-
-def _has_true(values: pd.Series) -> bool:
-    """Return whether a boolean Series contains a true value."""
-    return bool(np.asarray(values, dtype=np.bool_).any())
+    return normalize_reconciliation_tolerance(value, AttributionError)
 
 
 def _raise_invalid(side: str, message: str) -> None:
     """Raise a consistently formatted input error."""
-    raise AttributionError(f"{side} input {message}")
+    raise_invalid(AttributionError, f"{side} input", message)
 
 
 def _normalize_dates(frame: pd.DataFrame, column: str, side: str) -> pd.Series:
     """Normalize a required date column to timezone-naive midnight values."""
-    values = cast(pd.Series, frame[column])
-    if _has_true(values.isna()):
-        _raise_invalid(side, f"column {column!r} contains null values")
-    if is_numeric_dtype(values.dtype) or is_bool_dtype(values.dtype):
-        _raise_invalid(side, f"column {column!r} must contain dates")
-
-    try:
-        normalized = pd.to_datetime(values, errors="raise", format="mixed")
-    except (TypeError, ValueError, OverflowError) as error:
-        raise AttributionError(
-            f"{side} input column {column!r} contains an invalid date"
-        ) from error
-
-    if isinstance(normalized.dtype, pd.DatetimeTZDtype):
-        _raise_invalid(side, f"column {column!r} must be timezone-naive")
-    if not is_datetime64_dtype(normalized.dtype):
-        _raise_invalid(side, f"column {column!r} must be timezone-naive")
-    return cast(
-        pd.Series,
-        normalized.dt.normalize().astype("datetime64[ns]"),
-    )
+    return normalize_dates(frame, column, f"{side} input", AttributionError)
 
 
 def _normalize_numeric(
@@ -132,33 +92,18 @@ def _normalize_numeric(
     nullable: bool,
 ) -> pd.Series:
     """Validate and normalize one financial numeric column."""
-    values = cast(pd.Series, frame[column])
-    if is_bool_dtype(values.dtype) or not is_numeric_dtype(values.dtype):
-        _raise_invalid(side, f"column {column!r} must contain numbers, not strings or booleans")
-    if not nullable and _has_true(values.isna()):
-        _raise_invalid(side, f"column {column!r} contains null values")
-
-    normalized = cast(pd.Series, values.astype("float64"))
-    finite_values = np.asarray(normalized.dropna(), dtype=np.float64)
-    if not np.isfinite(finite_values).all():
-        _raise_invalid(side, f"column {column!r} must contain only finite values")
-    return normalized
+    return normalize_numeric(
+        frame,
+        column,
+        f"{side} input",
+        AttributionError,
+        nullable=nullable,
+    )
 
 
 def _normalize_identifiers(frame: pd.DataFrame, side: str) -> pd.Series:
     """Validate identifiers without coercing their values."""
-    identifiers = cast(pd.Series, frame["identifier"])
-    identifier_types = cast(
-        pd.Series, identifiers.map(lambda value: isinstance(value, str))
-    )
-    if _has_true(identifiers.isna()) or not bool(
-        np.asarray(identifier_types, dtype=np.bool_).all()
-    ):
-        _raise_invalid(side, "column 'identifier' must contain non-null strings")
-    normalized = cast(pd.Series, identifiers.astype("string[python]").str.strip())
-    if _has_true(normalized.eq("")):
-        _raise_invalid(side, "column 'identifier' contains an empty string")
-    return normalized
+    return normalize_identity(frame, "identifier", f"{side} input", AttributionError)
 
 
 def _validate_period_structure(frame: pd.DataFrame, side: str) -> None:
