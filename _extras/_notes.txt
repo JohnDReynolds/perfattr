@@ -54,6 +54,7 @@ Before creating a new roadmap(s), can you give me your thoughts.  Especially aro
 I don't want to weaken any testing, but are there tests in ppar that are now redundantly tested in perfattr?
 If so, what would you think about removing those tests from ppar?
 
+Eventually go through the 4 "Codex Reviews" in both ppar and perfattr.
 
 
 #################################################### COMMANDS

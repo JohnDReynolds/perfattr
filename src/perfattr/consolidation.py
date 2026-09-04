@@ -434,6 +434,8 @@ def _consolidate_performance(
         )
 
     result = pd.concat(reporting_frames, ignore_index=True)
+    for column in ("from_date", "thru_date"):
+        result[column] = result[column].astype("datetime64[ns]")
     result["identifier"] = result["identifier"].astype("string[python]")
     result["quantity_of_days"] = result["quantity_of_days"].astype("int64")
     return cast(

@@ -177,11 +177,11 @@ bucket to be handled correctly.
   normative preparation contract.
 - The migration ledger below inventories the current `ppar` transfer and retirement
   targets.
-- Roadmap steps 1 through 5 are complete. Source-period normalization, financial
+- Roadmap steps 1 through 6 are complete. Source-period normalization, financial
   validation, exact in-memory portfolio selection, portable calendar rules, and
   portfolio/benchmark period alignment now live in `perfattr`. Static classification
   mapping, source-period roll-up, and reporting-frequency consolidation are also
-  implemented; the composition API is next.
+  implemented behind one public composition API; canonical CSV loading is next.
 
 ## Implementation sequence
 
@@ -241,6 +241,8 @@ bucket to be handled correctly.
 
 ### 6. Add one composition API
 
+**Status:** Complete September 4, 2026.
+
 - Return a small preparation result containing the two frames accepted by
   `calculate_attribution` and useful reconciliation evidence.
 - Keep the lower-level preparation functions available only where they provide a
@@ -287,7 +289,7 @@ bucket to be handled correctly.
 The status values are **pending**, **implemented**, **delegated**, and **retired**. An
 item is not complete until it reaches **retired**: `perfattr` is tested, `ppar`
 delegates to it, and the superseded `ppar` implementation and implementation-only
-tests are deleted. Roadmap steps 2 through 4 have implemented their `perfattr`
+tests are deleted. Roadmap steps 2 through 6 have implemented their `perfattr`
 responsibilities; their `ppar` delegation and retirement remain for step 8.
 
 ### Normalized performance validation — implemented
@@ -452,7 +454,7 @@ Permitted `ppar` remainder:
 The portable consolidation implementation is complete in `perfattr`. Delegation from
 `ppar` and deletion of its superseded consolidation algorithms remain for step 8.
 
-### Composition and final retirement — pending
+### Composition and final retirement — composition implemented, retirement pending
 
 `perfattr` replacement:
 
@@ -470,6 +472,10 @@ Permitted `ppar` remainder:
 - `_perfattr_adapter.py` or its replacement as one thin translation boundary;
 - host error translation needed to preserve supported exceptions; and
 - end-to-end tests proving the public `ppar` workflow delegates correctly.
+
+`PreparationResult` and `prepare_attribution` now compose the portable stages and
+return stable prepared and reconciliation frames. `ppar` delegation and retirement of
+its superseded orchestration remain for step 8.
 
 At final review, repository search must confirm that every retired symbol is absent or
 is an algorithm-free compatibility facade. The ledger must then record the `perfattr`

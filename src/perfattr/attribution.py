@@ -20,6 +20,7 @@ from perfattr._schemas import (
     PERIOD_DETAIL_COLUMNS,
     PERIOD_RECONCILIATION_CHECKS,
     PERIOD_SUMMARY_COLUMNS,
+    PREPARED_REQUIRED_COLUMNS,
     RECONCILIATION_COLUMNS,
 )
 from perfattr._validation import (
@@ -34,14 +35,9 @@ from perfattr._validation import (
 )
 
 _TOLERANCE = 1e-12
-_REQUIRED_COLUMNS = (
-    "from_date",
-    "thru_date",
-    "identifier",
-    "weight",
-    "return",
-    "quantity_of_days",
-)
+_REQUIRED_COLUMNS = PREPARED_REQUIRED_COLUMNS
+
+
 class AttributionError(ValueError):
     """Report invalid financial input or a failed calculation invariant."""
 

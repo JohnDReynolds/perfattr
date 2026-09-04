@@ -48,7 +48,7 @@ use pandas and the Python standard library; roadmap 2 adds no dependency.
 
 ## Public API
 
-The proposed public preparation entry point is:
+The public preparation entry point is:
 
 ```python
 def prepare_attribution(

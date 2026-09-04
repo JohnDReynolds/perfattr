@@ -9,6 +9,31 @@ NORMALIZED_PERFORMANCE_COLUMNS = (
     "return",
     "contribution",
 )
+PREPARED_REQUIRED_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "identifier",
+    "weight",
+    "return",
+    "quantity_of_days",
+)
+PREPARED_PERFORMANCE_COLUMNS = (
+    *PREPARED_REQUIRED_COLUMNS[:-1],
+    "contribution",
+    PREPARED_REQUIRED_COLUMNS[-1],
+)
+PREPARATION_RECONCILIATION_COLUMNS = (
+    "stage",
+    "side",
+    "from_date",
+    "thru_date",
+    "check",
+    "actual",
+    "expected",
+    "residual",
+    "tolerance",
+    "passed",
+)
 PERIOD_DETAIL_COLUMNS = (
     "from_date",
     "thru_date",

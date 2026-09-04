@@ -3,9 +3,9 @@
 `perfattr` is a small, auditable portfolio performance-attribution calculation
 library built with pandas and NumPy.
 
-The 0.1.0 release provides a reusable Brinson-Fachler calculation core for
-prepared reporting-period data. Portfolio accounting, vendor schemas, and
-presentation remain outside the package boundary.
+The package provides a reusable Brinson-Fachler calculation core and a portable
+preparation layer for source-period weights and returns. Portfolio accounting, vendor
+schemas, and presentation remain outside the package boundary.
 
 The calculation core accepts one or more prepared reporting periods and provides
 input validation, universe equalization, Brinson-Fachler allocation and selection,
@@ -21,9 +21,10 @@ and the roadmap 2 preparation contract is in
 [`docs/preparation_specification.md`](docs/preparation_specification.md).
 
 ```python
-from perfattr import calculate_attribution
+from perfattr import calculate_attribution, prepare_attribution
 
-result = calculate_attribution(portfolio, benchmark)
+prepared = prepare_attribution(portfolio, benchmark)
+result = calculate_attribution(prepared.portfolio, prepared.benchmark)
 print(result.period_detail)
 ```
 

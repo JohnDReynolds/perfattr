@@ -7,6 +7,7 @@ from perfattr.attribution import (
 )
 from perfattr._exceptions import PreparationError, PreparationWarning
 from perfattr.frequency import Frequency
+from perfattr.prepare import PreparationResult, prepare_attribution
 from perfattr.preparation import (
     select_portfolio,
 )
@@ -18,8 +19,10 @@ __all__ = [
     "AttributionResult",
     "Frequency",
     "PreparationError",
+    "PreparationResult",
     "PreparationWarning",
     "__version__",
     "calculate_attribution",
+    "prepare_attribution",
     "select_portfolio",
 ]

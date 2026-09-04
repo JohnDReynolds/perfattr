@@ -18,3 +18,9 @@ def test_package_exposes_step_two_preparation_api() -> None:
 def test_package_exposes_step_three_frequency_api() -> None:
     """The root package should expose the accepted reporting-frequency enum."""
     assert perfattr.Frequency.MONTHLY.value == "Monthly"
+
+
+def test_package_exposes_step_six_composition_api() -> None:
+    """The root package should expose preparation composition and its result type."""
+    assert perfattr.PreparationResult is not None
+    assert callable(perfattr.prepare_attribution)
