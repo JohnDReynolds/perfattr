@@ -127,7 +127,7 @@ def _source_period_totals(source: pd.DataFrame, context: str) -> pd.DataFrame:
     day_counts = grouped["quantity_of_days"].agg(["first", "nunique"])
     if bool(np.asarray(day_counts["nunique"] != 1, dtype=np.bool_).any()):
         _raise_invalid(context, "has inconsistent source-period day counts")
-    totals = cast(pd.DataFrame, grouped["contribution"].sum()).to_frame(
+    totals = cast(pd.Series, grouped["contribution"].sum()).to_frame(
         "period_return"
     )
     totals["quantity_of_days"] = day_counts["first"].astype("int64")
