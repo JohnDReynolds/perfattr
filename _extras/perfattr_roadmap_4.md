@@ -1,6 +1,7 @@
 # perfattr Roadmap 4: Effective-Dated Classification
 
-**Status:** Completed September 4, 2026. Released as `perfattr==0.3.0a1`.
+**Status:** Completed September 4, 2026. Released as `perfattr==0.3.0a1` and promoted
+unchanged to stable `perfattr==0.3.0`.
 
 This records the completed implementation of the first unresolved feature promoted
 from roadmap 3. The user approved this roadmap and
@@ -203,6 +204,17 @@ passed a public-import and effective-dated CSV-to-quarterly-preparation smoke te
 trusted publishing. A second clean Python 3.11 environment installed
 `perfattr==0.3.0a1` from the public PyPI index and passed the public-import and
 effective-dated CSV-to-quarterly-preparation smoke test.
+
+**Stable-promotion evidence:** After the alpha passed the complete `ppar==0.4.0`
+product gate and unchanged 500x scale gate, the user approved promotion without
+additional runtime changes. Release commit `6dab6d1` passed all 249 tests, Pylint at
+10.00/10, Pyright with no findings, local source and wheel builds, Twine validation,
+and a clean Python 3.11.9 wheel-install and effective-dated preparation smoke test.
+GitHub Actions run `33926821388` passed on Python 3.11 through 3.14 and independently
+verified the distributions. Annotated tag and stable GitHub release `v0.3.0` triggered
+trusted-publisher run `33926952824`; a second no-cache Python 3.11 environment then
+installed `perfattr==0.3.0` from the public PyPI index and passed dependency,
+effective-dated preparation, calculation, and reconciliation checks.
 
 **Gate:** Passed. All roadmap completion criteria are satisfied.
 
