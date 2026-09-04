@@ -21,8 +21,10 @@ and the roadmap 2 preparation contract is in
 [`docs/preparation_specification.md`](docs/preparation_specification.md).
 
 ```python
-from perfattr import calculate_attribution, prepare_attribution
+from perfattr import calculate_attribution, prepare_attribution, read_performance_csv
 
+portfolio = read_performance_csv("portfolio.csv")
+benchmark = read_performance_csv("benchmark.csv")
 prepared = prepare_attribution(portfolio, benchmark)
 result = calculate_attribution(prepared.portfolio, prepared.benchmark)
 print(result.period_detail)

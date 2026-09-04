@@ -216,3 +216,66 @@ def normalize_identity(
     if has_true(normalized.eq("")):
         raise_invalid(error_type, context, f"column {column!r} contains an empty string")
     return normalized
+
+
+def normalize_identity_pairs(
+    frame: pd.DataFrame,
+    columns: tuple[str, str],
+    context: str,
+    error_type: type[ValueError],
+    conflict_message: str,
+) -> pd.DataFrame:
+    """Validate an exact, one-to-one pair of textual identity columns.
+
+    Args:
+        frame: Candidate two-column metadata or mapping frame.
+        columns: Exact ordered column names required by the boundary.
+        context: Human-readable boundary included in errors.
+        error_type: Domain error raised for invalid values.
+        conflict_message: Explanation placed before conflicting key values.
+
+    Returns:
+        Independently owned, trimmed, deduplicated pairs in deterministic order.
+
+    Raises:
+        TypeError: If ``frame`` is not a pandas DataFrame.
+        ValueError: Using ``error_type`` for invalid schema, identities, or conflicting
+            pairs.
+    """
+    if not isinstance(frame, pd.DataFrame):
+        raise TypeError(f"{context} must be a pandas DataFrame")
+    if frame.columns.has_duplicates:
+        raise_invalid(error_type, context, "contains duplicate column labels")
+
+    missing = [column for column in columns if column not in frame.columns]
+    extra = [column for column in frame.columns if column not in columns]
+    if missing or extra:
+        details: list[str] = []
+        if missing:
+            details.append(f"missing columns: {', '.join(missing)}")
+        if extra:
+            details.append(f"unexpected columns: {', '.join(extra)}")
+        raise_invalid(
+            error_type,
+            context,
+            "must contain exactly the required columns; " + "; ".join(details),
+        )
+
+    normalized = cast(pd.DataFrame, frame.loc[:, list(columns)].copy(deep=True))
+    for column in columns:
+        normalized[column] = normalize_identity(
+            normalized,
+            column,
+            context,
+            error_type,
+        )
+    normalized = normalized.drop_duplicates(ignore_index=True)
+
+    conflicts = cast(
+        pd.Series,
+        normalized.loc[normalized.duplicated(columns[0], keep=False), columns[0]],
+    )
+    if not conflicts.empty:
+        identifiers = sorted(str(value) for value in conflicts.unique())
+        raise_invalid(error_type, context, f"{conflict_message}: {identifiers}")
+    return normalized.sort_values(list(columns), kind="stable").reset_index(drop=True)

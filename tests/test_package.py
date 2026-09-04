@@ -24,3 +24,10 @@ def test_package_exposes_step_six_composition_api() -> None:
     """The root package should expose preparation composition and its result type."""
     assert perfattr.PreparationResult is not None
     assert callable(perfattr.prepare_attribution)
+
+
+def test_package_exposes_step_seven_csv_readers() -> None:
+    """The root package should expose all three canonical local CSV readers."""
+    assert callable(perfattr.read_performance_csv)
+    assert callable(perfattr.read_mapping_csv)
+    assert callable(perfattr.read_classification_csv)

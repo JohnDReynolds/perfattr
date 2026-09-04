@@ -12,7 +12,7 @@ from perfattr._schemas import NORMALIZED_PERFORMANCE_COLUMNS
 from perfattr._validation import (
     float_array as _float_array,
     is_close as _is_close,
-    normalize_identity,
+    normalize_identity_pairs,
     normalize_reconciliation_tolerance,
     raise_invalid,
     sum_by_period,
@@ -49,49 +49,12 @@ def _normalize_mapping(mapping: pd.DataFrame, context: str) -> pd.DataFrame:
         therefore cannot disappear silently. Exact duplicate pairs are harmless and
         collapse only after surrounding identity whitespace has been removed.
     """
-    if not isinstance(mapping, pd.DataFrame):
-        raise TypeError(f"{context} must be a pandas DataFrame")
-    if mapping.columns.has_duplicates:
-        _raise_invalid(context, "contains duplicate column labels")
-
-    missing = [column for column in _MAPPING_COLUMNS if column not in mapping.columns]
-    extra = [column for column in mapping.columns if column not in _MAPPING_COLUMNS]
-    if missing or extra:
-        details: list[str] = []
-        if missing:
-            details.append(f"missing columns: {', '.join(missing)}")
-        if extra:
-            details.append(f"unexpected columns: {', '.join(extra)}")
-        _raise_invalid(context, "must contain exactly the mapping columns; " + "; ".join(details))
-
-    normalized = cast(
-        pd.DataFrame,
-        mapping.loc[:, list(_MAPPING_COLUMNS)].copy(deep=True),
-    )
-    for column in _MAPPING_COLUMNS:
-        normalized[column] = normalize_identity(
-            normalized,
-            column,
-            context,
-            PreparationError,
-        )
-    normalized = normalized.drop_duplicates(ignore_index=True)
-
-    conflicting = cast(
-        pd.Series,
-        normalized.loc[
-            normalized.duplicated("identifier", keep=False),
-            "identifier",
-        ],
-    )
-    if not conflicting.empty:
-        identifiers = sorted(str(value) for value in conflicting.unique())
-        _raise_invalid(
-            context,
-            f"maps source identifiers to multiple classifications: {identifiers}",
-        )
-    return normalized.sort_values(list(_MAPPING_COLUMNS), kind="stable").reset_index(
-        drop=True
+    return normalize_identity_pairs(
+        mapping,
+        _MAPPING_COLUMNS,
+        context,
+        PreparationError,
+        "maps source identifiers to multiple classifications",
     )
 
 
