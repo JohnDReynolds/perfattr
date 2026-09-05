@@ -51,6 +51,7 @@ Before creating a new roadmap(s), can you give me your thoughts.  Especially aro
 
 ##################################################### OBSOLETE ABOVE HERE
 Eventually remove all references to pybrinson.
+Maybe add a "trace" or "debug" mode that prints the calculations.
 Eventually go through the 4 "Codex Reviews" in perfattr.
 
 

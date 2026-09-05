@@ -14,6 +14,9 @@ The opt-in Brinson-Fachler three-effect extension is defined in
 `docs/brinson_fachler_three_effect_specification.md`; that document changes only the
 method, additional interaction channels, and related reconciliation names it states
 explicitly.
+The opt-in Brinson-Hood-Beebower three-effect extension is defined in
+`docs/brinson_hood_beebower_three_effect_specification.md`; it reuses those explicit
+interaction schemas while defining its distinct allocation and total-effect policy.
 
 The words **must**, **must not**, **should**, and **may** describe requirements with
 their ordinary technical meanings.
@@ -29,14 +32,14 @@ their ordinary technical meanings.
 
 ## Scope
 
-The first core accepts prepared portfolio and benchmark attribution rows and returns
-single-period and linked multi-period Brinson-Fachler results.
+The core accepts prepared portfolio and benchmark attribution rows and returns
+single-period and linked multi-period Brinson results.
 
 The core owns:
 
 - input validation and normalization;
 - portfolio and benchmark universe equalization;
-- contribution and Brinson-Fachler effects;
+- contribution and method-specific Brinson effects;
 - logarithmic contribution linking;
 - Carino active-effect linking;
 - cumulative and overall results; and
@@ -82,8 +85,10 @@ class AttributionResult:
 failed calculation invariant. Passing an object other than a pandas `DataFrame`
 raises `TypeError`.
 
-There are no calculation options in the first release. In particular, selection
-absorbs interaction and the numerical tolerance is fixed by this specification.
+The method enum is the calculation policy boundary. The default selection absorbs
+interaction; the two opt-in three-effect methods expose it separately under their
+supplemental specifications. The numerical tolerance remains fixed by this
+specification.
 The runtime dependencies are limited to pandas, NumPy, and the Python standard
 library.
 
@@ -278,7 +283,9 @@ selection_effect = wP[g,t] * (rP[g,t] - rB[g,t])
 
 It therefore combines conventional benchmark-weighted selection and interaction.
 This remains the default. The explicit three-effect method and its undefined-return
-boundary are specified in `docs/brinson_fachler_three_effect_specification.md`.
+boundary are specified in `docs/brinson_fachler_three_effect_specification.md`. The
+Brinson-Hood-Beebower alternative is specified separately in
+`docs/brinson_hood_beebower_three_effect_specification.md`.
 
 ## Multi-period linking
 
@@ -381,9 +388,9 @@ identities must reconcile in the final cumulative row.
 Every result has a zero-based `RangeIndex`. Columns appear exactly in the order below.
 The portable core does not add display names or total rows.
 
-The schemas below are the stable default two-effect schemas. The three-effect
-specification defines the exact insertion positions of its additional interaction
-columns without reinterpreting any column listed here.
+The schemas below are the stable default two-effect schemas. Both three-effect
+specifications reuse the same exact insertion positions for their additional
+interaction columns without reinterpreting any column listed here.
 
 In `period_detail`, portfolio and benchmark return columns contain effective period
 returns. In `period_summary`, they contain period totals. In `overall_detail`, they
@@ -603,8 +610,7 @@ Integration tests separately require identical displayed and serialized values a
 
 ## Deferred capabilities
 
-Current deferred calculation capabilities include Brinson-Hood-Beebower attribution,
-hierarchical roll-up, alternative multi-period linking methods, currency attribution,
-external-flow attribution effects, derivative exposure inference, and presentation or
-report generation. Add a policy or abstraction only when an approved implemented use
-case requires it.
+Current deferred calculation capabilities include hierarchical roll-up, alternative
+multi-period linking methods, currency attribution, external-flow attribution effects,
+derivative exposure inference, and presentation or report generation. Add a policy or
+abstraction only when an approved implemented use case requires it.

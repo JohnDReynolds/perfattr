@@ -12,6 +12,9 @@ Apply these conventions when modifying or creating code in this project.
 - Treat unpromoted items in `_extras/perfattr_roadmap_3.md` as a noncommitted backlog.
   A roadmap 3 item does not authorize implementation until it is deliberately promoted
   into a new active roadmap.
+- Treat `_extras/perfattr_roadmap_6_brinson_hood_beebower_three_effect.md` and
+  `docs/brinson_hood_beebower_three_effect_specification.md` as the governing roadmap
+  and contract for the current BHB three-effect work.
 - Use this file for engineering conduct and any deliberately approved active roadmap
   for product scope, contracts, sequencing, and boundaries. Do not infer new scope
   from the completed roadmaps or noncommitted backlog.

@@ -155,6 +155,28 @@ def test_calculation_rejects_an_unvalidated_method_string() -> None:
         calculate_attribution(portfolio, benchmark, method=invalid_method)
 
 
+def test_bhb_method_returns_its_complete_public_schema() -> None:
+    """The public BHB method should reuse every released three-effect schema."""
+    portfolio, benchmark = _read_inputs("single_period_derived")
+
+    result = calculate_attribution(
+        portfolio,
+        benchmark,
+        method=AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    )
+
+    assert result.method is AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT
+    assert tuple(result.period_detail.columns) == THREE_EFFECT_PERIOD_DETAIL_COLUMNS
+    assert tuple(result.period_summary.columns) == THREE_EFFECT_PERIOD_SUMMARY_COLUMNS
+    assert tuple(result.overall_detail.columns) == THREE_EFFECT_OVERALL_DETAIL_COLUMNS
+    assert tuple(result.cumulative.columns) == THREE_EFFECT_CUMULATIVE_COLUMNS
+    assert list(result.reconciliation["check"]) == [
+        *THREE_EFFECT_PERIOD_RECONCILIATION_CHECKS,
+        *THREE_EFFECT_OVERALL_RECONCILIATION_CHECKS,
+    ]
+    assert bool(result.reconciliation["passed"].to_numpy().all())
+
+
 def test_three_effect_method_returns_its_complete_public_schema() -> None:
     """The opt-in method should expose interaction in every approved result frame."""
     portfolio, benchmark = _read_inputs("single_period_derived")
@@ -263,7 +285,7 @@ def test_identical_inputs_have_zero_active_values_and_effects(
     zero_columns = """active_weight active_return active_contribution
     allocation_effect selection_effect total_effect linked_active_contribution
     linked_allocation_effect linked_selection_effect linked_total_effect""".split()
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if method is not AttributionMethod.BRINSON_FACHLER_TWO_EFFECT:
         zero_columns.extend(("interaction_effect", "linked_interaction_effect"))
     for column in zero_columns:
         assert result.period_detail[column].abs().max() == pytest.approx(0.0, abs=1e-12)
@@ -380,7 +402,16 @@ def test_authoritative_contribution_preserves_distinct_return_semantics() -> Non
     assert fee["linked_portfolio_contribution"] == pytest.approx(-0.001)
 
 
-def test_three_effect_preserves_authoritative_fee_through_public_result() -> None:
+@pytest.mark.parametrize(
+    "method",
+    (
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ),
+)
+def test_three_effect_preserves_authoritative_fee_through_public_result(
+    method: AttributionMethod,
+) -> None:
     """The complete three-effect path should retain an unexposed accounting charge.
 
     The asset's 5.1% authoritative contribution implies a 5.1% effective period
@@ -394,15 +425,15 @@ def test_three_effect_preserves_authoritative_fee_through_public_result() -> Non
     three_effect = calculate_attribution(
         portfolio,
         benchmark,
-        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+        method=method,
     )
     two_effect = calculate_attribution(portfolio, benchmark)
     detail = three_effect.period_detail.set_index("identifier")
-    fee = detail.loc["FEE"]
+    fee = cast(pd.Series, detail.loc["FEE"])
 
     assert detail.loc["ASSET", "portfolio_return"] == pytest.approx(0.051)
-    assert pd.isna(fee["portfolio_return"])
-    assert pd.isna(fee["active_return"])
+    assert bool(pd.isna(fee["portfolio_return"]))
+    assert bool(pd.isna(fee["active_return"]))
     assert fee["allocation_effect"] == 0.0
     assert fee["interaction_effect"] == 0.0
     assert fee["selection_effect"] == pytest.approx(-0.001, abs=1e-12)
@@ -416,7 +447,16 @@ def test_three_effect_preserves_authoritative_fee_through_public_result() -> Non
     )
 
 
-def test_three_effect_handles_missing_sides_signed_and_zero_weights() -> None:
+@pytest.mark.parametrize(
+    "method",
+    (
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ),
+)
+def test_three_effect_handles_missing_sides_signed_and_zero_weights(
+    method: AttributionMethod,
+) -> None:
     """Ordinary universe rules should govern signed, absent, and neutral rows.
 
     C exists only in the portfolio at weight -10% and return 20%, so its missing
@@ -430,7 +470,7 @@ def test_three_effect_handles_missing_sides_signed_and_zero_weights() -> None:
     result = calculate_attribution(
         portfolio,
         benchmark,
-        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+        method=method,
     )
     detail = result.period_detail.set_index("identifier")
 
@@ -477,8 +517,10 @@ def test_calculation_is_deterministic_and_does_not_mutate_inputs(
             getattr(ordered, frame_name), getattr(shuffled, frame_name)
         )
     original_overall_value = ordered.overall_detail.at[0, "portfolio_weight"]
+    original_second_value = shuffled.period_detail.at[0, "portfolio_weight"]
     ordered.period_detail.at[0, "portfolio_weight"] = 999.0
     assert ordered.overall_detail.at[0, "portfolio_weight"] == original_overall_value
+    assert shuffled.period_detail.at[0, "portfolio_weight"] == original_second_value
 
 
 @pytest.mark.parametrize("case_name", ("multi_period_linking", "linking_boundaries"))
@@ -583,8 +625,18 @@ def test_three_effect_multi_period_linking_matches_hand_calculation() -> None:
     ) == pytest.approx(final["cumulative_total_effect"], abs=1e-12)
 
 
+@pytest.mark.parametrize(
+    "method",
+    (
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ),
+)
 @pytest.mark.parametrize("case_name", ("multi_period_linking", "linking_boundaries"))
-def test_three_effect_linking_limits_reconcile(case_name: str) -> None:
+def test_three_effect_linking_limits_reconcile(
+    case_name: str,
+    method: AttributionMethod,
+) -> None:
     """Regular and near-limit Carino cases must retain every additive identity.
 
     The boundary fixture includes equal active-side period returns and compounded
@@ -598,7 +650,7 @@ def test_three_effect_linking_limits_reconcile(case_name: str) -> None:
     result = calculate_attribution(
         portfolio,
         benchmark,
-        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+        method=method,
     )
 
     np.testing.assert_allclose(
@@ -612,7 +664,16 @@ def test_three_effect_linking_limits_reconcile(case_name: str) -> None:
     assert bool(result.reconciliation["passed"].to_numpy().all())
 
 
-def test_randomized_three_effect_inputs_preserve_only_independent_invariants() -> None:
+@pytest.mark.parametrize(
+    "method",
+    (
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ),
+)
+def test_randomized_three_effect_inputs_preserve_only_independent_invariants(
+    method: AttributionMethod,
+) -> None:
     """Reproducible varied inputs should preserve every additive identity.
 
     Random data broadens the combinations of active weights and returns but is never
@@ -627,7 +688,7 @@ def test_randomized_three_effect_inputs_preserve_only_independent_invariants() -
     three_effect = calculate_attribution(
         portfolio,
         benchmark,
-        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+        method=method,
     )
 
     np.testing.assert_allclose(

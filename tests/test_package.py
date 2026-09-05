@@ -5,11 +5,11 @@ import perfattr
 
 def test_package_exposes_version() -> None:
     """The installed package should expose its distribution version."""
-    assert perfattr.__version__ == "0.4.0a1"
+    assert perfattr.__version__ == "0.5.0a1"
 
 
 def test_package_exposes_attribution_methods() -> None:
-    """The root package should expose both approved effect conventions."""
+    """The root package should expose every approved effect convention."""
     assert (
         perfattr.AttributionMethod.BRINSON_FACHLER_TWO_EFFECT.value
         == "Brinson-Fachler Two-Effect"
@@ -17,6 +17,10 @@ def test_package_exposes_attribution_methods() -> None:
     assert (
         perfattr.AttributionMethod.BRINSON_FACHLER_THREE_EFFECT.value
         == "Brinson-Fachler Three-Effect"
+    )
+    assert (
+        perfattr.AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT.value
+        == "Brinson-Hood-Beebower Three-Effect"
     )
 
 

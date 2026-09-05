@@ -36,7 +36,7 @@ from perfattr._validation import (
     normalize_reconciliation_tolerance,
     raise_invalid,
 )
-from perfattr.method import AttributionMethod
+from perfattr.method import AttributionMethod, uses_explicit_interaction
 
 _TOLERANCE = 1e-12
 _REQUIRED_COLUMNS = PREPARED_REQUIRED_COLUMNS
@@ -52,7 +52,7 @@ class AttributionResult:
         overall_detail: Full-horizon values for each identifier.
         cumulative: Chronological period and cumulative totals.
         reconciliation: Passing financial reconciliation evidence.
-        method: Brinson-Fachler effect convention used for the result.
+        method: Attribution effect convention used for the result.
 
     Notes:
         The calculator does not mutate caller-supplied frames. Returned frames belong
@@ -331,24 +331,30 @@ def _build_period_detail(
     Args:
         equalized: Normalized, period-aligned portfolio and benchmark rows with a
             common identifier universe.
-        method: Approved Brinson-Fachler effect convention.
+        method: Approved attribution effect convention.
 
     Returns:
         A new period-detail frame using the selected method's ordered schema.
 
     Notes:
-        Both methods retain the released allocation and total-effect formulas. For
-        three-effect output, interaction is active weight multiplied by active return
-        when both effective returns are defined. Selection is the remaining total
-        effect, which is algebraically benchmark-weighted selection for defined
-        effective returns and preserves authoritative contribution otherwise. An
-        undefined active return carries zero interaction rather than an invented
-        return difference.
+        The released Brinson-Fachler methods retain their allocation and total-effect
+        formulas. BHB allocation uses the benchmark group return without subtracting
+        the total benchmark return, and its total effect is unadjusted active
+        contribution. For three-effect output, interaction is active weight multiplied
+        by active return when both effective returns are defined. Selection is the
+        remaining total effect, which is algebraically benchmark-weighted selection
+        for defined effective returns and preserves authoritative contribution
+        otherwise. An undefined active return carries zero interaction rather than an
+        invented return difference.
 
     References:
         Brinson, G. P., and N. Fachler. “Measuring Non-U.S. Equity Portfolio
         Performance.” *The Journal of Portfolio Management* 11, no. 3 (1985): 73–76.
         https://doi.org/10.3905/jpm.1985.409005
+
+        Brinson, G. P., L. R. Hood, and G. L. Beebower. “Determinants of Portfolio
+        Performance.” *Financial Analysts Journal* 42, no. 4 (1986): 39–44.
+        https://doi.org/10.2469/faj.v42.n4.39
     """
     values = {
         "portfolio_weight": _float_array(equalized, "weight_portfolio"),
@@ -379,14 +385,22 @@ def _build_period_detail(
     active_contribution = (
         values["portfolio_contribution"] - values["benchmark_contribution"]
     )
-    allocation_effect = np.where(
-        np.isnan(values["benchmark_return"]),
-        0.0,
-        active_weight * (values["benchmark_return"] - benchmark_total_return),
-    )
-    total_effect = active_contribution - active_weight * benchmark_total_return
+    if method is AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT:
+        allocation_effect = np.where(
+            np.isnan(values["benchmark_return"]),
+            0.0,
+            active_weight * values["benchmark_return"],
+        )
+        total_effect = active_contribution.copy()
+    else:
+        allocation_effect = np.where(
+            np.isnan(values["benchmark_return"]),
+            0.0,
+            active_weight * (values["benchmark_return"] - benchmark_total_return),
+        )
+        total_effect = active_contribution - active_weight * benchmark_total_return
     interaction_effect: np.ndarray | None = None
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if uses_explicit_interaction(method):
         interaction_effect = np.zeros(len(equalized), dtype=np.float64)
         np.multiply(
             active_weight,
@@ -491,7 +505,7 @@ def _link_period_detail(
 
     Args:
         detail: Unlinked period-detail rows for the selected attribution method.
-        method: Approved Brinson-Fachler effect convention.
+        method: Approved attribution effect convention.
 
     Returns:
         A new period-detail frame with contribution and effect channels linked over
@@ -537,7 +551,7 @@ def _link_period_detail(
         ("linked_selection_effect", "selection_effect"),
         ("linked_total_effect", "total_effect"),
     ]
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if uses_explicit_interaction(method):
         effect_columns.insert(
             2,
             ("linked_interaction_effect", "interaction_effect"),
@@ -557,7 +571,7 @@ def _build_period_summary(
 
     Args:
         detail: Linked period-detail rows for the selected attribution method.
-        method: Approved Brinson-Fachler effect convention.
+        method: Approved attribution effect convention.
 
     Returns:
         A new chronological frame containing one sum row per reporting period.
@@ -568,7 +582,7 @@ def _build_period_summary(
     linked_active_contribution linked_allocation_effect linked_selection_effect
     linked_total_effect""".split()
     summary_columns = PERIOD_SUMMARY_COLUMNS
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if uses_explicit_interaction(method):
         value_columns.insert(
             value_columns.index("selection_effect") + 1,
             "interaction_effect",
@@ -621,7 +635,7 @@ def _build_overall_detail(
     Args:
         equalized: Normalized portfolio and benchmark rows with a common universe.
         detail: Linked period-detail rows for the selected attribution method.
-        method: Approved Brinson-Fachler effect convention.
+        method: Approved attribution effect convention.
 
     Returns:
         A new full-horizon frame containing one row per identifier.
@@ -634,7 +648,7 @@ def _build_overall_detail(
     linked_benchmark_contribution linked_active_contribution
     linked_allocation_effect linked_selection_effect linked_total_effect""".split()
     overall_columns = OVERALL_DETAIL_COLUMNS
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if uses_explicit_interaction(method):
         linked_columns.insert(
             linked_columns.index("linked_selection_effect") + 1,
             "linked_interaction_effect",
@@ -682,7 +696,7 @@ def _build_overall_detail(
         "linked_selection_effect": overall["linked_selection_effect"],
         "linked_total_effect": overall["linked_total_effect"],
     }
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if uses_explicit_interaction(method):
         horizon_values["linked_interaction_effect"] = overall[
             "linked_interaction_effect"
         ]
@@ -743,7 +757,7 @@ def _build_cumulative(
 
     Args:
         summary: Linked period-summary rows for the selected attribution method.
-        method: Approved Brinson-Fachler effect convention.
+        method: Approved attribution effect convention.
 
     Returns:
         A new frame containing period values and chronological cumulative totals.
@@ -793,7 +807,7 @@ def _build_cumulative(
         ),
     }
     cumulative_columns = CUMULATIVE_COLUMNS
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if uses_explicit_interaction(method):
         cumulative_values["linked_interaction_effect"] = summary[
             "linked_interaction_effect"
         ]
@@ -812,12 +826,12 @@ def calculate_attribution(
     method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
     reconciliation_tolerance: float = _TOLERANCE,
 ) -> AttributionResult:
-    """Calculate portable multi-period Brinson-Fachler attribution.
+    """Calculate portable multi-period Brinson attribution.
 
     Args:
         portfolio: Prepared portfolio rows satisfying the portable input contract.
         benchmark: Prepared benchmark rows for the same reporting periods.
-        method: Brinson-Fachler effect convention to calculate. The default preserves
+        method: Attribution effect convention to calculate. The default preserves
             portfolio-weighted selection with interaction absorbed.
         reconciliation_tolerance: Positive finite relative and absolute tolerance
             used for input weight totals and returned reconciliation evidence. The
@@ -836,7 +850,7 @@ def calculate_attribution(
 
     Notes:
         The default selection is portfolio-weighted and absorbs interaction. The
-        opt-in three-effect method reports benchmark-weighted selection and
+        opt-in three-effect methods report benchmark-weighted selection and
         interaction separately. Contributions use logarithmic linking; all active
         effects use the same Carino coefficient. Supplied contribution is
         authoritative; otherwise contribution is derived as weight multiplied by

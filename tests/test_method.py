@@ -1,6 +1,7 @@
 """Tests for attribution-method schemas and public metadata."""
 
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -25,6 +26,7 @@ from perfattr.attribution import (
     _equalize_universe,
     _normalize_input,
 )
+from perfattr.method import uses_explicit_interaction
 
 
 _FIXTURE_ROOT = Path(__file__).parent / "fixtures"
@@ -61,6 +63,19 @@ _SCHEMA_CASES = (
 )
 
 
+def test_explicit_interaction_policy_identifies_both_three_effect_methods() -> None:
+    """Schema routing should include BHB without reclassifying the default method."""
+    assert not uses_explicit_interaction(
+        AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
+    )
+    assert uses_explicit_interaction(
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT
+    )
+    assert uses_explicit_interaction(
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT
+    )
+
+
 def _read_three_effect_fixture(
     case_name: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -71,6 +86,13 @@ def _read_three_effect_fixture(
         pd.read_csv(case_path / "benchmark.csv"),
         pd.read_csv(case_path / "expected_effects.csv").set_index("identifier"),
     )
+
+
+def _read_bhb_expected(case_name: str) -> pd.DataFrame:
+    """Read one original hand-calculated BHB expectation table."""
+    return pd.read_csv(
+        _FIXTURE_ROOT / case_name / "expected_bhb_effects.csv"
+    ).set_index("identifier")
 
 
 def _calculate_unlinked_period_detail(
@@ -211,6 +233,125 @@ def test_three_effect_uses_effective_returns_and_preserves_negative_interaction(
                 expected.loc[identifier, column],
                 abs=1e-12,
             )
+
+
+def test_bhb_period_detail_matches_hand_calculated_positive_case() -> None:
+    """BHB should use absolute benchmark return and unadjusted active contribution.
+
+    The portfolio and benchmark returns are 7.6% and 3.6%. For A, active weight is
+    30%, so BHB allocation is ``30% * 6% = 1.8%`` rather than BF allocation of
+    ``30% * (6% - 3.6%) = 0.72%``. Selection is 1.6%, interaction is 1.2%, and the
+    BHB total is the unadjusted contribution difference
+    ``70% * 10% - 40% * 6% = 4.6%``. B has -0.6% allocation and total, leaving both
+    methods with the same independently calculated 4.0% period total.
+    """
+    portfolio, benchmark, _bf_expected = _read_three_effect_fixture(
+        "three_effect_positive"
+    )
+    expected = _read_bhb_expected("three_effect_positive")
+
+    bhb = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ).set_index("identifier")
+    bf = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    ).set_index("identifier")
+
+    for identifier in expected.index:
+        for column in expected.columns:
+            assert bhb.loc[identifier, column] == pytest.approx(
+                expected.loc[identifier, column],
+                abs=1e-12,
+            )
+    assert bhb.loc["A", "allocation_effect"] - bf.loc[
+        "A", "allocation_effect"
+    ] == pytest.approx(0.30 * 0.036, abs=1e-12)
+    assert bhb.loc["B", "allocation_effect"] - bf.loc[
+        "B", "allocation_effect"
+    ] == pytest.approx(-0.30 * 0.036, abs=1e-12)
+    assert bhb["allocation_effect"].sum() == pytest.approx(0.012, abs=1e-12)
+    assert bhb["selection_effect"].sum() == pytest.approx(0.016, abs=1e-12)
+    assert bhb["interaction_effect"].sum() == pytest.approx(0.012, abs=1e-12)
+    assert bhb["total_effect"].sum() == pytest.approx(0.040, abs=1e-12)
+
+
+def test_bhb_period_detail_uses_authoritative_contributions() -> None:
+    """BHB effects should use contribution-implied returns and totals.
+
+    Input returns are deliberately inconsistent with authoritative contributions.
+    Those contributions imply effective portfolio returns of 5% and 10% and benchmark
+    returns of 4% and 6%. A therefore has 0.4% allocation, 0.5% selection, 0.1%
+    interaction, and a 1.0% unadjusted total. B has -0.6%, 2.0%, -0.4%, and 1.0%,
+    respectively. The independently calculated period total is 2.0%.
+    """
+    portfolio, benchmark, _bf_expected = _read_three_effect_fixture(
+        "three_effect_authoritative"
+    )
+    expected = _read_bhb_expected("three_effect_authoritative")
+
+    bhb = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ).set_index("identifier")
+    bf = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    ).set_index("identifier")
+
+    assert bhb.loc["A", "portfolio_return"] == pytest.approx(0.05)
+    assert bhb.loc["A", "benchmark_return"] == pytest.approx(0.04)
+    assert bhb.loc["B", "portfolio_return"] == pytest.approx(0.10)
+    assert bhb.loc["B", "benchmark_return"] == pytest.approx(0.06)
+    for identifier in expected.index:
+        for column in expected.columns:
+            assert bhb.loc[identifier, column] == pytest.approx(
+                expected.loc[identifier, column],
+                abs=1e-12,
+            )
+        assert bhb.loc[identifier, "selection_effect"] == pytest.approx(
+            bf.loc[identifier, "selection_effect"],
+            abs=1e-12,
+        )
+        assert bhb.loc[identifier, "interaction_effect"] == pytest.approx(
+            bf.loc[identifier, "interaction_effect"],
+            abs=1e-12,
+        )
+    assert bhb["total_effect"].sum() == pytest.approx(0.020, abs=1e-12)
+
+
+def test_bhb_period_detail_preserves_an_undefined_fee_residual() -> None:
+    """An unexposed charge should remain in selection without invented interaction.
+
+    The portfolio fee has zero weight, authoritative contribution of -0.1%, and an
+    undefined effective return; its absent benchmark side contributes zero facts.
+    Active weight and BHB allocation are therefore zero. Because no active return can
+    be calculated, interaction is also zero and selection retains the complete -0.1%
+    unadjusted active contribution.
+    """
+    case_path = _FIXTURE_ROOT / "single_period_authoritative"
+    portfolio = pd.read_csv(case_path / "portfolio.csv")
+    benchmark = pd.read_csv(case_path / "benchmark.csv")
+
+    detail = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ).set_index("identifier")
+    fee = cast(pd.Series, detail.loc["FEE"])
+
+    assert bool(pd.isna(fee["portfolio_return"]))
+    assert bool(pd.isna(fee["active_return"]))
+    assert fee["active_weight"] == 0.0
+    assert fee["allocation_effect"] == 0.0
+    assert fee["interaction_effect"] == 0.0
+    assert fee["selection_effect"] == pytest.approx(-0.001, abs=1e-12)
+    assert fee["total_effect"] == pytest.approx(-0.001, abs=1e-12)
 
 
 def test_attribution_result_method_default_is_independent_of_frames() -> None:

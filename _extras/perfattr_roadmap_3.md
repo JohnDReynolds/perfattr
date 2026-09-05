@@ -1,6 +1,6 @@
 # perfattr Roadmap 3: Subsequent Feature Backlog
 
-**Status:** Noncommitted backlog as of September 4, 2026.
+**Status:** Noncommitted backlog as of September 5, 2026.
 
 This document records possible work after roadmap 2. It is ordered primarily by
 technical dependency, not by promised delivery. Nothing here authorizes implementation
@@ -36,8 +36,9 @@ unexposed-charge behavior are covered by focused tests.
 These are existing input representations, not future calculation features. They use
 the released formulas, schemas, and reconciliation rules without special numerical
 treatment. Host accounting adapters remain responsible for deciding what a source row
-means and supplying the appropriate facts. The first unresolved feature candidate in
-this backlog is multi-level hierarchical roll-up.
+means and supplying the appropriate facts. The next feature selected for consideration
+after roadmap 6 is the BHB two-effect reporting convention recorded below. Selection
+as the next candidate does not authorize implementation.
 
 ### Explicit cash — supported
 
@@ -127,12 +128,38 @@ Candidate methodological reference: Brinson and Fachler (1985).
 
 ### Brinson-Hood-Beebower three-effect attribution
 
+**Status:** Promoted into accepted
+[roadmap 6](perfattr_roadmap_6_brinson_hood_beebower_three_effect.md) on September 5,
+2026. Implementation is authorized only in its documented sequence.
+
 - Add the BHB allocation convention with separate selection and interaction.
 - Share validated infrastructure with Brinson-Fachler without obscuring the different
   financial formulas.
 - Require independent fixtures that make the BF and BHB allocation difference visible.
 
 Candidate methodological reference: Brinson, Hood, and Beebower (1986).
+
+### Brinson-Hood-Beebower two-effect reporting convention
+
+**Status:** Selected as the next feature to address after roadmap 6 is complete. It
+remains a noncommitted candidate and requires its own approved roadmap and governing
+specification before implementation.
+
+- Retain the BHB allocation and identifier-level total definitions established by
+  roadmap 6.
+- Absorb interaction into portfolio-weighted selection so that two-effect selection
+  equals BHB three-effect selection plus interaction.
+- Reuse the released two-effect result schemas without changing the default
+  Brinson-Fachler method.
+- Keep the method identity explicit because this is a derived reporting convention,
+  not the original three-component BHB presentation.
+- Verify that native two-effect output provides enough compatibility or usability
+  value to justify another public method rather than requiring callers to combine two
+  three-effect columns themselves.
+
+Candidate methodology: `allocation = (wP - wB) * rB`,
+`selection = wP * (rP - rB)`, with authoritative-contribution residual behavior to be
+specified consistently with roadmap 6.
 
 ## 4. Add linking methods one at a time
 

@@ -11,8 +11,8 @@ prepared inputs before measurement, warms the public API once, and reports the m
 of the requested elapsed-time samples. Peak memory is the incremental peak of
 Python-tracked allocations while `calculate_attribution` runs; prepared input memory
 is reported separately. `--method two-effect` is the unchanged default;
-`--method three-effect` measures the opt-in interaction calculation on the same
-inputs.
+`--method three-effect` measures Brinson-Fachler with explicit interaction, and
+`--method bhb-three-effect` measures Brinson-Hood-Beebower on the same inputs.
 
 The four workloads correspond to the roadmap shapes:
 
@@ -146,6 +146,33 @@ additional interaction columns rather than a second calculation engine. These ar
 observations, not new thresholds; no optimization or dependency is justified by the
 measured differences.
 
+## Roadmap 6 BHB release-candidate observations
+
+These observations were collected on September 5, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Each elapsed result is the
+median of five samples using identical deterministic derived-contribution inputs.
+
+| Workload | Method | Median elapsed | Prepared inputs | Peak traced allocation |
+| --- | --- | ---: | ---: | ---: |
+| `normal` | BF two-effect | 0.0330 s | 2.0 MiB | 4.6 MiB |
+| `normal` | BF three-effect | 0.0301 s | 2.0 MiB | 4.8 MiB |
+| `normal` | BHB three-effect | 0.0303 s | 2.0 MiB | 4.8 MiB |
+| `selected_10x` | BF two-effect | 0.1092 s | 20.4 MiB | 44.6 MiB |
+| `selected_10x` | BF three-effect | 0.1057 s | 20.4 MiB | 47.1 MiB |
+| `selected_10x` | BHB three-effect | 0.1070 s | 20.4 MiB | 47.1 MiB |
+| `monthly_121260` | BF two-effect | 0.1845 s | 40.7 MiB | 89.0 MiB |
+| `monthly_121260` | BF three-effect | 0.1866 s | 40.7 MiB | 94.1 MiB |
+| `monthly_121260` | BHB three-effect | 0.1880 s | 40.7 MiB | 94.1 MiB |
+| `history_25y` | BF two-effect | 0.0632 s | 10.2 MiB | 22.4 MiB |
+| `history_25y` | BF three-effect | 0.0641 s | 10.2 MiB | 23.6 MiB |
+| `history_25y` | BHB three-effect | 0.0640 s | 10.2 MiB | 23.6 MiB |
+
+BHB elapsed medians ranged from 0.2% lower to 1.2% higher than BF three-effect, and
+their peak traced allocations were equal at the reported precision. This is
+consistent with sharing the same vectorized three-effect aggregation path. The
+measurements are observations, not release thresholds, and do not justify a new
+optimization or dependency.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
@@ -180,3 +207,13 @@ input, and 1.490x long-history time ratios. One earlier long-history run observe
 1.490x. No threshold changed. Removing `ppar`'s speculative dependency upper bound
 was the only host-package metadata change; its minimum version, adapter call, output,
 and presentation behavior remained unchanged.
+
+The Roadmap 6 BHB candidate was subsequently installed into the unchanged `ppar`
+development environment. `ppar` continued to omit the method argument and therefore
+used its established BF two-effect boundary without exposing BHB or changing a host
+schema. The complete release-candidate workflow again passed 305 tests and 477
+subtests plus all static, documentation, image, package, wheel, and installed-demo
+checks. The unchanged 500x gate retained large-site equivalence and observed 1.050x
+large-site and 2.101x selected-input time ratios. Long-history measured 1.568x, below
+the existing 1.58x warning and 1.65x failure boundaries. No `ppar` source, threshold,
+or dependency metadata changed.

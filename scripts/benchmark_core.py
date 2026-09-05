@@ -35,6 +35,7 @@ _InputForm = Literal["derived", "authoritative"]
 _METHODS = {
     "two-effect": AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
     "three-effect": AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    "bhb-three-effect": AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
 }
 
 

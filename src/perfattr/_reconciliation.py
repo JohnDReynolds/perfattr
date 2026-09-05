@@ -18,7 +18,7 @@ from perfattr._schemas import (
 )
 from perfattr._validation import float_array as _float_array
 from perfattr._validation import is_close as _is_close
-from perfattr.method import AttributionMethod
+from perfattr.method import AttributionMethod, uses_explicit_interaction
 
 
 def _column_sum(frame: pd.DataFrame, column: str) -> float:
@@ -36,7 +36,7 @@ def _build_period_reconciliation(
     Args:
         detail: Linked period-detail rows for the selected attribution method.
         summary: Linked period-summary rows for the same method.
-        method: Approved Brinson-Fachler effect convention.
+        method: Approved attribution effect convention.
 
     Returns:
         Unfinished period reconciliation rows ready for tolerance evaluation.
@@ -45,7 +45,7 @@ def _build_period_reconciliation(
     portfolio_contribution benchmark_contribution active_contribution
     allocation_effect selection_effect total_effect""".split()
     reconciliation_checks = PERIOD_RECONCILIATION_CHECKS
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if uses_explicit_interaction(method):
         aggregate_columns.insert(
             aggregate_columns.index("selection_effect") + 1,
             "interaction_effect",
@@ -64,7 +64,7 @@ def _build_period_reconciliation(
         _float_array(period_totals, "allocation_effect")
         + _float_array(period_totals, "selection_effect")
     )
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if uses_explicit_interaction(method):
         effect_components = effect_components + _float_array(
             period_totals,
             "interaction_effect",
@@ -120,7 +120,7 @@ def _build_overall_reconciliation(
     Args:
         detail: Linked period-detail rows for the selected attribution method.
         summary: Linked period-summary rows for the same method.
-        method: Approved Brinson-Fachler effect convention.
+        method: Approved attribution effect convention.
 
     Returns:
         Unfinished overall reconciliation rows ready for tolerance evaluation.
@@ -133,7 +133,7 @@ def _build_overall_reconciliation(
         + _column_sum(detail, "linked_selection_effect")
     )
     reconciliation_checks = OVERALL_RECONCILIATION_CHECKS
-    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+    if uses_explicit_interaction(method):
         linked_effect_components += _column_sum(
             detail,
             "linked_interaction_effect",
@@ -183,7 +183,7 @@ def _build_reconciliation(
         detail: Linked period-detail rows for the selected attribution method.
         summary: Linked period-summary rows for the same method.
         reconciliation_tolerance: Positive absolute and relative comparison tolerance.
-        method: Approved Brinson-Fachler effect convention.
+        method: Approved attribution effect convention.
 
     Returns:
         A new deterministic reconciliation frame containing only passing checks.
