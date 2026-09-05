@@ -1,7 +1,7 @@
 # Brinson-Hood-Beebower Two-Effect Reporting Specification
 
-**Status:** Accepted September 5, 2026. Implementation follows the ordered roadmap 7
-gates.
+**Status:** Accepted and implemented September 5, 2026. Initially released in
+`perfattr==0.6.0a1`.
 
 This document specifies an opt-in compact Brinson-Hood-Beebower (BHB) reporting
 contract for [roadmap 7][roadmap-7]. It supplements the released default
@@ -26,7 +26,7 @@ default compact BF method.
 
 ## Public API
 
-Add one member to the public string enum:
+The public string enum includes the compact BHB member:
 
 ```python
 class AttributionMethod(str, Enum):
@@ -36,7 +36,7 @@ class AttributionMethod(str, Enum):
     BRINSON_HOOD_BEEBOWER_TWO_EFFECT = "Brinson-Hood-Beebower Two-Effect"
 ```
 
-Callers would select it explicitly:
+Callers select it explicitly:
 
 ```python
 result = calculate_attribution(

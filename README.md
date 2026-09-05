@@ -37,7 +37,7 @@ and [`docs/brinson_fachler_three_effect_specification.md`][three-effect-spec].
 The released Brinson-Hood-Beebower three-effect work is recorded in
 [`_extras/perfattr_roadmap_6_brinson_hood_beebower_three_effect.md`][bhb-roadmap]
 and [`docs/brinson_hood_beebower_three_effect_specification.md`][bhb-spec].
-The accepted compact Brinson-Hood-Beebower work is recorded in
+The released compact Brinson-Hood-Beebower work is recorded in
 [`_extras/perfattr_roadmap_7_brinson_hood_beebower_two_effect.md`][bhb-two-roadmap]
 and [`docs/brinson_hood_beebower_two_effect_specification.md`][bhb-two-spec].
 The complete portable calculation contract is defined in

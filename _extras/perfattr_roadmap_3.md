@@ -141,9 +141,9 @@ Candidate methodological reference: Brinson, Hood, and Beebower (1986).
 
 ### Brinson-Hood-Beebower two-effect reporting convention
 
-**Status:** Promoted into accepted
+**Status:** Promoted into
 [roadmap 7](perfattr_roadmap_7_brinson_hood_beebower_two_effect.md) on September 5,
-2026. Implementation is authorized only in its documented sequence.
+2026, and released in `perfattr==0.6.0a1` that day.
 
 - Retain the BHB allocation and identifier-level total definitions established by
   roadmap 6.

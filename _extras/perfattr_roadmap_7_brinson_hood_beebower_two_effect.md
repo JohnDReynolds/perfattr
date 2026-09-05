@@ -1,7 +1,6 @@
 # perfattr Roadmap 7: Brinson-Hood-Beebower Two-Effect Reporting
 
-**Status:** Accepted September 5, 2026. Steps 1–7 are complete; implementation is
-authorized in the documented sequence.
+**Status:** Complete September 5, 2026. Released in `perfattr==0.6.0a1`.
 
 This roadmap promotes the Brinson-Hood-Beebower (BHB) two-effect reporting candidate
 from roadmap 3. Its governing contract is
@@ -333,6 +332,8 @@ presentation change, host edit, or weakened threshold.
 
 ### 8. Release the feature
 
+**Status:** Complete September 5, 2026.
+
 - Review documentation, license, fixture provenance, and compatibility.
 - Release first as `perfattr==0.6.0a1` because this adds a public method identity with
   distinct identifier-level financial semantics.
@@ -342,6 +343,26 @@ presentation change, host edit, or weakened threshold.
 
 **Gate:** Publication requires explicit user approval after all prepublication
 evidence is recorded.
+
+**Implementation evidence:** The user explicitly approved publication after Steps
+1–7 passed. Version `0.6.0a1` passed all 294 tests, Pyright, Pylint, Hatchling source
+and wheel builds, Twine metadata validation, `pip check`, and a clean Python 3.11
+installed-wheel compact-BHB calculation. Clean release commit
+`77706a7156375f36c817668bba1dc5896988c95a` was pushed to `main`; GitHub CI run
+`33987218341` passed on Python 3.11, 3.12, 3.13, and 3.14 together with its packaging
+job. The commit was tagged with annotated tag `v0.6.0a1` and published as a GitHub
+prerelease.
+
+The prerelease triggered trusted-publishing workflow run `33987294105`, whose tagged
+distribution build and PyPI publication jobs both completed successfully. After the
+public index propagated, a separate fresh Python 3.11 environment installed
+`perfattr==0.6.0a1` from `https://pypi.org/simple` with pip's cache disabled. The
+installed package reported the exact version, passed `pip check`, and completed the
+independent two-group compact-BHB example at `1e-12`, including method identity,
+compact schema, allocation, selection, total, and every reconciliation row.
+
+**Gate:** Passed. The approved prerelease is published on GitHub and PyPI and is
+verified independently from the public package index.
 
 ## Required verification matrix
 
