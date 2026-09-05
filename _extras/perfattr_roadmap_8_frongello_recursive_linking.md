@@ -1,6 +1,6 @@
 # perfattr Roadmap 8: Frongello Recursive Effect Linking
 
-**Status:** Active September 5, 2026. Steps 1–7 complete; Step 8 is approved.
+**Status:** Complete September 5, 2026. Released in `perfattr==0.7.0a1`.
 
 This roadmap promotes the Frongello recursive-linking candidate from roadmap 3. Its
 governing contract is
@@ -413,7 +413,7 @@ calculation and complete product and scale boundaries.
 
 ### 8. Release the feature
 
-**Status:** Ready for explicit publication approval.
+**Status:** Complete September 5, 2026.
 
 - Review documentation, license, fixture provenance, API compatibility, and all gate
   evidence.
@@ -426,6 +426,28 @@ calculation and complete product and scale boundaries.
 
 **Gate:** Publication requires explicit user approval after all prepublication
 evidence is recorded.
+
+**Release evidence:** The user explicitly approved commit and publication after all
+Steps 1–7 passed. Version `0.7.0a1` then passed all 331 tests, Pyright with no errors
+or warnings, Pylint at 10.00/10 with no messages, `git diff --check`, an isolated
+Hatchling source and wheel build, Twine, and a clean Python 3.11 installed-wheel
+Carino and Frongello smoke test.
+
+Clean release commit `08d3eb1f1ecdc16923aadcbe99aa962726ef3051` was pushed to
+`main`. GitHub Actions CI run `33994500066` passed the complete suite on Python 3.11,
+3.12, 3.13, and 3.14 and independently verified the distributions. The commit was
+tagged with annotated tag `v0.7.0a1` and published as a GitHub prerelease. Trusted-
+publisher run `33994566231` successfully built the tagged distributions and published
+them to PyPI.
+
+After public-index propagation, a fresh Python 3.11.9 environment installed
+`perfattr==0.7.0a1` from `https://pypi.org/simple` with pip caching disabled. The
+installed module resolved from that environment's `site-packages`; default Carino and
+explicit Frongello calculations both passed reconciliation, and the primary
+two-period Frongello horizon produced the expected 16.5% linked total effect.
+
+**Gate:** Passed. The approved prerelease is published on GitHub and PyPI and is
+independently installable and usable from the public index.
 
 ## Required verification matrix
 

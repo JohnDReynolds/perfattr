@@ -177,7 +177,7 @@ Suggested evaluation order:
    [roadmap 8](perfattr_roadmap_8_frongello_recursive_linking.md) on September 5,
    2026. Its governing
    [specification](../docs/frongello_recursive_linking_specification.md) was accepted
-   that day, and implementation is authorized only in Roadmap 8's dependency order.
+   that day; the roadmap was completed and released in `perfattr==0.7.0a1` that day.
    Candidate reference: Frongello (2002).
 2. **GRAP factor linking** — candidate reference: GRAP (1997). The Roadmap 8
    methodology review found that GRAP's full-horizon factor is algebraically

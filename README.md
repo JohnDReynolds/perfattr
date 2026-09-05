@@ -41,7 +41,7 @@ and [`docs/brinson_hood_beebower_three_effect_specification.md`][bhb-spec].
 The released compact Brinson-Hood-Beebower work is recorded in
 [`_extras/perfattr_roadmap_7_brinson_hood_beebower_two_effect.md`][bhb-two-roadmap]
 and [`docs/brinson_hood_beebower_two_effect_specification.md`][bhb-two-spec].
-The opt-in Frongello effect-linking work is recorded in
+The released opt-in Frongello effect-linking work is recorded in
 [`_extras/perfattr_roadmap_8_frongello_recursive_linking.md`][frongello-roadmap]
 and [`docs/frongello_recursive_linking_specification.md`][frongello-spec].
 The complete portable calculation contract is defined in

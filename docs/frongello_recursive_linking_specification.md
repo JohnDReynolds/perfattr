@@ -1,7 +1,6 @@
 # Frongello Recursive Effect-Linking Specification
 
-**Status:** Accepted September 5, 2026. Public calculation and independent fixture
-coverage are implemented.
+**Status:** Accepted September 5, 2026. Released in `perfattr==0.7.0a1`.
 
 This document specifies the opt-in Frongello effect-linking contract for
 [roadmap 8][roadmap-8]. It supplements the released default
