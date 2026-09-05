@@ -31,7 +31,7 @@ classification was the first promoted candidate and its completed work is record
 [`_extras/perfattr_roadmap_4_effective_dated_classification.md`][effective-roadmap], with
 its accepted contract in
 [`docs/effective_dated_classification_specification.md`][effective-spec].
-The opt-in Brinson-Fachler three-effect work is governed by
+The released opt-in Brinson-Fachler three-effect work is recorded in
 [`_extras/perfattr_roadmap_5_brinson_fachler_three_effect.md`][three-effect-roadmap]
 and [`docs/brinson_fachler_three_effect_specification.md`][three-effect-spec].
 The complete portable calculation contract is defined in

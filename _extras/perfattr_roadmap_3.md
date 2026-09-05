@@ -103,8 +103,8 @@ and applicable formulas during specification.
 ### Separate interaction effect
 
 **Status:** Promoted together with Brinson-Fachler three-effect attribution into
-accepted [roadmap 5](perfattr_roadmap_5_brinson_fachler_three_effect.md) on September
-5, 2026.
+completed [roadmap 5](perfattr_roadmap_5_brinson_fachler_three_effect.md) and released
+in `perfattr==0.4.0a1` on September 5, 2026.
 
 - Preserve the initial policy in which portfolio-weighted selection absorbs
   interaction.
@@ -114,8 +114,9 @@ accepted [roadmap 5](perfattr_roadmap_5_brinson_fachler_three_effect.md) on Sept
 
 ### Brinson-Fachler three-effect attribution
 
-**Status:** Promoted together with a separate interaction effect into accepted
-[roadmap 5](perfattr_roadmap_5_brinson_fachler_three_effect.md) on September 5, 2026.
+**Status:** Promoted together with a separate interaction effect into completed
+[roadmap 5](perfattr_roadmap_5_brinson_fachler_three_effect.md) and released in
+`perfattr==0.4.0a1` on September 5, 2026.
 
 - Add allocation, selection, and interaction as distinct effects.
 - Retain the existing Brinson-Fachler allocation convention as the baseline.

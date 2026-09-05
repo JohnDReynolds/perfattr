@@ -1,6 +1,7 @@
 # Brinson-Fachler Three-Effect Attribution Specification
 
-**Status:** Accepted September 5, 2026.
+**Status:** Accepted and implemented September 5, 2026. Initially released in
+`perfattr==0.4.0a1`.
 
 This document specifies the approved opt-in Brinson-Fachler three-effect calculation
 governed by

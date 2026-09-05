@@ -1,7 +1,6 @@
 # perfattr Roadmap 5: Brinson-Fachler Three-Effect Attribution
 
-**Status:** Accepted September 5, 2026. Steps 1–7 are complete; implementation is
-authorized in the documented sequence.
+**Status:** Completed September 5, 2026. Released as `perfattr==0.4.0a1`.
 
 This roadmap promotes the separate-interaction and Brinson-Fachler three-effect
 candidates from roadmap 3 as one deliberately narrow feature. Its governing contract
@@ -320,6 +319,8 @@ release-candidate command ended with `ppar release-candidate gate passed.`
 
 ### 8. Release the feature
 
+**Status:** Complete September 5, 2026.
+
 - Review public documentation, license, fixture provenance, and the compatibility
   plan.
 - Release first as `perfattr==0.4.0a1` because the package gains a public method and an
@@ -331,6 +332,19 @@ release-candidate command ended with `ppar release-candidate gate passed.`
 
 **Gate:** Publication requires explicit user approval after all prepublication evidence
 is recorded.
+
+**Release evidence:** The user approved publication after every prepublication gate
+passed. Clean commit `59d6fa1` produced a verified source distribution and universal
+wheel, and an isolated Python 3.11 installation passed the public import and explicit
+three-effect smoke calculation with current NumPy and pandas releases. Annotated tag
+`v0.4.0a1` and its GitHub prerelease were published from that commit. Trusted
+publishing workflow run `33975827124` built, checked, and published both distributions
+successfully. A fresh no-cache installation of `perfattr==0.4.0a1` from the public PyPI
+index then passed the same version, public-enum, result-method, interaction-schema, and
+hand-calculated interaction-total checks.
+
+**Gate:** Passed. The prerelease is published and independently usable from the public
+index.
 
 ## Required verification matrix
 
@@ -383,3 +397,5 @@ Roadmap 5 is complete only when:
   verified;
 - `ppar` compatibility and scale gates pass without an unapproved host change; and
 - the approved prerelease is published and verified from the public PyPI index.
+
+All completion criteria were satisfied on September 5, 2026.
