@@ -12,16 +12,19 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
+from perfattr._exceptions import AttributionError
 from perfattr._linking import _carino, _compound_returns, _smoothing
+from perfattr._reconciliation import _build_reconciliation, _validate_result_values
 from perfattr._schemas import (
     CUMULATIVE_COLUMNS,
     OVERALL_DETAIL_COLUMNS,
-    OVERALL_RECONCILIATION_CHECKS,
     PERIOD_DETAIL_COLUMNS,
-    PERIOD_RECONCILIATION_CHECKS,
     PERIOD_SUMMARY_COLUMNS,
     PREPARED_REQUIRED_COLUMNS,
-    RECONCILIATION_COLUMNS,
+    THREE_EFFECT_CUMULATIVE_COLUMNS,
+    THREE_EFFECT_OVERALL_DETAIL_COLUMNS,
+    THREE_EFFECT_PERIOD_DETAIL_COLUMNS,
+    THREE_EFFECT_PERIOD_SUMMARY_COLUMNS,
 )
 from perfattr._validation import (
     float_array as _float_array,
@@ -33,13 +36,10 @@ from perfattr._validation import (
     normalize_reconciliation_tolerance,
     raise_invalid,
 )
+from perfattr.method import AttributionMethod
 
 _TOLERANCE = 1e-12
 _REQUIRED_COLUMNS = PREPARED_REQUIRED_COLUMNS
-
-
-class AttributionError(ValueError):
-    """Report invalid financial input or a failed calculation invariant."""
 
 
 @dataclass
@@ -52,6 +52,7 @@ class AttributionResult:
         overall_detail: Full-horizon values for each identifier.
         cumulative: Chronological period and cumulative totals.
         reconciliation: Passing financial reconciliation evidence.
+        method: Brinson-Fachler effect convention used for the result.
 
     Notes:
         The calculator does not mutate caller-supplied frames. Returned frames belong
@@ -63,6 +64,14 @@ class AttributionResult:
     overall_detail: pd.DataFrame
     cumulative: pd.DataFrame
     reconciliation: pd.DataFrame
+    method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
+
+
+def _normalize_method(value: AttributionMethod) -> AttributionMethod:
+    """Require an explicit supported attribution-method enum member."""
+    if not isinstance(value, AttributionMethod):
+        raise TypeError("method must be an AttributionMethod")
+    return value
 
 
 def _normalize_reconciliation_tolerance(value: float) -> float:
@@ -313,8 +322,34 @@ def _equalize_universe(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> pd.D
     return equalized
 
 
-def _build_period_detail(equalized: pd.DataFrame) -> pd.DataFrame:
-    """Calculate equalized period contributions and unlinked effects."""
+def _build_period_detail(
+    equalized: pd.DataFrame,
+    method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+) -> pd.DataFrame:
+    """Calculate equalized period contributions and unlinked effects.
+
+    Args:
+        equalized: Normalized, period-aligned portfolio and benchmark rows with a
+            common identifier universe.
+        method: Approved Brinson-Fachler effect convention.
+
+    Returns:
+        A new period-detail frame using the selected method's ordered schema.
+
+    Notes:
+        Both methods retain the released allocation and total-effect formulas. For
+        three-effect output, interaction is active weight multiplied by active return
+        when both effective returns are defined. Selection is the remaining total
+        effect, which is algebraically benchmark-weighted selection for defined
+        effective returns and preserves authoritative contribution otherwise. An
+        undefined active return carries zero interaction rather than an invented
+        return difference.
+
+    References:
+        Brinson, G. P., and N. Fachler. “Measuring Non-U.S. Equity Portfolio
+        Performance.” *The Journal of Portfolio Management* 11, no. 3 (1985): 73–76.
+        https://doi.org/10.3905/jpm.1985.409005
+    """
     values = {
         "portfolio_weight": _float_array(equalized, "weight_portfolio"),
         "benchmark_weight": _float_array(equalized, "weight_benchmark"),
@@ -350,59 +385,79 @@ def _build_period_detail(equalized: pd.DataFrame) -> pd.DataFrame:
         active_weight * (values["benchmark_return"] - benchmark_total_return),
     )
     total_effect = active_contribution - active_weight * benchmark_total_return
-    selection_effect = total_effect - allocation_effect
+    interaction_effect: np.ndarray | None = None
+    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+        interaction_effect = np.zeros(len(equalized), dtype=np.float64)
+        np.multiply(
+            active_weight,
+            active_return,
+            out=interaction_effect,
+            where=defined_active_return,
+        )
+        selection_effect = total_effect - allocation_effect - interaction_effect
+        detail_columns = THREE_EFFECT_PERIOD_DETAIL_COLUMNS
+    else:
+        selection_effect = total_effect - allocation_effect
+        detail_columns = PERIOD_DETAIL_COLUMNS
 
-    detail = pd.DataFrame(
-        {
-            "from_date": equalized["from_date"],
-            "thru_date": equalized["thru_date"],
-            "quantity_of_days": equalized["quantity_of_days"].astype("int64"),
-            "identifier": equalized["identifier"].astype("string[python]"),
-            "portfolio_weight": values["portfolio_weight"],
-            "portfolio_return": values["portfolio_return"],
-            "portfolio_contribution": values["portfolio_contribution"],
-            "benchmark_weight": values["benchmark_weight"],
-            "benchmark_return": values["benchmark_return"],
-            "benchmark_contribution": values["benchmark_contribution"],
-            "active_weight": active_weight,
-            "active_return": active_return,
-            "active_contribution": active_contribution,
-            "allocation_effect": allocation_effect,
-            "selection_effect": selection_effect,
-            "total_effect": total_effect,
-            "linked_portfolio_contribution": values[
-                "portfolio_contribution"
-            ].copy(),
-            "linked_benchmark_contribution": values[
-                "benchmark_contribution"
-            ].copy(),
-            "linked_active_contribution": active_contribution.copy(),
-            "linked_allocation_effect": allocation_effect.copy(),
-            "linked_selection_effect": selection_effect.copy(),
-            "linked_total_effect": total_effect.copy(),
-        },
-        columns=PERIOD_DETAIL_COLUMNS,
-    )
+    detail_values: dict[str, object] = {
+        "from_date": equalized["from_date"],
+        "thru_date": equalized["thru_date"],
+        "quantity_of_days": equalized["quantity_of_days"].astype("int64"),
+        "identifier": equalized["identifier"].astype("string[python]"),
+        "portfolio_weight": values["portfolio_weight"],
+        "portfolio_return": values["portfolio_return"],
+        "portfolio_contribution": values["portfolio_contribution"],
+        "benchmark_weight": values["benchmark_weight"],
+        "benchmark_return": values["benchmark_return"],
+        "benchmark_contribution": values["benchmark_contribution"],
+        "active_weight": active_weight,
+        "active_return": active_return,
+        "active_contribution": active_contribution,
+        "allocation_effect": allocation_effect,
+        "selection_effect": selection_effect,
+        "total_effect": total_effect,
+        "linked_portfolio_contribution": values["portfolio_contribution"].copy(),
+        "linked_benchmark_contribution": values["benchmark_contribution"].copy(),
+        "linked_active_contribution": active_contribution.copy(),
+        "linked_allocation_effect": allocation_effect.copy(),
+        "linked_selection_effect": selection_effect.copy(),
+        "linked_total_effect": total_effect.copy(),
+    }
+    if interaction_effect is not None:
+        detail_values["interaction_effect"] = interaction_effect
+        detail_values["linked_interaction_effect"] = interaction_effect.copy()
+    detail = pd.DataFrame(detail_values, columns=detail_columns)
     return detail.reset_index(drop=True)
 
 
-def _link_period_detail(detail: pd.DataFrame) -> pd.DataFrame:
-    """Apply full-horizon logarithmic and Carino linking coefficients."""
-    period_keys = ["from_date", "thru_date"]
-    grouped = detail.groupby(period_keys, sort=False, observed=True)
-    portfolio_period_returns = np.asarray(
-        grouped["portfolio_contribution"].sum(), dtype=np.float64
-    )
-    benchmark_period_returns = np.asarray(
-        grouped["benchmark_contribution"].sum(), dtype=np.float64
-    )
+def _calculate_linking_coefficients(
+    portfolio_period_returns: np.ndarray,
+    benchmark_period_returns: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Calculate full-horizon contribution and active-effect coefficients.
+
+    Args:
+        portfolio_period_returns: Ordered portfolio returns for each period.
+        benchmark_period_returns: Ordered benchmark returns for each period.
+
+    Returns:
+        Portfolio smoothing, benchmark smoothing, and Carino active-effect coefficient
+        arrays in period order.
+
+    Raises:
+        AttributionError: If a horizon return or linking coefficient is invalid.
+    """
     portfolio_horizon_return = _compound_returns(portfolio_period_returns)
     benchmark_horizon_return = _compound_returns(benchmark_period_returns)
     horizon_returns = np.asarray(
-        [portfolio_horizon_return, benchmark_horizon_return], dtype=np.float64
+        [portfolio_horizon_return, benchmark_horizon_return],
+        dtype=np.float64,
     )
     if np.any(horizon_returns <= -1.0) or not np.isfinite(horizon_returns).all():
-        raise AttributionError("compounded horizon returns must be finite and greater than -1.0")
+        raise AttributionError(
+            "compounded horizon returns must be finite and greater than -1.0"
+        )
 
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
         portfolio_coefficients = _smoothing(portfolio_period_returns) / _smoothing(
@@ -412,20 +467,57 @@ def _link_period_detail(detail: pd.DataFrame) -> pd.DataFrame:
             np.asarray([benchmark_horizon_return], dtype=np.float64)
         )[0]
         active_coefficients = _carino(
-            portfolio_period_returns, benchmark_period_returns
+            portfolio_period_returns,
+            benchmark_period_returns,
         ) / _carino(
             np.asarray([portfolio_horizon_return], dtype=np.float64),
             np.asarray([benchmark_horizon_return], dtype=np.float64),
         )[0]
-    if not all(
-        np.isfinite(coefficients).all()
-        for coefficients in (
-            portfolio_coefficients,
-            benchmark_coefficients,
-            active_coefficients,
-        )
-    ):
+    coefficients = (
+        portfolio_coefficients,
+        benchmark_coefficients,
+        active_coefficients,
+    )
+    if not all(np.isfinite(values).all() for values in coefficients):
         raise AttributionError("linking coefficients must be finite")
+    return coefficients
+
+
+def _link_period_detail(
+    detail: pd.DataFrame,
+    method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+) -> pd.DataFrame:
+    """Apply full-horizon logarithmic and Carino linking coefficients.
+
+    Args:
+        detail: Unlinked period-detail rows for the selected attribution method.
+        method: Approved Brinson-Fachler effect convention.
+
+    Returns:
+        A new period-detail frame with contribution and effect channels linked over
+        the complete horizon.
+
+    Notes:
+        Allocation, selection, interaction when selected, and total effect all use
+        the same Carino active coefficient. Applying one coefficient preserves the
+        additive effect identity through linking.
+    """
+    period_keys = ["from_date", "thru_date"]
+    grouped = detail.groupby(period_keys, sort=False, observed=True)
+    portfolio_period_returns = np.asarray(
+        grouped["portfolio_contribution"].sum(), dtype=np.float64
+    )
+    benchmark_period_returns = np.asarray(
+        grouped["benchmark_contribution"].sum(), dtype=np.float64
+    )
+    (
+        portfolio_coefficients,
+        benchmark_coefficients,
+        active_coefficients,
+    ) = _calculate_linking_coefficients(
+        portfolio_period_returns,
+        benchmark_period_returns,
+    )
     period_codes = np.asarray(grouped.ngroup(), dtype=np.int64)
     linked = detail.copy(deep=True)
     linked["linked_portfolio_contribution"] = (
@@ -440,29 +532,52 @@ def _link_period_detail(detail: pd.DataFrame) -> pd.DataFrame:
         _float_array(linked, "linked_portfolio_contribution")
         - _float_array(linked, "linked_benchmark_contribution")
     )
-    for linked_column, simple_column in (
+    effect_columns = [
         ("linked_allocation_effect", "allocation_effect"),
         ("linked_selection_effect", "selection_effect"),
         ("linked_total_effect", "total_effect"),
-    ):
+    ]
+    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+        effect_columns.insert(
+            2,
+            ("linked_interaction_effect", "interaction_effect"),
+        )
+    for linked_column, simple_column in effect_columns:
         linked[linked_column] = (
             _float_array(detail, simple_column) * active_coefficients[period_codes]
         )
     return linked.reset_index(drop=True)
 
 
-def _column_sum(frame: pd.DataFrame, column: str) -> float:
-    """Return a numeric result column's sum as an ordinary float."""
-    return float(_float_array(frame, column).sum())
+def _build_period_summary(
+    detail: pd.DataFrame,
+    method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+) -> pd.DataFrame:
+    """Summarize calculated detail rows for every reporting period.
 
+    Args:
+        detail: Linked period-detail rows for the selected attribution method.
+        method: Approved Brinson-Fachler effect convention.
 
-def _build_period_summary(detail: pd.DataFrame) -> pd.DataFrame:
-    """Summarize calculated detail rows for every reporting period."""
+    Returns:
+        A new chronological frame containing one sum row per reporting period.
+    """
     value_columns = """portfolio_contribution benchmark_contribution
     active_contribution allocation_effect selection_effect total_effect
     linked_portfolio_contribution linked_benchmark_contribution
     linked_active_contribution linked_allocation_effect linked_selection_effect
     linked_total_effect""".split()
+    summary_columns = PERIOD_SUMMARY_COLUMNS
+    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+        value_columns.insert(
+            value_columns.index("selection_effect") + 1,
+            "interaction_effect",
+        )
+        value_columns.insert(
+            value_columns.index("linked_selection_effect") + 1,
+            "linked_interaction_effect",
+        )
+        summary_columns = THREE_EFFECT_PERIOD_SUMMARY_COLUMNS
     summary = cast(
         pd.DataFrame,
         detail.groupby(
@@ -477,30 +592,54 @@ def _build_period_summary(detail: pd.DataFrame) -> pd.DataFrame:
     summary["active_return"] = (
         summary["portfolio_return"] - summary["benchmark_return"]
     )
-    return cast(pd.DataFrame, summary.loc[:, PERIOD_SUMMARY_COLUMNS]).reset_index(
-        drop=True
-    )
+    return cast(pd.DataFrame, summary.loc[:, summary_columns]).reset_index(drop=True)
 
 
-def _build_overall_detail(
-    equalized: pd.DataFrame, detail: pd.DataFrame
-) -> pd.DataFrame:
-    """Build full-horizon identifier rows from supplied returns and linked values."""
+def _horizon_day_total(equalized: pd.DataFrame) -> float:
+    """Return the finite sum of distinct reporting-period day counts."""
     period_days = cast(
         pd.Series,
         equalized.groupby(
-            ["from_date", "thru_date"], sort=False, observed=True
+            ["from_date", "thru_date"],
+            sort=False,
+            observed=True,
         )["quantity_of_days"].first(),
     )
     total_days = float(np.asarray(period_days, dtype=np.float64).sum())
     if not np.isfinite(total_days):
         raise AttributionError("the complete horizon quantity_of_days must be finite")
+    return total_days
+
+
+def _build_overall_detail(
+    equalized: pd.DataFrame,
+    detail: pd.DataFrame,
+    method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+) -> pd.DataFrame:
+    """Build full-horizon identifier rows from supplied returns and linked values.
+
+    Args:
+        equalized: Normalized portfolio and benchmark rows with a common universe.
+        detail: Linked period-detail rows for the selected attribution method.
+        method: Approved Brinson-Fachler effect convention.
+
+    Returns:
+        A new full-horizon frame containing one row per identifier.
+    """
+    total_days = _horizon_day_total(equalized)
     portfolio = _build_overall_side(equalized, "portfolio", total_days)
     benchmark = _build_overall_side(equalized, "benchmark", total_days)
 
     linked_columns = """linked_portfolio_contribution
     linked_benchmark_contribution linked_active_contribution
     linked_allocation_effect linked_selection_effect linked_total_effect""".split()
+    overall_columns = OVERALL_DETAIL_COLUMNS
+    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+        linked_columns.insert(
+            linked_columns.index("linked_selection_effect") + 1,
+            "linked_interaction_effect",
+        )
+        overall_columns = THREE_EFFECT_OVERALL_DETAIL_COLUMNS
     linked = cast(
         pd.DataFrame,
         detail.groupby(
@@ -523,34 +662,31 @@ def _build_overall_detail(
         out=active_return,
         where=defined_active_return,
     )
-    horizon = pd.DataFrame(
-        {
-            "from_date": detail.at[0, "from_date"],
-            "thru_date": detail.at[len(detail) - 1, "thru_date"],
-            "identifier": overall["identifier"],
-            "portfolio_weight": overall["portfolio_weight"],
-            "portfolio_return": portfolio_return,
-            "linked_portfolio_contribution": overall[
-                "linked_portfolio_contribution"
-            ],
-            "benchmark_weight": overall["benchmark_weight"],
-            "benchmark_return": benchmark_return,
-            "linked_benchmark_contribution": overall[
-                "linked_benchmark_contribution"
-            ],
-            "active_weight": (
-                _float_array(overall, "portfolio_weight")
-                - _float_array(overall, "benchmark_weight")
-            ),
-            "active_return": active_return,
-            "linked_active_contribution": overall["linked_active_contribution"],
-            "linked_allocation_effect": overall["linked_allocation_effect"],
-            "linked_selection_effect": overall["linked_selection_effect"],
-            "linked_total_effect": overall["linked_total_effect"],
-        },
-        columns=OVERALL_DETAIL_COLUMNS,
-    )
-    return horizon.reset_index(drop=True)
+    horizon_values: dict[str, object] = {
+        "from_date": detail.at[0, "from_date"],
+        "thru_date": detail.at[len(detail) - 1, "thru_date"],
+        "identifier": overall["identifier"],
+        "portfolio_weight": overall["portfolio_weight"],
+        "portfolio_return": portfolio_return,
+        "linked_portfolio_contribution": overall["linked_portfolio_contribution"],
+        "benchmark_weight": overall["benchmark_weight"],
+        "benchmark_return": benchmark_return,
+        "linked_benchmark_contribution": overall["linked_benchmark_contribution"],
+        "active_weight": (
+            _float_array(overall, "portfolio_weight")
+            - _float_array(overall, "benchmark_weight")
+        ),
+        "active_return": active_return,
+        "linked_active_contribution": overall["linked_active_contribution"],
+        "linked_allocation_effect": overall["linked_allocation_effect"],
+        "linked_selection_effect": overall["linked_selection_effect"],
+        "linked_total_effect": overall["linked_total_effect"],
+    }
+    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+        horizon_values["linked_interaction_effect"] = overall[
+            "linked_interaction_effect"
+        ]
+    return pd.DataFrame(horizon_values, columns=overall_columns).reset_index(drop=True)
 
 
 def _build_overall_side(
@@ -599,214 +735,81 @@ def _build_overall_side(
     )
 
 
-def _build_cumulative(summary: pd.DataFrame) -> pd.DataFrame:
-    """Build chronological period values and their cumulative counterparts."""
+def _build_cumulative(
+    summary: pd.DataFrame,
+    method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+) -> pd.DataFrame:
+    """Build chronological period values and their cumulative counterparts.
+
+    Args:
+        summary: Linked period-summary rows for the selected attribution method.
+        method: Approved Brinson-Fachler effect convention.
+
+    Returns:
+        A new frame containing period values and chronological cumulative totals.
+
+    Notes:
+        Cumulative effects are sums of full-horizon-linked period values; they are not
+        independently relinked as-of calculations.
+    """
     portfolio_returns = _float_array(summary, "portfolio_return")
     benchmark_returns = _float_array(summary, "benchmark_return")
     cumulative_portfolio_returns = np.expm1(np.cumsum(np.log1p(portfolio_returns)))
     cumulative_benchmark_returns = np.expm1(np.cumsum(np.log1p(benchmark_returns)))
-    cumulative = pd.DataFrame(
-        {
-            "from_date": summary["from_date"],
-            "thru_date": summary["thru_date"],
-            "portfolio_return": portfolio_returns,
-            "benchmark_return": benchmark_returns,
-            "active_return": _float_array(summary, "active_return"),
-            "cumulative_portfolio_return": cumulative_portfolio_returns,
-            "cumulative_benchmark_return": cumulative_benchmark_returns,
-            "cumulative_active_return": (
-                cumulative_portfolio_returns - cumulative_benchmark_returns
-            ),
-            "linked_portfolio_contribution": summary[
-                "linked_portfolio_contribution"
-            ],
-            "linked_benchmark_contribution": summary[
-                "linked_benchmark_contribution"
-            ],
-            "linked_active_contribution": summary["linked_active_contribution"],
-            "cumulative_portfolio_contribution": np.cumsum(
-                _float_array(summary, "linked_portfolio_contribution")
-            ),
-            "cumulative_benchmark_contribution": np.cumsum(
-                _float_array(summary, "linked_benchmark_contribution")
-            ),
-            "cumulative_active_contribution": np.cumsum(
-                _float_array(summary, "linked_active_contribution")
-            ),
-            "linked_allocation_effect": summary["linked_allocation_effect"],
-            "linked_selection_effect": summary["linked_selection_effect"],
-            "linked_total_effect": summary["linked_total_effect"],
-            "cumulative_allocation_effect": np.cumsum(
-                _float_array(summary, "linked_allocation_effect")
-            ),
-            "cumulative_selection_effect": np.cumsum(
-                _float_array(summary, "linked_selection_effect")
-            ),
-            "cumulative_total_effect": np.cumsum(
-                _float_array(summary, "linked_total_effect")
-            ),
-        },
-        columns=CUMULATIVE_COLUMNS,
-    )
+    cumulative_values: dict[str, object] = {
+        "from_date": summary["from_date"],
+        "thru_date": summary["thru_date"],
+        "portfolio_return": portfolio_returns,
+        "benchmark_return": benchmark_returns,
+        "active_return": _float_array(summary, "active_return"),
+        "cumulative_portfolio_return": cumulative_portfolio_returns,
+        "cumulative_benchmark_return": cumulative_benchmark_returns,
+        "cumulative_active_return": (
+            cumulative_portfolio_returns - cumulative_benchmark_returns
+        ),
+        "linked_portfolio_contribution": summary["linked_portfolio_contribution"],
+        "linked_benchmark_contribution": summary["linked_benchmark_contribution"],
+        "linked_active_contribution": summary["linked_active_contribution"],
+        "cumulative_portfolio_contribution": np.cumsum(
+            _float_array(summary, "linked_portfolio_contribution")
+        ),
+        "cumulative_benchmark_contribution": np.cumsum(
+            _float_array(summary, "linked_benchmark_contribution")
+        ),
+        "cumulative_active_contribution": np.cumsum(
+            _float_array(summary, "linked_active_contribution")
+        ),
+        "linked_allocation_effect": summary["linked_allocation_effect"],
+        "linked_selection_effect": summary["linked_selection_effect"],
+        "linked_total_effect": summary["linked_total_effect"],
+        "cumulative_allocation_effect": np.cumsum(
+            _float_array(summary, "linked_allocation_effect")
+        ),
+        "cumulative_selection_effect": np.cumsum(
+            _float_array(summary, "linked_selection_effect")
+        ),
+        "cumulative_total_effect": np.cumsum(
+            _float_array(summary, "linked_total_effect")
+        ),
+    }
+    cumulative_columns = CUMULATIVE_COLUMNS
+    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+        cumulative_values["linked_interaction_effect"] = summary[
+            "linked_interaction_effect"
+        ]
+        cumulative_values["cumulative_interaction_effect"] = np.cumsum(
+            _float_array(summary, "linked_interaction_effect")
+        )
+        cumulative_columns = THREE_EFFECT_CUMULATIVE_COLUMNS
+    cumulative = pd.DataFrame(cumulative_values, columns=cumulative_columns)
     return cumulative.reset_index(drop=True)
-
-
-def _build_period_reconciliation(
-    detail: pd.DataFrame, summary: pd.DataFrame
-) -> pd.DataFrame:
-    """Build reconciliation inputs for every reporting period."""
-    aggregate_columns = """portfolio_weight benchmark_weight
-    portfolio_contribution benchmark_contribution active_contribution
-    allocation_effect selection_effect total_effect""".split()
-    period_totals = cast(
-        pd.DataFrame,
-        detail.groupby(
-            ["from_date", "thru_date"],
-            as_index=False,
-            sort=False,
-            observed=True,
-        )[aggregate_columns].sum(),
-    )
-    period_actual = np.column_stack(
-        (
-            _float_array(period_totals, "portfolio_weight"),
-            _float_array(period_totals, "benchmark_weight"),
-            _float_array(period_totals, "portfolio_contribution"),
-            _float_array(period_totals, "benchmark_contribution"),
-            _float_array(period_totals, "active_contribution"),
-            _float_array(period_totals, "allocation_effect")
-            + _float_array(period_totals, "selection_effect"),
-            _float_array(period_totals, "total_effect"),
-        )
-    )
-    period_expected = np.column_stack(
-        (
-            np.ones(len(summary), dtype=np.float64),
-            np.ones(len(summary), dtype=np.float64),
-            _float_array(summary, "portfolio_return"),
-            _float_array(summary, "benchmark_return"),
-            _float_array(summary, "active_return"),
-            _float_array(summary, "total_effect"),
-            _float_array(summary, "active_return"),
-        )
-    )
-    check_count = len(PERIOD_RECONCILIATION_CHECKS)
-    return pd.DataFrame(
-        {
-            "scope": "period",
-            "from_date": np.repeat(
-                np.asarray(summary["from_date"], dtype="datetime64[ns]"),
-                check_count,
-            ),
-            "thru_date": np.repeat(
-                np.asarray(summary["thru_date"], dtype="datetime64[ns]"),
-                check_count,
-            ),
-            "check": np.tile(PERIOD_RECONCILIATION_CHECKS, len(summary)),
-            "actual": period_actual.ravel(),
-            "expected": period_expected.ravel(),
-        }
-    )
-
-
-def _build_overall_reconciliation(
-    detail: pd.DataFrame, summary: pd.DataFrame
-) -> pd.DataFrame:
-    """Build reconciliation inputs for the complete requested horizon."""
-    portfolio_return = _compound_returns(_float_array(summary, "portfolio_return"))
-    benchmark_return = _compound_returns(_float_array(summary, "benchmark_return"))
-    active_return = portfolio_return - benchmark_return
-    overall_actual = np.asarray(
-        [
-            _column_sum(detail, "linked_portfolio_contribution"),
-            _column_sum(detail, "linked_benchmark_contribution"),
-            _column_sum(detail, "linked_active_contribution"),
-            _column_sum(detail, "linked_allocation_effect")
-            + _column_sum(detail, "linked_selection_effect"),
-            _column_sum(detail, "linked_total_effect"),
-        ],
-        dtype=np.float64,
-    )
-    overall_expected = np.asarray(
-        [
-            portfolio_return,
-            benchmark_return,
-            active_return,
-            overall_actual[4],
-            active_return,
-        ],
-        dtype=np.float64,
-    )
-    return pd.DataFrame(
-        {
-            "scope": "overall",
-            "from_date": detail.at[0, "from_date"],
-            "thru_date": detail.at[len(detail) - 1, "thru_date"],
-            "check": OVERALL_RECONCILIATION_CHECKS,
-            "actual": overall_actual,
-            "expected": overall_expected,
-        }
-    )
-
-
-def _build_reconciliation(
-    detail: pd.DataFrame,
-    summary: pd.DataFrame,
-    reconciliation_tolerance: float,
-) -> pd.DataFrame:
-    """Build positive period and overall financial reconciliation evidence."""
-    reconciliation = pd.concat(
-        [
-            _build_period_reconciliation(detail, summary),
-            _build_overall_reconciliation(detail, summary),
-        ],
-        ignore_index=True,
-    )
-    reconciliation["residual"] = (
-        reconciliation["actual"] - reconciliation["expected"]
-    )
-    reconciliation["tolerance"] = reconciliation_tolerance
-    reconciliation["passed"] = _is_close(
-        _float_array(reconciliation, "actual"),
-        _float_array(reconciliation, "expected"),
-        reconciliation_tolerance,
-    )
-    reconciliation = reconciliation.loc[:, RECONCILIATION_COLUMNS]
-    reconciliation["scope"] = reconciliation["scope"].astype("string[python]")
-    reconciliation["check"] = reconciliation["check"].astype("string[python]")
-    reconciliation["passed"] = reconciliation["passed"].astype("bool")
-    passed = cast(pd.Series, reconciliation["passed"])
-    if not bool(np.asarray(passed, dtype=np.bool_).all()):
-        failed = cast(
-            pd.Series, reconciliation.loc[~reconciliation["passed"], "check"]
-        )
-        failed_checks = ", ".join(
-            cast(pd.Series, failed.astype(str))
-        )
-        raise AttributionError(f"calculation reconciliation failed: {failed_checks}")
-    return cast(pd.DataFrame, reconciliation.reset_index(drop=True))
-
-
-def _validate_result_values(
-    name: str,
-    frame: pd.DataFrame,
-    nullable_columns: tuple[str, ...] = (),
-) -> None:
-    """Require finite result numbers except in specified undefined-return fields."""
-    numeric = cast(pd.DataFrame, frame.select_dtypes(include="number"))
-    for column in numeric.columns:
-        values = _float_array(numeric, column)
-        valid = np.isfinite(values)
-        if column in nullable_columns:
-            valid |= np.isnan(values)
-        if not valid.all():
-            raise AttributionError(f"{name} column {column!r} contains a non-finite value")
 
 
 def calculate_attribution(
     portfolio: pd.DataFrame,
     benchmark: pd.DataFrame,
     *,
+    method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
     reconciliation_tolerance: float = _TOLERANCE,
 ) -> AttributionResult:
     """Calculate portable multi-period Brinson-Fachler attribution.
@@ -814,6 +817,8 @@ def calculate_attribution(
     Args:
         portfolio: Prepared portfolio rows satisfying the portable input contract.
         benchmark: Prepared benchmark rows for the same reporting periods.
+        method: Brinson-Fachler effect convention to calculate. The default preserves
+            portfolio-weighted selection with interaction absorbed.
         reconciliation_tolerance: Positive finite relative and absolute tolerance
             used for input weight totals and returned reconciliation evidence. The
             standalone default is ``1e-12``; a host may explicitly request a wider
@@ -824,20 +829,24 @@ def calculate_attribution(
         and reconciliation values.
 
     Raises:
-        TypeError: If either input is not a pandas DataFrame.
+        TypeError: If an input is not a pandas DataFrame or ``method`` is not an
+            ``AttributionMethod``.
         AttributionError: If financial input is invalid or a calculation invariant
             fails.
 
     Notes:
-        Selection is portfolio-weighted and absorbs interaction. Contributions use
-        logarithmic linking; active effects use Carino linking. Supplied contribution
-        is authoritative; otherwise contribution is derived as weight multiplied by
+        The default selection is portfolio-weighted and absorbs interaction. The
+        opt-in three-effect method reports benchmark-weighted selection and
+        interaction separately. Contributions use logarithmic linking; all active
+        effects use the same Carino coefficient. Supplied contribution is
+        authoritative; otherwise contribution is derived as weight multiplied by
         return.
     """
     if not isinstance(portfolio, pd.DataFrame):
         raise TypeError("portfolio must be a pandas DataFrame")
     if not isinstance(benchmark, pd.DataFrame):
         raise TypeError("benchmark must be a pandas DataFrame")
+    method = _normalize_method(method)
     tolerance = _normalize_reconciliation_tolerance(reconciliation_tolerance)
 
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
@@ -849,14 +858,18 @@ def calculate_attribution(
             tolerance,
         )
         equalized = _equalize_universe(normalized_portfolio, normalized_benchmark)
-        period_detail = _link_period_detail(_build_period_detail(equalized))
-        period_summary = _build_period_summary(period_detail)
-        overall_detail = _build_overall_detail(equalized, period_detail)
-        cumulative = _build_cumulative(period_summary)
+        period_detail = _link_period_detail(
+            _build_period_detail(equalized, method),
+            method,
+        )
+        period_summary = _build_period_summary(period_detail, method)
+        overall_detail = _build_overall_detail(equalized, period_detail, method)
+        cumulative = _build_cumulative(period_summary, method)
         reconciliation = _build_reconciliation(
             period_detail,
             period_summary,
             tolerance,
+            method,
         )
     _validate_result_values(
         "period_detail",
@@ -880,7 +893,12 @@ def calculate_attribution(
         overall_detail=overall_detail,
         cumulative=cumulative,
         reconciliation=reconciliation,
+        method=method,
     )
 
 
-__all__ = ["AttributionError", "AttributionResult", "calculate_attribution"]
+__all__ = [
+    "AttributionError",
+    "AttributionResult",
+    "calculate_attribution",
+]

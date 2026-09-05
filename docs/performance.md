@@ -10,7 +10,9 @@ times.
 prepared inputs before measurement, warms the public API once, and reports the median
 of the requested elapsed-time samples. Peak memory is the incremental peak of
 Python-tracked allocations while `calculate_attribution` runs; prepared input memory
-is reported separately.
+is reported separately. `--method two-effect` is the unchanged default;
+`--method three-effect` measures the opt-in interaction calculation on the same
+inputs.
 
 The four workloads correspond to the roadmap shapes:
 
@@ -119,6 +121,31 @@ each supported CI interpreter family: Python 3.11, 3.12, 3.13, and 3.14. Pyright
 reported zero errors and warnings, and Pylint reported 10.00/10 with no messages on
 the project's Python 3.11 development environment.
 
+## 0.4.0a1 attribution-method observations
+
+These release-candidate observations were collected on September 5, 2026, on the same
+Apple arm64 machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Each elapsed
+result is the median of five samples. Both methods used the identical deterministic
+derived-contribution inputs.
+
+| Workload | Method | Median elapsed | Prepared inputs | Peak traced allocation |
+| --- | --- | ---: | ---: | ---: |
+| `normal` | two-effect | 0.0302 s | 2.0 MiB | 4.6 MiB |
+| `normal` | three-effect | 0.0299 s | 2.0 MiB | 4.8 MiB |
+| `selected_10x` | two-effect | 0.1058 s | 20.4 MiB | 44.6 MiB |
+| `selected_10x` | three-effect | 0.1072 s | 20.4 MiB | 47.1 MiB |
+| `monthly_121260` | two-effect | 0.1877 s | 40.7 MiB | 89.1 MiB |
+| `monthly_121260` | three-effect | 0.1889 s | 40.7 MiB | 94.1 MiB |
+| `history_25y` | two-effect | 0.0640 s | 10.2 MiB | 22.4 MiB |
+| `history_25y` | three-effect | 0.0656 s | 10.2 MiB | 23.6 MiB |
+
+The three-effect elapsed medians ranged from 0.3% lower to 2.5% higher than the
+two-effect observations, which is ordinary benchmark variation at these durations.
+Peak traced allocation increased by 0.2 to 5.0 MiB, consistent with carrying the two
+additional interaction columns rather than a second calculation engine. These are
+observations, not new thresholds; no optimization or dependency is justified by the
+measured differences.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
@@ -142,3 +169,14 @@ byte-identical large-site output and financial equivalence. Large-site elapsed t
 was 1.46 versus 1.53 seconds; the 10x selected workload was 0.41 versus 0.83 seconds;
 and the 5x long-history workload was 1.46 versus 2.28 seconds. Its 1.567x ratio passed
 the unchanged 1.58x warning and 1.65x failure boundaries.
+
+For the `perfattr==0.4.0a1` candidate, `ppar` continued to call the default two-effect
+boundary without an API or schema change. Its complete release-candidate command
+passed 305 tests and 477 subtests, every static, documentation, image, package, and
+installed-demo check, and the unchanged 500x workflow. The final scale run retained
+byte-identical large-site artifacts and observed 1.070x large-site, 2.025x selected-
+input, and 1.490x long-history time ratios. One earlier long-history run observed a
+1.582x warning; its immediate repeat was 1.537x, and the final complete-gate value was
+1.490x. No threshold changed. Removing `ppar`'s speculative dependency upper bound
+was the only host-package metadata change; its minimum version, adapter call, output,
+and presentation behavior remained unchanged.

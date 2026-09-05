@@ -1,5 +1,15 @@
 """Stable column and reconciliation ordering for portable result frames."""
 
+
+def _insert_after(
+    columns: tuple[str, ...],
+    anchor: str,
+    column: str,
+) -> tuple[str, ...]:
+    """Return an independent schema tuple with one column after its anchor."""
+    insertion_index = columns.index(anchor) + 1
+    return (*columns[:insertion_index], column, *columns[insertion_index:])
+
 NORMALIZED_PERFORMANCE_COLUMNS = (
     "from_date",
     "thru_date",
@@ -128,6 +138,38 @@ RECONCILIATION_COLUMNS = (
     "tolerance",
     "passed",
 )
+THREE_EFFECT_PERIOD_DETAIL_COLUMNS = _insert_after(
+    _insert_after(
+        PERIOD_DETAIL_COLUMNS,
+        "selection_effect",
+        "interaction_effect",
+    ),
+    "linked_selection_effect",
+    "linked_interaction_effect",
+)
+THREE_EFFECT_PERIOD_SUMMARY_COLUMNS = _insert_after(
+    _insert_after(
+        PERIOD_SUMMARY_COLUMNS,
+        "selection_effect",
+        "interaction_effect",
+    ),
+    "linked_selection_effect",
+    "linked_interaction_effect",
+)
+THREE_EFFECT_OVERALL_DETAIL_COLUMNS = _insert_after(
+    OVERALL_DETAIL_COLUMNS,
+    "linked_selection_effect",
+    "linked_interaction_effect",
+)
+THREE_EFFECT_CUMULATIVE_COLUMNS = _insert_after(
+    _insert_after(
+        CUMULATIVE_COLUMNS,
+        "linked_selection_effect",
+        "linked_interaction_effect",
+    ),
+    "cumulative_selection_effect",
+    "cumulative_interaction_effect",
+)
 PERIOD_RECONCILIATION_CHECKS = tuple(
     """portfolio_weight benchmark_weight portfolio_contribution
     benchmark_contribution active_contribution effect_components total_effect""".split()
@@ -135,4 +177,14 @@ PERIOD_RECONCILIATION_CHECKS = tuple(
 OVERALL_RECONCILIATION_CHECKS = tuple(
     """linked_portfolio_contribution linked_benchmark_contribution
     linked_active_contribution linked_effect_components linked_total_effect""".split()
+)
+THREE_EFFECT_PERIOD_RECONCILIATION_CHECKS = tuple(
+    """portfolio_weight benchmark_weight portfolio_contribution
+    benchmark_contribution active_contribution three_effect_components
+    total_effect""".split()
+)
+THREE_EFFECT_OVERALL_RECONCILIATION_CHECKS = tuple(
+    """linked_portfolio_contribution linked_benchmark_contribution
+    linked_active_contribution linked_three_effect_components
+    linked_total_effect""".split()
 )

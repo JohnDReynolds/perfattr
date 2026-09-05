@@ -2,13 +2,18 @@
 
 ## Status
 
-This document defines the calculation contract for the first `perfattr` release. It
-is normative for the portable pandas implementation. The project roadmap governs
-sequencing and scope; this specification governs calculation behavior.
+This document defines the released default two-effect calculation contract for
+`perfattr`. It is normative for the portable pandas implementation. The project
+roadmaps govern sequencing and scope; this specification governs the shared and
+default calculation behavior.
 
 Roadmap 2's upstream preparation contract is defined separately in
 `docs/preparation_specification.md`. That layer produces the prepared frames consumed
 by this calculation contract without changing the calculation core's responsibility.
+The opt-in Brinson-Fachler three-effect extension is defined in
+`docs/brinson_fachler_three_effect_specification.md`; that document changes only the
+method, additional interaction channels, and related reconciliation names it states
+explicitly.
 
 The words **must**, **must not**, **should**, and **may** describe requirements with
 their ordinary technical meanings.
@@ -49,12 +54,16 @@ The first public calculation entry point is:
 def calculate_attribution(
     portfolio: pd.DataFrame,
     benchmark: pd.DataFrame,
+    *,
+    method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+    reconciliation_tolerance: float = 1e-12,
 ) -> AttributionResult:
     ...
 ```
 
-The root package exports `AttributionError`, `AttributionResult`, and
-`calculate_attribution`; callers do not need to import an internal module.
+The root package exports `AttributionError`, `AttributionMethod`,
+`AttributionResult`, and `calculate_attribution`; callers do not need to import an
+internal module.
 
 The result container is an ordinary dataclass:
 
@@ -66,6 +75,7 @@ class AttributionResult:
     overall_detail: pd.DataFrame
     cumulative: pd.DataFrame
     reconciliation: pd.DataFrame
+    method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
 ```
 
 `AttributionError`, a subclass of `ValueError`, reports invalid financial data or a
@@ -267,7 +277,8 @@ selection_effect = wP[g,t] * (rP[g,t] - rB[g,t])
 ```
 
 It therefore combines conventional benchmark-weighted selection and interaction.
-The first release does not return a separate interaction effect.
+This remains the default. The explicit three-effect method and its undefined-return
+boundary are specified in `docs/brinson_fachler_three_effect_specification.md`.
 
 ## Multi-period linking
 
@@ -329,6 +340,9 @@ linked_selection_effect = selection_effect * LA[t]
 linked_total_effect = total_effect * LA[t]
 ```
 
+The opt-in three-effect method applies this same `LA[t]` to interaction. It does not
+introduce a second linking policy.
+
 Linked active contribution and linked total effect are distinct allocation paths.
 Their period and identifier values need not match, but both reconcile to `P - B` over
 the full horizon.
@@ -366,6 +380,10 @@ identities must reconcile in the final cumulative row.
 
 Every result has a zero-based `RangeIndex`. Columns appear exactly in the order below.
 The portable core does not add display names or total rows.
+
+The schemas below are the stable default two-effect schemas. The three-effect
+specification defines the exact insertion positions of its additional interaction
+columns without reinterpreting any column listed here.
 
 In `period_detail`, portfolio and benchmark return columns contain effective period
 returns. In `period_summary`, they contain period totals. In `overall_detail`, they
@@ -516,7 +534,9 @@ linked_total_effect
 
 Weight checks compare each net weight sum with `1.0`. Contribution and total-effect
 checks compare detail sums with their corresponding period or overall return.
-Component checks compare allocation plus selection with total effect.
+Default component checks compare allocation plus selection with total effect. The
+three-effect method compares allocation plus selection plus interaction and uses the
+explicit check names defined in its supplemental specification.
 
 A successful result contains only passing reconciliation rows. Any failed financial
 reconciliation raises `AttributionError` before a result is returned. The frame is
@@ -583,7 +603,8 @@ Integration tests separately require identical displayed and serialized values a
 
 ## Deferred capabilities
 
-The first release deliberately excludes configurable effect conventions, separate
-interaction, currency attribution, source-period consolidation, time-aware mapping,
-I/O helpers, plugins, and acceleration dependencies. Add a policy or abstraction only
-when a second implemented use case requires it.
+Current deferred calculation capabilities include Brinson-Hood-Beebower attribution,
+hierarchical roll-up, alternative multi-period linking methods, currency attribution,
+external-flow attribution effects, derivative exposure inference, and presentation or
+report generation. Add a policy or abstraction only when an approved implemented use
+case requires it.

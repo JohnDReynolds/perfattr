@@ -5,10 +5,24 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from perfattr import AttributionError, AttributionResult, calculate_attribution
+from perfattr import (
+    AttributionError,
+    AttributionMethod,
+    AttributionResult,
+    calculate_attribution,
+)
+from perfattr._schemas import (
+    THREE_EFFECT_CUMULATIVE_COLUMNS,
+    THREE_EFFECT_OVERALL_DETAIL_COLUMNS,
+    THREE_EFFECT_OVERALL_RECONCILIATION_CHECKS,
+    THREE_EFFECT_PERIOD_DETAIL_COLUMNS,
+    THREE_EFFECT_PERIOD_RECONCILIATION_CHECKS,
+    THREE_EFFECT_PERIOD_SUMMARY_COLUMNS,
+)
 
 
 _FIXTURE_ROOT = Path(__file__).parent / "fixtures"
@@ -67,6 +81,48 @@ def _read_expected_detail(case_name: str) -> pd.DataFrame:
     return expected
 
 
+def _randomized_valid_inputs() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Create reproducible valid inputs used only for financial invariants."""
+    random = np.random.default_rng(20260905)
+    periods = (
+        ("2024-01-01", "2024-01-31", 31),
+        ("2024-02-01", "2024-02-29", 29),
+        ("2024-03-01", "2024-03-31", 31),
+        ("2024-04-01", "2024-04-30", 30),
+    )
+    identifiers = tuple(f"G{number}" for number in range(8))
+    side_rows: tuple[
+        list[tuple[str, str, str, float, float, int]],
+        list[tuple[str, str, str, float, float, int]],
+    ] = ([], [])
+    for from_date, thru_date, quantity_of_days in periods:
+        for rows in side_rows:
+            weights = random.dirichlet(np.ones(len(identifiers)))
+            returns = random.uniform(-0.25, 0.25, len(identifiers))
+            rows.extend(
+                (
+                    from_date,
+                    thru_date,
+                    identifier,
+                    float(weight),
+                    float(period_return),
+                    quantity_of_days,
+                )
+                for identifier, weight, period_return in zip(
+                    identifiers,
+                    weights,
+                    returns,
+                    strict=True,
+                )
+            )
+    columns = """from_date thru_date identifier weight return
+    quantity_of_days""".split()
+    return (
+        pd.DataFrame(side_rows[0], columns=columns),
+        pd.DataFrame(side_rows[1], columns=columns),
+    )
+
+
 @pytest.mark.parametrize("case_name", _SINGLE_PERIOD_CASES)
 def test_calculate_attribution_matches_independent_period_detail(
     case_name: str,
@@ -77,6 +133,7 @@ def test_calculate_attribution_matches_independent_period_detail(
     result = calculate_attribution(portfolio, benchmark)
 
     assert isinstance(result, AttributionResult)
+    assert result.method is AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
     pd.testing.assert_frame_equal(
         result.period_detail,
         _read_expected_detail(case_name),
@@ -84,6 +141,70 @@ def test_calculate_attribution_matches_independent_period_detail(
         rtol=1e-12,
         atol=1e-12,
     )
+
+
+def test_calculation_rejects_an_unvalidated_method_string() -> None:
+    """A method name must not silently select a financial calculation policy."""
+    portfolio, benchmark = _read_inputs("single_period_derived")
+    invalid_method = cast(
+        AttributionMethod,
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT.value,
+    )
+
+    with pytest.raises(TypeError, match="method must be an AttributionMethod"):
+        calculate_attribution(portfolio, benchmark, method=invalid_method)
+
+
+def test_three_effect_method_returns_its_complete_public_schema() -> None:
+    """The opt-in method should expose interaction in every approved result frame."""
+    portfolio, benchmark = _read_inputs("single_period_derived")
+
+    result = calculate_attribution(
+        portfolio,
+        benchmark,
+        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    )
+
+    assert result.method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT
+    assert tuple(result.period_detail.columns) == THREE_EFFECT_PERIOD_DETAIL_COLUMNS
+    assert tuple(result.period_summary.columns) == THREE_EFFECT_PERIOD_SUMMARY_COLUMNS
+    assert tuple(result.overall_detail.columns) == THREE_EFFECT_OVERALL_DETAIL_COLUMNS
+    assert tuple(result.cumulative.columns) == THREE_EFFECT_CUMULATIVE_COLUMNS
+    assert list(result.reconciliation["check"]) == [
+        *THREE_EFFECT_PERIOD_RECONCILIATION_CHECKS,
+        *THREE_EFFECT_OVERALL_RECONCILIATION_CHECKS,
+    ]
+    assert bool(result.reconciliation["passed"].to_numpy().all())
+
+
+def test_explicit_two_effect_method_is_exactly_the_released_default() -> None:
+    """Selecting the released method explicitly must not alter its numerical path.
+
+    Exact frame equality, rather than tolerance-based equality, protects the approved
+    promise that adding method selection does not route the default calculation
+    through a rewritten formula or change any value, null, dtype, row, or column.
+    """
+    portfolio, benchmark = _read_inputs("multi_period_linking")
+
+    default_result = calculate_attribution(portfolio, benchmark)
+    explicit_result = calculate_attribution(
+        portfolio,
+        benchmark,
+        method=AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+    )
+
+    for frame_name in (
+        "period_detail",
+        "period_summary",
+        "overall_detail",
+        "cumulative",
+        "reconciliation",
+    ):
+        pd.testing.assert_frame_equal(
+            getattr(default_result, frame_name),
+            getattr(explicit_result, frame_name),
+            check_exact=True,
+        )
 
 
 def test_result_frames_follow_the_specified_contract() -> None:
@@ -121,7 +242,10 @@ def test_result_frames_follow_the_specified_contract() -> None:
     assert list(result.reconciliation["check"]) == expected_checks
 
 
-def test_identical_inputs_have_zero_active_values_and_effects() -> None:
+@pytest.mark.parametrize("method", tuple(AttributionMethod))
+def test_identical_inputs_have_zero_active_values_and_effects(
+    method: AttributionMethod,
+) -> None:
     """Identical portfolio and benchmark facts must produce no active result.
 
     This portable invariant previously had explicit coverage only through the ppar
@@ -130,11 +254,17 @@ def test_identical_inputs_have_zero_active_values_and_effects() -> None:
     """
     portfolio, _benchmark = _read_inputs("multi_period_linking")
 
-    result = calculate_attribution(portfolio, portfolio.copy(deep=True))
+    result = calculate_attribution(
+        portfolio,
+        portfolio.copy(deep=True),
+        method=method,
+    )
 
     zero_columns = """active_weight active_return active_contribution
     allocation_effect selection_effect total_effect linked_active_contribution
     linked_allocation_effect linked_selection_effect linked_total_effect""".split()
+    if method is AttributionMethod.BRINSON_FACHLER_THREE_EFFECT:
+        zero_columns.extend(("interaction_effect", "linked_interaction_effect"))
     for column in zero_columns:
         assert result.period_detail[column].abs().max() == pytest.approx(0.0, abs=1e-12)
     assert result.cumulative["cumulative_active_return"].abs().max() == pytest.approx(
@@ -146,33 +276,18 @@ def test_identical_inputs_have_zero_active_values_and_effects() -> None:
 def test_portfolio_weighted_selection_absorbs_interaction() -> None:
     """Released selection equals conventional selection plus interaction.
 
-    For identifier A, portfolio and benchmark weights are 70% and 40%, and their
-    returns are 10% and 6%. Conventional benchmark-weighted selection is 1.6%, while
-    interaction is 1.2%. The portable two-effect convention reports their 2.8% sum as
+    For fixture identifier A, portfolio and benchmark weights are 70% and 60%, and
+    their returns are 8% and 5%. Conventional benchmark-weighted selection is 1.8%,
+    while interaction is 0.3%. The portable two-effect convention reports their 2.1% sum as
     portfolio-weighted selection and does not expose a separate interaction column.
     """
-    columns = """from_date thru_date identifier weight return
-    quantity_of_days""".split()
-    portfolio = pd.DataFrame(
-        [
-            ("2024-01-01", "2024-01-31", "A", 0.70, 0.10, 31),
-            ("2024-01-01", "2024-01-31", "B", 0.30, 0.02, 31),
-        ],
-        columns=columns,
-    )
-    benchmark = pd.DataFrame(
-        [
-            ("2024-01-01", "2024-01-31", "A", 0.40, 0.06, 31),
-            ("2024-01-01", "2024-01-31", "B", 0.60, 0.02, 31),
-        ],
-        columns=columns,
-    )
+    portfolio, benchmark = _read_inputs("single_period_derived")
 
     result = calculate_attribution(portfolio, benchmark)
 
     detail = result.period_detail.set_index("identifier")
-    conventional_selection = 0.40 * (0.10 - 0.06)
-    conventional_interaction = (0.70 - 0.40) * (0.10 - 0.06)
+    conventional_selection = 0.60 * (0.08 - 0.05)
+    conventional_interaction = (0.70 - 0.60) * (0.08 - 0.05)
     assert detail.loc["A", "selection_effect"] == pytest.approx(
         conventional_selection + conventional_interaction,
         abs=1e-12,
@@ -265,16 +380,88 @@ def test_authoritative_contribution_preserves_distinct_return_semantics() -> Non
     assert fee["linked_portfolio_contribution"] == pytest.approx(-0.001)
 
 
-def test_calculation_is_deterministic_and_does_not_mutate_inputs() -> None:
+def test_three_effect_preserves_authoritative_fee_through_public_result() -> None:
+    """The complete three-effect path should retain an unexposed accounting charge.
+
+    The asset's 5.1% authoritative contribution implies a 5.1% effective period
+    return despite its supplied 5.0% input return. The fee has zero weight, null
+    return, and -0.1% contribution on the portfolio side and is absent from the
+    benchmark. Its active weight is therefore zero: allocation and interaction are
+    zero, while selection and total retain the entire -0.1% accounting result.
+    """
+    portfolio, benchmark = _read_inputs("single_period_authoritative")
+
+    three_effect = calculate_attribution(
+        portfolio,
+        benchmark,
+        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    )
+    two_effect = calculate_attribution(portfolio, benchmark)
+    detail = three_effect.period_detail.set_index("identifier")
+    fee = detail.loc["FEE"]
+
+    assert detail.loc["ASSET", "portfolio_return"] == pytest.approx(0.051)
+    assert pd.isna(fee["portfolio_return"])
+    assert pd.isna(fee["active_return"])
+    assert fee["allocation_effect"] == 0.0
+    assert fee["interaction_effect"] == 0.0
+    assert fee["selection_effect"] == pytest.approx(-0.001, abs=1e-12)
+    assert fee["total_effect"] == pytest.approx(-0.001, abs=1e-12)
+    np.testing.assert_allclose(
+        three_effect.period_detail["selection_effect"]
+        + three_effect.period_detail["interaction_effect"],
+        two_effect.period_detail["selection_effect"],
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+
+def test_three_effect_handles_missing_sides_signed_and_zero_weights() -> None:
+    """Ordinary universe rules should govern signed, absent, and neutral rows.
+
+    C exists only in the portfolio at weight -10% and return 20%, so its missing
+    benchmark side is zero and interaction is ``-10% * 20% = -2%``. D exists only in
+    the benchmark at weight 10% and return 10%, producing active weight and return of
+    -10% and interaction +1%. E is an explicit zero-weight, null-input-return row;
+    normalization gives it zero effective return and every effect remains zero.
+    """
+    portfolio, benchmark = _read_inputs("single_period_derived")
+
+    result = calculate_attribution(
+        portfolio,
+        benchmark,
+        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    )
+    detail = result.period_detail.set_index("identifier")
+
+    assert detail.loc["C", "benchmark_weight"] == 0.0
+    assert detail.loc["C", "benchmark_return"] == 0.0
+    assert detail.loc["C", "interaction_effect"] == pytest.approx(-0.02, abs=1e-12)
+    assert detail.loc["C", "selection_effect"] == 0.0
+    assert detail.loc["D", "portfolio_weight"] == 0.0
+    assert detail.loc["D", "portfolio_return"] == 0.0
+    assert detail.loc["D", "interaction_effect"] == pytest.approx(0.01, abs=1e-12)
+    assert detail.loc["D", "selection_effect"] == pytest.approx(-0.01, abs=1e-12)
+    assert detail.loc["E", "portfolio_weight"] == 0.0
+    assert detail.loc["E", "portfolio_return"] == 0.0
+    assert detail.loc["E", "interaction_effect"] == 0.0
+    assert detail.loc["E", "total_effect"] == 0.0
+
+
+@pytest.mark.parametrize("method", tuple(AttributionMethod))
+def test_calculation_is_deterministic_and_does_not_mutate_inputs(
+    method: AttributionMethod,
+) -> None:
     """Row order should not matter and caller-owned frames should remain unchanged."""
     portfolio, benchmark = _read_inputs("multi_period_linking")
     portfolio_before = portfolio.copy(deep=True)
     benchmark_before = benchmark.copy(deep=True)
 
-    ordered = calculate_attribution(portfolio, benchmark)
+    ordered = calculate_attribution(portfolio, benchmark, method=method)
     shuffled = calculate_attribution(
         portfolio.sample(frac=1.0, random_state=7),
         benchmark.sample(frac=1.0, random_state=11),
+        method=method,
     )
 
     pd.testing.assert_frame_equal(portfolio, portfolio_before)
@@ -308,6 +495,171 @@ def test_multi_period_linking_matches_independent_detail(case_name: str) -> None
         rtol=1e-12,
         atol=1e-12,
     )
+
+
+def test_three_effect_multi_period_linking_matches_hand_calculation() -> None:
+    """All linked effect channels should match independent two-period values.
+
+    Period-one Carino coefficient 1.0009785331840475 multiplies unlinked interactions
+    of 0.2% for both Bonds and Equity. Period two uses coefficient
+    1.0549821109867057 on interactions -0.05% and -0.2%. Three-effect selections are
+    benchmark weight times active return: -1.0%, +1.0%, +0.3%, and -0.8% before the
+    same coefficients are applied. The literals below were hand-derived from those
+    values and the independently documented coefficients in the fixture provenance.
+    """
+    portfolio, benchmark = _read_inputs("multi_period_linking")
+
+    three_effect = calculate_attribution(
+        portfolio,
+        benchmark,
+        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    )
+    two_effect = calculate_attribution(portfolio, benchmark)
+
+    detail = three_effect.period_detail.set_index(["thru_date", "identifier"])
+    expected = {
+        (pd.Timestamp("2024-01-31"), "Bonds"): (
+            -0.010009785331840475,
+            0.002001957066368095,
+        ),
+        (pd.Timestamp("2024-01-31"), "Equity"): (
+            0.010009785331840475,
+            0.002001957066368095,
+        ),
+        (pd.Timestamp("2024-02-29"), "Bonds"): (
+            0.003164946332960117,
+            -0.0005274910554933529,
+        ),
+        (pd.Timestamp("2024-02-29"), "Equity"): (
+            -0.008439856887893647,
+            -0.0021099642219734116,
+        ),
+    }
+    for key, (selection, interaction) in expected.items():
+        assert detail.loc[key, "linked_selection_effect"] == pytest.approx(
+            selection,
+            abs=1e-12,
+        )
+        assert detail.loc[key, "linked_interaction_effect"] == pytest.approx(
+            interaction,
+            abs=1e-12,
+        )
+
+    np.testing.assert_allclose(
+        three_effect.period_detail["linked_selection_effect"]
+        + three_effect.period_detail["linked_interaction_effect"],
+        two_effect.period_detail["linked_selection_effect"],
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        three_effect.period_summary["linked_interaction_effect"],
+        [0.00400391413273619, -0.0026374552774667645],
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    overall = three_effect.overall_detail.set_index("identifier")
+    assert overall.loc["Bonds", "linked_interaction_effect"] == pytest.approx(
+        0.001474466010874742,
+        abs=1e-12,
+    )
+    assert overall.loc["Equity", "linked_interaction_effect"] == pytest.approx(
+        -0.00010800715560531663,
+        abs=1e-12,
+    )
+    final = three_effect.cumulative.iloc[-1]
+    assert final["cumulative_selection_effect"] == pytest.approx(
+        -0.0052749105549335295,
+        abs=1e-12,
+    )
+    assert final["cumulative_interaction_effect"] == pytest.approx(
+        0.0013664588552694257,
+        abs=1e-12,
+    )
+    assert (
+        final["cumulative_allocation_effect"]
+        + final["cumulative_selection_effect"]
+        + final["cumulative_interaction_effect"]
+    ) == pytest.approx(final["cumulative_total_effect"], abs=1e-12)
+
+
+@pytest.mark.parametrize("case_name", ("multi_period_linking", "linking_boundaries"))
+def test_three_effect_linking_limits_reconcile(case_name: str) -> None:
+    """Regular and near-limit Carino cases must retain every additive identity.
+
+    The boundary fixture includes equal active-side period returns and compounded
+    returns close to -100%, exercising the released analytic Carino limits. This test
+    does not invent separate expected values; it verifies the production
+    reconciliation evidence and independently sums the three linked channels for
+    every returned detail row.
+    """
+    portfolio, benchmark = _read_inputs(case_name)
+
+    result = calculate_attribution(
+        portfolio,
+        benchmark,
+        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    )
+
+    np.testing.assert_allclose(
+        result.period_detail["linked_allocation_effect"]
+        + result.period_detail["linked_selection_effect"]
+        + result.period_detail["linked_interaction_effect"],
+        result.period_detail["linked_total_effect"],
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    assert bool(result.reconciliation["passed"].to_numpy().all())
+
+
+def test_randomized_three_effect_inputs_preserve_only_independent_invariants() -> None:
+    """Reproducible varied inputs should preserve every additive identity.
+
+    Random data broadens the combinations of active weights and returns but is never
+    used to manufacture expected values. The assertions come independently from the
+    governing identities: three-effect selection plus interaction collapses to the
+    released two-effect selection, three simple effects equal total per row, and the
+    same identity survives Carino linking per row and over the complete horizon.
+    """
+    portfolio, benchmark = _randomized_valid_inputs()
+
+    two_effect = calculate_attribution(portfolio, benchmark)
+    three_effect = calculate_attribution(
+        portfolio,
+        benchmark,
+        method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    )
+
+    np.testing.assert_allclose(
+        three_effect.period_detail["selection_effect"]
+        + three_effect.period_detail["interaction_effect"],
+        two_effect.period_detail["selection_effect"],
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        three_effect.period_detail["allocation_effect"]
+        + three_effect.period_detail["selection_effect"]
+        + three_effect.period_detail["interaction_effect"],
+        three_effect.period_detail["total_effect"],
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        three_effect.period_detail["linked_allocation_effect"]
+        + three_effect.period_detail["linked_selection_effect"]
+        + three_effect.period_detail["linked_interaction_effect"],
+        three_effect.period_detail["linked_total_effect"],
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    final = three_effect.cumulative.iloc[-1]
+    assert (
+        final["cumulative_allocation_effect"]
+        + final["cumulative_selection_effect"]
+        + final["cumulative_interaction_effect"]
+    ) == pytest.approx(final["cumulative_total_effect"], abs=1e-12)
+    assert bool(three_effect.reconciliation["passed"].to_numpy().all())
 
 
 def test_multi_period_horizon_and_cumulative_contract() -> None:

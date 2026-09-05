@@ -1,4 +1,8 @@
-"""Define diagnostics shared by the portable preparation stages."""
+"""Define diagnostics raised by portable attribution and preparation stages."""
+
+
+class AttributionError(ValueError):
+    """Report invalid attribution input or a failed calculation invariant."""
 
 
 class PreparationError(ValueError):
@@ -9,4 +13,4 @@ class PreparationWarning(RuntimeWarning):
     """Report valid preparation input truncated before an incomplete bucket."""
 
 
-__all__ = ["PreparationError", "PreparationWarning"]
+__all__ = ["AttributionError", "PreparationError", "PreparationWarning"]

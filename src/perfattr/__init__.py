@@ -15,14 +15,16 @@ from perfattr.io import (
 )
 from perfattr.prepare import PreparationResult, prepare_attribution
 from perfattr.mapping import normalize_mapping
+from perfattr.method import AttributionMethod
 from perfattr.preparation import (
     select_portfolio,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0a1"
 
 __all__ = [
     "AttributionError",
+    "AttributionMethod",
     "AttributionResult",
     "Frequency",
     "PreparationError",

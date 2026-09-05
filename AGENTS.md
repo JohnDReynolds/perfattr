@@ -5,15 +5,18 @@ Apply these conventions when modifying or creating code in this project.
 ## Roadmap Authority
 
 - Treat `_extras/perfattr_roadmap_1.md`, `_extras/perfattr_roadmap_2.md`, and
-  `_extras/perfattr_roadmap_4.md` as completed historical context. The accepted
-  `docs/effective_dated_classification_specification.md` remains the contract for the
-  released effective-dated classification behavior.
+  `_extras/perfattr_roadmap_4_effective_dated_classification.md` as completed historical
+  context. The accepted `docs/effective_dated_classification_specification.md` remains
+  the contract for the released effective-dated classification behavior.
+- Treat `_extras/perfattr_roadmap_5_brinson_fachler_three_effect.md` and
+  `docs/brinson_fachler_three_effect_specification.md` as the governing roadmap and
+  contract for the current Brinson-Fachler three-effect work.
 - Treat unpromoted items in `_extras/perfattr_roadmap_3.md` as a noncommitted backlog.
   A roadmap 3 item does not authorize implementation until it is deliberately promoted
   into a new active roadmap.
-- Use this file for engineering conduct and any deliberately approved active roadmap
-  for product scope, contracts, sequencing, and boundaries. Do not infer new scope
-  from the completed roadmaps or noncommitted backlog.
+- Use this file for engineering conduct and the active roadmap for product scope,
+  contracts, sequencing, and boundaries. Do not infer new scope from the completed
+  roadmaps or noncommitted backlog.
 - Keep the reusable calculation core independent from preparation. Portable,
   source-neutral preparation may live in a separate `perfattr` layer as authorized by
   roadmap 2.

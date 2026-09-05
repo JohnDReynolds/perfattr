@@ -28,10 +28,14 @@ from benchmark_support import (
     month_bounds,
     require_positive_samples,
 )
-from perfattr import AttributionResult, calculate_attribution
+from perfattr import AttributionMethod, AttributionResult, calculate_attribution
 
 
 _InputForm = Literal["derived", "authoritative"]
+_METHODS = {
+    "two-effect": AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+    "three-effect": AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+}
 
 
 def _period_row_counts(workload: BenchmarkWorkload) -> list[int]:
@@ -106,10 +110,12 @@ def _make_period_frame(
 
 
 def _calculate(
-    portfolio: pd.DataFrame, benchmark: pd.DataFrame
+    portfolio: pd.DataFrame,
+    benchmark: pd.DataFrame,
+    method: AttributionMethod,
 ) -> AttributionResult:
     """Call the public core API with benchmark fixture conventions."""
-    return calculate_attribution(portfolio, benchmark)
+    return calculate_attribution(portfolio, benchmark, method=method)
 
 
 def _input_mebibytes(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> float:
@@ -117,11 +123,15 @@ def _input_mebibytes(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> float:
     return deep_frame_mebibytes((portfolio, benchmark))
 
 
-def _profile(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> None:
+def _profile(
+    portfolio: pd.DataFrame,
+    benchmark: pd.DataFrame,
+    method: AttributionMethod,
+) -> None:
     """Print the most expensive cumulative call paths for one calculation."""
     profiler = cProfile.Profile()
     profiler.enable()
-    _calculate(portfolio, benchmark)
+    _calculate(portfolio, benchmark, method)
     profiler.disable()
     pstats.Stats(profiler).strip_dirs().sort_stats("cumulative").print_stats(25)
 
@@ -135,6 +145,12 @@ def _parse_args() -> argparse.Namespace:
         choices=("derived", "authoritative"),
         default="derived",
         help="Use weight/return input or include authoritative contribution.",
+    )
+    parser.add_argument(
+        "--method",
+        choices=tuple(_METHODS),
+        default="two-effect",
+        help="Select the attribution effect convention (default: two-effect).",
     )
     parser.add_argument(
         "--profile",
@@ -151,6 +167,7 @@ def main() -> None:
     args = _parse_args()
     workload_names = args.workload or list(WORKLOADS)
     input_form: _InputForm = args.input_form
+    method = _METHODS[args.method]
 
     print(
         f"Python {platform.python_version()} | pandas {pd.__version__} | "
@@ -165,13 +182,13 @@ def main() -> None:
         workload = WORKLOADS[workload_name]
         portfolio = _make_side(workload, side="portfolio", input_form=input_form)
         benchmark = _make_side(workload, side="benchmark", input_form=input_form)
-        operation = partial(_calculate, portfolio, benchmark)
+        operation = partial(_calculate, portfolio, benchmark, method)
         samples = measure_elapsed(operation, args.samples)
         peak_mebibytes = measure_peak_mebibytes(operation)
 
         print(
-            f"{workload.name}: form={input_form}, rows/side={workload.rows_per_side:,}, "
-            f"periods={workload.periods}"
+            f"{workload.name}: method={args.method}, form={input_form}, "
+            f"rows/side={workload.rows_per_side:,}, periods={workload.periods}"
         )
         print(
             f"  elapsed median={statistics.median(samples):.4f}s "
@@ -182,7 +199,7 @@ def main() -> None:
             f"peak traced allocation={peak_mebibytes:.1f} MiB"
         )
         if args.profile:
-            _profile(portfolio, benchmark)
+            _profile(portfolio, benchmark, method)
 
 
 if __name__ == "__main__":

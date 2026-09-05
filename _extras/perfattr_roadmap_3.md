@@ -37,7 +37,7 @@ These are existing input representations, not future calculation features. They 
 the released formulas, schemas, and reconciliation rules without special numerical
 treatment. Host accounting adapters remain responsible for deciding what a source row
 means and supplying the appropriate facts. The first unresolved feature candidate in
-this backlog is effective-dated classification.
+this backlog is multi-level hierarchical roll-up.
 
 ### Explicit cash — supported
 
@@ -81,7 +81,7 @@ this backlog is effective-dated classification.
   period.
 
 Roadmap 2 establishes the required pipeline order. The accepted governing contract is
-in [`perfattr_roadmap_4.md`](perfattr_roadmap_4.md) and
+in [roadmap 4](perfattr_roadmap_4_effective_dated_classification.md) and
 [`effective_dated_classification_specification.md`][effective-spec].
 Implementation is authorized only in the dependency order and within the boundaries
 of roadmap 4.
@@ -102,6 +102,10 @@ and applicable formulas during specification.
 
 ### Separate interaction effect
 
+**Status:** Promoted together with Brinson-Fachler three-effect attribution into
+accepted [roadmap 5](perfattr_roadmap_5_brinson_fachler_three_effect.md) on September
+5, 2026.
+
 - Preserve the initial policy in which portfolio-weighted selection absorbs
   interaction.
 - Add an explicit policy that reports interaction separately.
@@ -109,6 +113,9 @@ and applicable formulas during specification.
 - Approve a result-schema compatibility plan before adding an interaction column.
 
 ### Brinson-Fachler three-effect attribution
+
+**Status:** Promoted together with a separate interaction effect into accepted
+[roadmap 5](perfattr_roadmap_5_brinson_fachler_three_effect.md) on September 5, 2026.
 
 - Add allocation, selection, and interaction as distinct effects.
 - Retain the existing Brinson-Fachler allocation convention as the baseline.

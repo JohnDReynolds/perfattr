@@ -303,7 +303,7 @@ presentation.
 Roadmap 2 did not implement effective-dated mappings. The user approved that extension
 on September 4, 2026; its additional normative contract is in
 `docs/effective_dated_classification_specification.md`, and implementation is governed
-by `_extras/perfattr_roadmap_4.md`.
+by `_extras/perfattr_roadmap_4_effective_dated_classification.md`.
 
 ## Frequency and holiday contract
 

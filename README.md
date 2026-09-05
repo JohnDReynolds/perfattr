@@ -7,23 +7,41 @@ The package provides a reusable Brinson-Fachler calculation core and a portable
 preparation layer for source-period weights and returns. Portfolio accounting, vendor
 schemas, and presentation remain outside the package boundary.
 
-The calculation core accepts one or more prepared reporting periods and provides
-input validation, universe equalization, Brinson-Fachler allocation and selection,
-logarithmic contribution linking, Carino active-effect linking, cumulative and
-full-horizon results, and financial reconciliation. The completed initial roadmap is
-recorded in [`_extras/perfattr_roadmap_1.md`](_extras/perfattr_roadmap_1.md). The
-completed portable preparation work is recorded in
+## Main features
+
+- Accept weights and returns, or authoritative contributions when accounting results
+  are available.
+- Validate, select, and align portfolio and benchmark histories.
+- Consolidate smaller source periods into complete monthly, quarterly, or yearly
+  reporting periods using calendar and holiday rules.
+- Apply static or effective-dated classification mappings before consolidation.
+- Calculate Brinson-Fachler allocation with either compact two-effect selection or
+  explicit three-effect selection and interaction.
+- Link contributions logarithmically and attribution effects using Carino linking.
+- Preserve zero-weight fee and financing contributions without inventing returns.
+- Return deterministic pandas result frames with explicit financial reconciliation.
+
+The completed initial calculation roadmap is recorded in
+[`_extras/perfattr_roadmap_1.md`](_extras/perfattr_roadmap_1.md). The completed portable
+preparation work is recorded in
 [`_extras/perfattr_roadmap_2.md`](_extras/perfattr_roadmap_2.md), while later candidates
 are kept in the noncommitted
 [`_extras/perfattr_roadmap_3.md`](_extras/perfattr_roadmap_3.md). Effective-dated
 classification was the first promoted candidate and its completed work is recorded in
-[`_extras/perfattr_roadmap_4.md`](_extras/perfattr_roadmap_4.md), with its accepted
-contract in [`docs/effective_dated_classification_specification.md`][effective-spec].
+[`_extras/perfattr_roadmap_4_effective_dated_classification.md`][effective-roadmap], with
+its accepted contract in
+[`docs/effective_dated_classification_specification.md`][effective-spec].
+The opt-in Brinson-Fachler three-effect work is governed by
+[`_extras/perfattr_roadmap_5_brinson_fachler_three_effect.md`][three-effect-roadmap]
+and [`docs/brinson_fachler_three_effect_specification.md`][three-effect-spec].
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).
 
 [effective-spec]: docs/effective_dated_classification_specification.md
+[effective-roadmap]: _extras/perfattr_roadmap_4_effective_dated_classification.md
+[three-effect-roadmap]: _extras/perfattr_roadmap_5_brinson_fachler_three_effect.md
+[three-effect-spec]: docs/brinson_fachler_three_effect_specification.md
 
 ```python
 import pandas as pd
@@ -71,6 +89,49 @@ prepared = prepare_attribution(portfolio, benchmark)
 result = calculate_attribution(prepared.portfolio, prepared.benchmark)
 print(result.period_detail)
 ```
+
+## Attribution methods
+
+The default remains the released two-effect Brinson-Fachler convention: allocation is
+reported separately, while portfolio-weighted selection absorbs interaction. Opt in
+to explicit interaction with the public method enum:
+
+```python
+from perfattr import AttributionMethod, calculate_attribution
+
+three_effect = calculate_attribution(
+    prepared.portfolio,
+    prepared.benchmark,
+    method=AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+)
+print(
+    three_effect.period_detail[
+        ["allocation_effect", "selection_effect", "interaction_effect"]
+    ]
+)
+```
+
+For portfolio and benchmark weights `wP` and `wB`, effective returns `rP` and `rB`,
+and total benchmark return `B`, the three effects are:
+
+```text
+allocation  = (wP - wB) * (rB - B)
+selection   = wB * (rP - rB)
+interaction = (wP - wB) * (rP - rB)
+```
+
+Positive and negative values follow these signed formulas; `perfattr` does not label
+an effect as favorable or unfavorable. Supplied contribution remains authoritative.
+If either effective return is undefined, interaction is zero and selection retains
+the reconciled residual rather than inventing a return.
+
+The opt-in result inserts `interaction_effect` immediately after `selection_effect`
+and `linked_interaction_effect` immediately after `linked_selection_effect` wherever
+those channels apply. Cumulative output also places
+`cumulative_interaction_effect` immediately after `cumulative_selection_effect`.
+`AttributionResult.method` records the selected convention. See the
+[three-effect specification][three-effect-spec] for the complete schemas, linking
+rules, null policy, and independently calculated example.
 
 Canonical CSV inputs can be loaded with `read_performance_csv`; optional mapping and
 classification readers are also available at the package root.
@@ -131,6 +192,9 @@ python scripts/benchmark_core.py --samples 5
 python scripts/benchmark_core.py --samples 5 --input-form authoritative
 python scripts/benchmark_preparation.py --samples 5
 ```
+
+Pass `--method three-effect` to `benchmark_core.py` to measure the opt-in calculation;
+the default remains `--method two-effect`.
 
 Add `--workload monthly_121260 --profile` to inspect one workload's cumulative
 calculation-core call profile. The preparation benchmark compares static and

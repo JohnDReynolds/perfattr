@@ -50,7 +50,7 @@ Currency	Karnosky-Singer (4-effect, additive)	Karnosky & Singer (1994)
 Before creating a new roadmap(s), can you give me your thoughts.  Especially around the feasibility of the first group of features, and if you think they really should be moved from ppar to perfattr.
 
 ##################################################### OBSOLETE ABOVE HERE
-
+Eventually remove all references to pybrinson.
 Eventually go through the 4 "Codex Reviews" in perfattr.
 
 
