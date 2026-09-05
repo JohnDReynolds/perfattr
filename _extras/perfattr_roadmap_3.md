@@ -128,9 +128,9 @@ Candidate methodological reference: Brinson and Fachler (1985).
 
 ### Brinson-Hood-Beebower three-effect attribution
 
-**Status:** Promoted into accepted
-[roadmap 6](perfattr_roadmap_6_brinson_hood_beebower_three_effect.md) on September 5,
-2026. Implementation is authorized only in its documented sequence.
+**Status:** Promoted into completed
+[roadmap 6](perfattr_roadmap_6_brinson_hood_beebower_three_effect.md) and released in
+`perfattr==0.5.0a1` on September 5, 2026.
 
 - Add the BHB allocation convention with separate selection and interaction.
 - Share validated infrastructure with Brinson-Fachler without obscuring the different

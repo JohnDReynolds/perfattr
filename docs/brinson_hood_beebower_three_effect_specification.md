@@ -1,7 +1,7 @@
 # Brinson-Hood-Beebower Three-Effect Attribution Specification
 
-**Status:** Accepted September 5, 2026. Implemented and verified through roadmap 6
-Step 7; the release gate remains.
+**Status:** Accepted and implemented September 5, 2026. Initially released in
+`perfattr==0.5.0a1`.
 
 This document specifies the opt-in Brinson-Hood-Beebower (BHB) three-effect contract
 for [roadmap 6][roadmap-6]. It supplements the released default

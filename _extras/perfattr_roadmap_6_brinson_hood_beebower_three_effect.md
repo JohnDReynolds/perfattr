@@ -1,10 +1,9 @@
 # perfattr Roadmap 6: Brinson-Hood-Beebower Three-Effect Attribution
 
-**Status:** Accepted September 5, 2026. Steps 1–7 are complete; implementation is
-authorized in the documented sequence.
+**Status:** Complete September 5, 2026. Released in `perfattr==0.5.0a1`.
 
 This roadmap promotes the Brinson-Hood-Beebower (BHB) three-effect candidate from
-roadmap 3 as one narrow calculation policy. Its proposed governing contract is
+roadmap 3 as one narrow calculation policy. Its governing contract is
 [`docs/brinson_hood_beebower_three_effect_specification.md`][bhb-spec].
 
 [bhb-spec]: ../docs/brinson_hood_beebower_three_effect_specification.md
@@ -329,6 +328,8 @@ expansion.
 
 ### 8. Release the feature
 
+**Status:** Complete September 5, 2026.
+
 - Review public documentation, license, fixture provenance, and compatibility.
 - Release first as `perfattr==0.5.0a1` because the package gains a public method with
   distinct identifier-level financial semantics.
@@ -338,6 +339,23 @@ expansion.
 
 **Gate:** Publication requires explicit user approval after all prepublication
 evidence is recorded.
+
+**Implementation evidence:** The user explicitly approved publication after Steps
+1–7 passed. Version `0.5.0a1` was verified through all 282 tests, Pyright, Pylint,
+Hatchling source and wheel builds, Twine, and a clean-wheel BHB smoke calculation.
+Clean release commit `a0f410d945b8b6715138706055691898c095adcc` was pushed to
+`main` and tagged with annotated tag `v0.5.0a1`. Its GitHub prerelease triggered
+trusted publishing run `33981192577`, whose build and PyPI publication jobs both
+completed successfully with digital attestations.
+
+After index propagation, a fresh Python 3.11 environment installed
+`perfattr==0.5.0a1` from `https://pypi.org/simple` with pip's cache disabled. The
+installed package reported the exact version and completed the independent two-group
+BHB example at `1e-12`, including allocation, interaction, period total, and every
+reconciliation row.
+
+**Gate:** Passed. The approved prerelease is published on GitHub and PyPI and is
+verified independently from the public package index.
 
 ## Required verification matrix
 

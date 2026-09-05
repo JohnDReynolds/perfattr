@@ -35,7 +35,7 @@ its accepted contract in
 The released opt-in Brinson-Fachler three-effect work is recorded in
 [`_extras/perfattr_roadmap_5_brinson_fachler_three_effect.md`][three-effect-roadmap]
 and [`docs/brinson_fachler_three_effect_specification.md`][three-effect-spec].
-The accepted Brinson-Hood-Beebower three-effect work is recorded in
+The released Brinson-Hood-Beebower three-effect work is recorded in
 [`_extras/perfattr_roadmap_6_brinson_hood_beebower_three_effect.md`][bhb-roadmap]
 and [`docs/brinson_hood_beebower_three_effect_specification.md`][bhb-spec].
 The complete portable calculation contract is defined in
