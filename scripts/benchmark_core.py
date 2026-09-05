@@ -36,6 +36,7 @@ _METHODS = {
     "two-effect": AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
     "three-effect": AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
     "bhb-three-effect": AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    "bhb-two-effect": AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT,
 }
 
 

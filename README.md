@@ -15,9 +15,8 @@ vendor schemas, and presentation remain outside the package boundary.
 - Consolidate smaller source periods into complete monthly, quarterly, or yearly
   reporting periods using calendar and holiday rules.
 - Apply static or effective-dated classification mappings before consolidation.
-- Calculate Brinson-Fachler with either compact two-effect selection or explicit
-  three-effect selection and interaction, or select Brinson-Hood-Beebower three-effect
-  attribution.
+- Calculate Brinson-Fachler or Brinson-Hood-Beebower with compact two-effect selection
+  or explicit three-effect selection and interaction.
 - Link contributions logarithmically and attribution effects using Carino linking.
 - Preserve zero-weight fee and financing contributions without inventing returns.
 - Return deterministic pandas result frames with explicit financial reconciliation.
@@ -38,6 +37,9 @@ and [`docs/brinson_fachler_three_effect_specification.md`][three-effect-spec].
 The released Brinson-Hood-Beebower three-effect work is recorded in
 [`_extras/perfattr_roadmap_6_brinson_hood_beebower_three_effect.md`][bhb-roadmap]
 and [`docs/brinson_hood_beebower_three_effect_specification.md`][bhb-spec].
+The accepted compact Brinson-Hood-Beebower work is recorded in
+[`_extras/perfattr_roadmap_7_brinson_hood_beebower_two_effect.md`][bhb-two-roadmap]
+and [`docs/brinson_hood_beebower_two_effect_specification.md`][bhb-two-spec].
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).
@@ -48,6 +50,8 @@ contract is in [`docs/preparation_specification.md`](docs/preparation_specificat
 [three-effect-spec]: docs/brinson_fachler_three_effect_specification.md
 [bhb-roadmap]: _extras/perfattr_roadmap_6_brinson_hood_beebower_three_effect.md
 [bhb-spec]: docs/brinson_hood_beebower_three_effect_specification.md
+[bhb-two-roadmap]: _extras/perfattr_roadmap_7_brinson_hood_beebower_two_effect.md
+[bhb-two-spec]: docs/brinson_hood_beebower_two_effect_specification.md
 
 ```python
 import pandas as pd
@@ -100,8 +104,8 @@ print(result.period_detail)
 
 The default remains the released two-effect Brinson-Fachler convention: allocation is
 reported separately, while portfolio-weighted selection absorbs interaction. The
-public method enum also provides explicit-interaction Brinson-Fachler and
-Brinson-Hood-Beebower (BHB) calculations:
+public method enum also provides an explicit-interaction Brinson-Fachler calculation
+and compact or explicit-interaction Brinson-Hood-Beebower (BHB) calculations:
 
 ```python
 from perfattr import AttributionMethod, calculate_attribution
@@ -115,6 +119,11 @@ bhb_three_effect = calculate_attribution(
     prepared.portfolio,
     prepared.benchmark,
     method=AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+)
+bhb_two_effect = calculate_attribution(
+    prepared.portfolio,
+    prepared.benchmark,
+    method=AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT,
 )
 print(
     three_effect.period_detail[
@@ -131,6 +140,7 @@ Brinson-Fachler allocation = (wP - wB) * (rB - B)
 BHB allocation             = (wP - wB) * rB
 selection                  = wB * (rP - rB)
 interaction                = (wP - wB) * (rP - rB)
+compact selection          = total - allocation
 ```
 
 BHB uses the group's absolute benchmark return, so overweighting a positive-return
@@ -146,14 +156,21 @@ contribution remains authoritative. If either effective return is undefined,
 interaction is zero and selection retains the reconciled residual rather than
 inventing a return.
 
+Compact BHB is a derived `perfattr` reporting convention, not a claim that the
+original BHB methodology defined a historical two-effect model. It retains BHB
+allocation and total, omits the interaction column, and reports selection directly as
+`total_effect - allocation_effect`. When returns are defined, compact BHB and compact
+Brinson-Fachler therefore share portfolio-weighted selection but can assign different
+identifier-level allocation and total values.
+
 The opt-in result inserts `interaction_effect` immediately after `selection_effect`
 and `linked_interaction_effect` immediately after `linked_selection_effect` wherever
 those channels apply. Cumulative output also places
 `cumulative_interaction_effect` immediately after `cumulative_selection_effect`.
 `AttributionResult.method` records the selected convention. See the
-[Brinson-Fachler specification][three-effect-spec] and [BHB specification][bhb-spec]
-for the complete schemas, linking rules, null policies, and independently calculated
-examples.
+[Brinson-Fachler specification][three-effect-spec], [BHB three-effect
+specification][bhb-spec], and [compact BHB specification][bhb-two-spec] for the
+complete schemas, linking rules, null policies, and independently calculated examples.
 
 Canonical CSV inputs can be loaded with `read_performance_csv`; optional mapping and
 classification readers are also available at the package root.
@@ -215,8 +232,9 @@ python scripts/benchmark_core.py --samples 5 --input-form authoritative
 python scripts/benchmark_preparation.py --samples 5
 ```
 
-Pass `--method three-effect` or `--method bhb-three-effect` to `benchmark_core.py` to
-measure an opt-in calculation; the default remains `--method two-effect`.
+Pass `--method three-effect`, `--method bhb-three-effect`, or
+`--method bhb-two-effect` to `benchmark_core.py` to measure an opt-in calculation;
+the default remains `--method two-effect`.
 
 Add `--workload monthly_121260 --profile` to inspect one workload's cumulative
 calculation-core call profile. The preparation benchmark compares static and

@@ -30,6 +30,12 @@ _SINGLE_PERIOD_CASES = (
     "single_period_derived",
     "single_period_authoritative",
 )
+_IMPLEMENTED_ATTRIBUTION_METHODS = (
+    AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+    AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+    AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT,
+)
 _PERIOD_SUMMARY_COLUMNS = """
 from_date thru_date quantity_of_days portfolio_return benchmark_return active_return
 portfolio_contribution benchmark_contribution active_contribution allocation_effect
@@ -155,6 +161,26 @@ def test_calculation_rejects_an_unvalidated_method_string() -> None:
         calculate_attribution(portfolio, benchmark, method=invalid_method)
 
 
+def test_bhb_two_effect_is_available_through_the_public_boundary() -> None:
+    """The verified compact BHB period policy should retain its method identity."""
+    portfolio, benchmark = _read_inputs("three_effect_positive")
+
+    result = calculate_attribution(
+        portfolio,
+        benchmark,
+        method=AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT,
+    )
+
+    detail = result.period_detail.set_index("identifier")
+    group_a = cast(pd.Series, detail.loc["A"])
+    assert result.method is AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT
+    assert group_a["allocation_effect"] == pytest.approx(0.018, abs=1e-12)
+    assert group_a["selection_effect"] == pytest.approx(0.028, abs=1e-12)
+    assert group_a["total_effect"] == pytest.approx(0.046, abs=1e-12)
+    assert "interaction_effect" not in result.period_detail.columns
+    assert bool(result.reconciliation["passed"].to_numpy().all())
+
+
 def test_bhb_method_returns_its_complete_public_schema() -> None:
     """The public BHB method should reuse every released three-effect schema."""
     portfolio, benchmark = _read_inputs("single_period_derived")
@@ -264,7 +290,7 @@ def test_result_frames_follow_the_specified_contract() -> None:
     assert list(result.reconciliation["check"]) == expected_checks
 
 
-@pytest.mark.parametrize("method", tuple(AttributionMethod))
+@pytest.mark.parametrize("method", _IMPLEMENTED_ATTRIBUTION_METHODS)
 def test_identical_inputs_have_zero_active_values_and_effects(
     method: AttributionMethod,
 ) -> None:
@@ -285,7 +311,10 @@ def test_identical_inputs_have_zero_active_values_and_effects(
     zero_columns = """active_weight active_return active_contribution
     allocation_effect selection_effect total_effect linked_active_contribution
     linked_allocation_effect linked_selection_effect linked_total_effect""".split()
-    if method is not AttributionMethod.BRINSON_FACHLER_TWO_EFFECT:
+    if method in (
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ):
         zero_columns.extend(("interaction_effect", "linked_interaction_effect"))
     for column in zero_columns:
         assert result.period_detail[column].abs().max() == pytest.approx(0.0, abs=1e-12)
@@ -488,7 +517,7 @@ def test_three_effect_handles_missing_sides_signed_and_zero_weights(
     assert detail.loc["E", "total_effect"] == 0.0
 
 
-@pytest.mark.parametrize("method", tuple(AttributionMethod))
+@pytest.mark.parametrize("method", _IMPLEMENTED_ATTRIBUTION_METHODS)
 def test_calculation_is_deterministic_and_does_not_mutate_inputs(
     method: AttributionMethod,
 ) -> None:

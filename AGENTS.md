@@ -6,15 +6,16 @@ Apply these conventions when modifying or creating code in this project.
 
 - Treat `_extras/perfattr_roadmap_1.md`, `_extras/perfattr_roadmap_2.md`,
   `_extras/perfattr_roadmap_4_effective_dated_classification.md`, and
-  `_extras/perfattr_roadmap_5_brinson_fachler_three_effect.md` as completed historical
-  context. The accepted effective-dated classification and Brinson-Fachler
-  three-effect specifications remain the contracts for their released behavior.
+  `_extras/perfattr_roadmap_5_brinson_fachler_three_effect.md`, and
+  `_extras/perfattr_roadmap_6_brinson_hood_beebower_three_effect.md` as completed
+  historical context. Their accepted specifications remain the contracts for released
+  behavior.
 - Treat unpromoted items in `_extras/perfattr_roadmap_3.md` as a noncommitted backlog.
   A roadmap 3 item does not authorize implementation until it is deliberately promoted
   into a new active roadmap.
-- Treat `_extras/perfattr_roadmap_6_brinson_hood_beebower_three_effect.md` and
-  `docs/brinson_hood_beebower_three_effect_specification.md` as the governing roadmap
-  and contract for the current BHB three-effect work.
+- Treat `_extras/perfattr_roadmap_7_brinson_hood_beebower_two_effect.md` and
+  `docs/brinson_hood_beebower_two_effect_specification.md` as the governing roadmap
+  and contract for the current BHB two-effect work.
 - Use this file for engineering conduct and any deliberately approved active roadmap
   for product scope, contracts, sequencing, and boundaries. Do not infer new scope
   from the completed roadmaps or noncommitted backlog.

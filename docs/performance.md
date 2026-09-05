@@ -12,7 +12,8 @@ of the requested elapsed-time samples. Peak memory is the incremental peak of
 Python-tracked allocations while `calculate_attribution` runs; prepared input memory
 is reported separately. `--method two-effect` is the unchanged default;
 `--method three-effect` measures Brinson-Fachler with explicit interaction, and
-`--method bhb-three-effect` measures Brinson-Hood-Beebower on the same inputs.
+`--method bhb-three-effect` and `--method bhb-two-effect` measure explicit and compact
+Brinson-Hood-Beebower on the same inputs.
 
 The four workloads correspond to the roadmap shapes:
 
@@ -173,6 +174,37 @@ consistent with sharing the same vectorized three-effect aggregation path. The
 measurements are observations, not release thresholds, and do not justify a new
 optimization or dependency.
 
+## Roadmap 7 compact BHB release-candidate observations
+
+These observations were collected on September 5, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Each elapsed result is the
+median of five samples using identical deterministic derived-contribution inputs.
+
+| Workload | Method | Median elapsed | Prepared inputs | Peak traced allocation |
+| --- | --- | ---: | ---: | ---: |
+| `normal` | BF two-effect | 0.0270 s | 2.0 MiB | 4.6 MiB |
+| `normal` | BF three-effect | 0.0271 s | 2.0 MiB | 4.8 MiB |
+| `normal` | BHB three-effect | 0.0275 s | 2.0 MiB | 4.8 MiB |
+| `normal` | BHB two-effect | 0.0272 s | 2.0 MiB | 4.6 MiB |
+| `selected_10x` | BF two-effect | 0.0956 s | 20.4 MiB | 44.6 MiB |
+| `selected_10x` | BF three-effect | 0.0957 s | 20.4 MiB | 47.1 MiB |
+| `selected_10x` | BHB three-effect | 0.0965 s | 20.4 MiB | 47.1 MiB |
+| `selected_10x` | BHB two-effect | 0.0963 s | 20.4 MiB | 44.6 MiB |
+| `monthly_121260` | BF two-effect | 0.1719 s | 40.7 MiB | 89.1 MiB |
+| `monthly_121260` | BF three-effect | 0.1750 s | 40.7 MiB | 94.1 MiB |
+| `monthly_121260` | BHB three-effect | 0.1758 s | 40.7 MiB | 94.1 MiB |
+| `monthly_121260` | BHB two-effect | 0.1729 s | 40.7 MiB | 89.1 MiB |
+| `history_25y` | BF two-effect | 0.0569 s | 10.2 MiB | 22.4 MiB |
+| `history_25y` | BF three-effect | 0.0579 s | 10.2 MiB | 23.6 MiB |
+| `history_25y` | BHB three-effect | 0.0586 s | 10.2 MiB | 23.6 MiB |
+| `history_25y` | BHB two-effect | 0.0574 s | 10.2 MiB | 22.4 MiB |
+
+Compact BHB medians were 0.6% to 0.9% above compact BF in this run, and their peak
+traced allocations were equal at the reported precision. Compact BHB also retained
+the lower memory footprint expected from omitting the two interaction columns carried
+by three-effect output. These remain observations rather than thresholds; no
+optimization, dependency, formula, or release gate is changed.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
@@ -217,3 +249,16 @@ checks. The unchanged 500x gate retained large-site equivalence and observed 1.0
 large-site and 2.101x selected-input time ratios. Long-history measured 1.568x, below
 the existing 1.58x warning and 1.65x failure boundaries. No `ppar` source, threshold,
 or dependency metadata changed.
+
+The Roadmap 7 compact-BHB candidate was then installed into the same unchanged
+`ppar` development environment. The adapter still omitted the method argument and
+therefore remained on BF two-effect without exposing compact BHB or changing a host
+schema. The complete release-candidate workflow passed 305 tests and 477 subtests,
+Mypy, Pyright, both Pylint checks, documentation and image validation, universal-wheel
+build and Twine validation, package metadata, and both installed demonstration paths.
+The required 500x run retained byte-identical large-site output and observed 1.105x
+large-site and 2.049x selected-input time ratios. Long-history measured 1.583x, above
+the unchanged 1.58x warning but below the 1.65x failure boundary, so the gate passed.
+An immediate repeat observed 1.059x large-site, 2.007x selected-input, and 1.563x
+long-history ratios, with no warning. No `ppar` source, configuration, dependency
+metadata, threshold, or presentation behavior changed.

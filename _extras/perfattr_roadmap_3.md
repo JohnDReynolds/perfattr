@@ -141,9 +141,9 @@ Candidate methodological reference: Brinson, Hood, and Beebower (1986).
 
 ### Brinson-Hood-Beebower two-effect reporting convention
 
-**Status:** Selected as the next feature to address after roadmap 6 is complete. It
-remains a noncommitted candidate and requires its own approved roadmap and governing
-specification before implementation.
+**Status:** Promoted into accepted
+[roadmap 7](perfattr_roadmap_7_brinson_hood_beebower_two_effect.md) on September 5,
+2026. Implementation is authorized only in its documented sequence.
 
 - Retain the BHB allocation and identifier-level total definitions established by
   roadmap 6.

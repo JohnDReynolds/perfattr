@@ -36,7 +36,11 @@ from perfattr._validation import (
     normalize_reconciliation_tolerance,
     raise_invalid,
 )
-from perfattr.method import AttributionMethod, uses_explicit_interaction
+from perfattr.method import (
+    AttributionMethod,
+    uses_bhb_allocation,
+    uses_explicit_interaction,
+)
 
 _TOLERANCE = 1e-12
 _REQUIRED_COLUMNS = PREPARED_REQUIRED_COLUMNS
@@ -338,8 +342,8 @@ def _build_period_detail(
 
     Notes:
         The released Brinson-Fachler methods retain their allocation and total-effect
-        formulas. BHB allocation uses the benchmark group return without subtracting
-        the total benchmark return, and its total effect is unadjusted active
+        formulas. Both BHB methods use the benchmark group return without subtracting
+        the total benchmark return, and their total effect is unadjusted active
         contribution. For three-effect output, interaction is active weight multiplied
         by active return when both effective returns are defined. Selection is the
         remaining total effect, which is algebraically benchmark-weighted selection
@@ -385,7 +389,7 @@ def _build_period_detail(
     active_contribution = (
         values["portfolio_contribution"] - values["benchmark_contribution"]
     )
-    if method is AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT:
+    if uses_bhb_allocation(method):
         allocation_effect = np.where(
             np.isnan(values["benchmark_return"]),
             0.0,
@@ -849,12 +853,13 @@ def calculate_attribution(
             fails.
 
     Notes:
-        The default selection is portfolio-weighted and absorbs interaction. The
-        opt-in three-effect methods report benchmark-weighted selection and
-        interaction separately. Contributions use logarithmic linking; all active
-        effects use the same Carino coefficient. Supplied contribution is
-        authoritative; otherwise contribution is derived as weight multiplied by
-        return.
+        Both two-effect methods use portfolio-weighted selection that absorbs
+        interaction. They differ in their Brinson-Fachler and BHB allocation and
+        identifier-total policies. The opt-in three-effect methods report
+        benchmark-weighted selection and interaction separately. Contributions use
+        logarithmic linking; all active effects use the same Carino coefficient.
+        Supplied contribution is authoritative; otherwise contribution is derived as
+        weight multiplied by return.
     """
     if not isinstance(portfolio, pd.DataFrame):
         raise TypeError("portfolio must be a pandas DataFrame")

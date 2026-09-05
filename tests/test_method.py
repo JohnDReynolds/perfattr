@@ -26,7 +26,7 @@ from perfattr.attribution import (
     _equalize_universe,
     _normalize_input,
 )
-from perfattr.method import uses_explicit_interaction
+from perfattr.method import uses_bhb_allocation, uses_explicit_interaction
 
 
 _FIXTURE_ROOT = Path(__file__).parent / "fixtures"
@@ -63,8 +63,8 @@ _SCHEMA_CASES = (
 )
 
 
-def test_explicit_interaction_policy_identifies_both_three_effect_methods() -> None:
-    """Schema routing should include BHB without reclassifying the default method."""
+def test_explicit_interaction_policy_identifies_only_three_effect_methods() -> None:
+    """Schema routing should exclude both compact reporting methods."""
     assert not uses_explicit_interaction(
         AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
     )
@@ -73,6 +73,25 @@ def test_explicit_interaction_policy_identifies_both_three_effect_methods() -> N
     )
     assert uses_explicit_interaction(
         AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT
+    )
+    assert not uses_explicit_interaction(
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT
+    )
+
+
+def test_bhb_policy_identifies_both_bhb_reporting_methods() -> None:
+    """One policy predicate should identify BHB independently of result shape."""
+    assert not uses_bhb_allocation(
+        AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
+    )
+    assert not uses_bhb_allocation(
+        AttributionMethod.BRINSON_FACHLER_THREE_EFFECT
+    )
+    assert uses_bhb_allocation(
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT
+    )
+    assert uses_bhb_allocation(
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT
     )
 
 
@@ -93,6 +112,18 @@ def _read_bhb_expected(case_name: str) -> pd.DataFrame:
     return pd.read_csv(
         _FIXTURE_ROOT / case_name / "expected_bhb_effects.csv"
     ).set_index("identifier")
+
+
+def _read_bhb_two_effect_expected(case_name: str) -> pd.DataFrame:
+    """Read one original hand-calculated compact BHB expectation table."""
+    return pd.read_csv(
+        _FIXTURE_ROOT / case_name / "expected_bhb_two_effects.csv"
+    ).set_index("identifier")
+
+
+def _scalar(frame: pd.DataFrame, row: str, column: str) -> float:
+    """Return a known scalar fixture value with precise static typing."""
+    return cast(float, frame.at[row, column])
 
 
 def _calculate_unlinked_period_detail(
@@ -267,12 +298,20 @@ def test_bhb_period_detail_matches_hand_calculated_positive_case() -> None:
                 expected.loc[identifier, column],
                 abs=1e-12,
             )
-    assert bhb.loc["A", "allocation_effect"] - bf.loc[
-        "A", "allocation_effect"
-    ] == pytest.approx(0.30 * 0.036, abs=1e-12)
-    assert bhb.loc["B", "allocation_effect"] - bf.loc[
-        "B", "allocation_effect"
-    ] == pytest.approx(-0.30 * 0.036, abs=1e-12)
+    bhb_allocation = cast(pd.Series, bhb["allocation_effect"])
+    bf_allocation = cast(pd.Series, bf["allocation_effect"])
+    bhb_a = cast(float, bhb_allocation.at["A"])
+    bhb_b = cast(float, bhb_allocation.at["B"])
+    bf_a = cast(float, bf_allocation.at["A"])
+    bf_b = cast(float, bf_allocation.at["B"])
+    assert bhb_a - bf_a == pytest.approx(
+        0.30 * 0.036,
+        abs=1e-12,
+    )
+    assert bhb_b - bf_b == pytest.approx(
+        -0.30 * 0.036,
+        abs=1e-12,
+    )
     assert bhb["allocation_effect"].sum() == pytest.approx(0.012, abs=1e-12)
     assert bhb["selection_effect"].sum() == pytest.approx(0.016, abs=1e-12)
     assert bhb["interaction_effect"].sum() == pytest.approx(0.012, abs=1e-12)
@@ -352,6 +391,146 @@ def test_bhb_period_detail_preserves_an_undefined_fee_residual() -> None:
     assert fee["interaction_effect"] == 0.0
     assert fee["selection_effect"] == pytest.approx(-0.001, abs=1e-12)
     assert fee["total_effect"] == pytest.approx(-0.001, abs=1e-12)
+
+
+def test_bhb_two_effect_matches_hand_calculated_positive_case() -> None:
+    """Compact BHB should absorb interaction without changing allocation or total.
+
+    Group A retains BHB allocation 1.8% and unadjusted total 4.6%. Its compact
+    selection is the exact residual 4.6% - 1.8% = 2.8%, independently equal to BHB
+    three-effect selection 1.6% plus interaction 1.2%. Group B retains -0.6%
+    allocation and total with zero selection. Period allocation 1.2% plus selection
+    2.8% therefore reconciles to active return 4.0%.
+    """
+    portfolio, benchmark, _bf_expected = _read_three_effect_fixture(
+        "three_effect_positive"
+    )
+    expected = _read_bhb_two_effect_expected("three_effect_positive")
+
+    compact = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT,
+    ).set_index("identifier")
+    three_effect = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ).set_index("identifier")
+    bf_compact = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+    ).set_index("identifier")
+
+    assert tuple(compact.columns) == tuple(
+        column for column in PERIOD_DETAIL_COLUMNS if column != "identifier"
+    )
+    for identifier in expected.index:
+        for column in expected.columns:
+            assert _scalar(compact, identifier, column) == pytest.approx(
+                _scalar(expected, identifier, column),
+                abs=1e-12,
+            )
+        assert _scalar(compact, identifier, "allocation_effect") == pytest.approx(
+            _scalar(three_effect, identifier, "allocation_effect"),
+            abs=1e-12,
+        )
+        assert _scalar(compact, identifier, "total_effect") == pytest.approx(
+            _scalar(three_effect, identifier, "total_effect"),
+            abs=1e-12,
+        )
+        assert _scalar(compact, identifier, "selection_effect") == pytest.approx(
+            _scalar(three_effect, identifier, "selection_effect")
+            + _scalar(three_effect, identifier, "interaction_effect"),
+            abs=1e-12,
+        )
+        assert _scalar(compact, identifier, "selection_effect") == pytest.approx(
+            _scalar(bf_compact, identifier, "selection_effect"),
+            abs=1e-12,
+        )
+
+
+def test_bhb_two_effect_uses_authoritative_contributions() -> None:
+    """Compact BHB should use contribution-implied returns and residual selection.
+
+    Authoritative contributions imply portfolio returns 5% and 10% and benchmark
+    returns 4% and 6%, despite deliberately different supplied returns. A retains
+    0.4% BHB allocation and 1.0% total, leaving 0.6% compact selection. B retains
+    -0.6% allocation and 1.0% total, leaving 1.6% selection. Those selections equal
+    the independently calculated BHB three-effect pairs 0.5% + 0.1% and
+    2.0% + (-0.4%).
+    """
+    portfolio, benchmark, _bf_expected = _read_three_effect_fixture(
+        "three_effect_authoritative"
+    )
+    expected = _read_bhb_two_effect_expected("three_effect_authoritative")
+
+    compact = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT,
+    ).set_index("identifier")
+    three_effect = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ).set_index("identifier")
+
+    assert _scalar(compact, "A", "portfolio_return") == pytest.approx(0.05)
+    assert _scalar(compact, "A", "benchmark_return") == pytest.approx(0.04)
+    assert _scalar(compact, "B", "portfolio_return") == pytest.approx(0.10)
+    assert _scalar(compact, "B", "benchmark_return") == pytest.approx(0.06)
+    for identifier in expected.index:
+        for column in expected.columns:
+            assert _scalar(compact, identifier, column) == pytest.approx(
+                _scalar(expected, identifier, column),
+                abs=1e-12,
+            )
+        assert _scalar(compact, identifier, "selection_effect") == pytest.approx(
+            _scalar(three_effect, identifier, "selection_effect")
+            + _scalar(three_effect, identifier, "interaction_effect"),
+            abs=1e-12,
+        )
+
+
+def test_bhb_two_effect_preserves_an_undefined_fee_residual() -> None:
+    """Compact BHB should retain an unexposed charge without invented interaction.
+
+    The fee has zero portfolio weight, authoritative contribution -0.1%, null
+    effective return, and an absent benchmark side. Its active weight and BHB
+    allocation are zero, so compact selection retains the entire -0.1% unadjusted
+    total. Released BHB three-effect reaches the same compact result through -0.1%
+    selection plus its disclosed zero interaction convention.
+    """
+    case_path = _FIXTURE_ROOT / "single_period_authoritative"
+    portfolio = pd.read_csv(case_path / "portfolio.csv")
+    benchmark = pd.read_csv(case_path / "benchmark.csv")
+
+    compact = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT,
+    ).set_index("identifier")
+    three_effect = _calculate_unlinked_period_detail(
+        portfolio,
+        benchmark,
+        AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
+    ).set_index("identifier")
+    fee = cast(pd.Series, compact.loc["FEE"])
+
+    assert bool(pd.isna(fee["portfolio_return"]))
+    assert bool(pd.isna(fee["active_return"]))
+    assert "interaction_effect" not in compact.columns
+    assert fee["active_weight"] == 0.0
+    assert fee["allocation_effect"] == 0.0
+    assert fee["selection_effect"] == pytest.approx(-0.001, abs=1e-12)
+    assert fee["total_effect"] == pytest.approx(-0.001, abs=1e-12)
+    assert _scalar(compact, "FEE", "selection_effect") == pytest.approx(
+        _scalar(three_effect, "FEE", "selection_effect")
+        + _scalar(three_effect, "FEE", "interaction_effect"),
+        abs=1e-12,
+    )
 
 
 def test_attribution_result_method_default_is_independent_of_frames() -> None:

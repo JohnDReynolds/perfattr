@@ -5,7 +5,7 @@ import perfattr
 
 def test_package_exposes_version() -> None:
     """The installed package should expose its distribution version."""
-    assert perfattr.__version__ == "0.5.0a1"
+    assert perfattr.__version__ == "0.6.0a1"
 
 
 def test_package_exposes_attribution_methods() -> None:
@@ -21,6 +21,10 @@ def test_package_exposes_attribution_methods() -> None:
     assert (
         perfattr.AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT.value
         == "Brinson-Hood-Beebower Three-Effect"
+    )
+    assert (
+        perfattr.AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT.value
+        == "Brinson-Hood-Beebower Two-Effect"
     )
 
 

@@ -17,6 +17,9 @@ explicitly.
 The opt-in Brinson-Hood-Beebower three-effect extension is defined in
 `docs/brinson_hood_beebower_three_effect_specification.md`; it reuses those explicit
 interaction schemas while defining its distinct allocation and total-effect policy.
+The opt-in compact Brinson-Hood-Beebower extension is defined in
+`docs/brinson_hood_beebower_two_effect_specification.md`; it reuses the two-effect
+schemas while retaining the Brinson-Hood-Beebower allocation and total-effect policy.
 
 The words **must**, **must not**, **should**, and **may** describe requirements with
 their ordinary technical meanings.
@@ -85,10 +88,11 @@ class AttributionResult:
 failed calculation invariant. Passing an object other than a pandas `DataFrame`
 raises `TypeError`.
 
-The method enum is the calculation policy boundary. The default selection absorbs
-interaction; the two opt-in three-effect methods expose it separately under their
-supplemental specifications. The numerical tolerance remains fixed by this
-specification.
+The method enum is the calculation policy boundary. Both two-effect methods absorb
+interaction into portfolio-weighted selection, while the two three-effect methods
+expose it separately. Their allocation and identifier-total policies are defined by
+this specification and the applicable supplemental specification. The numerical
+tolerance remains fixed by this specification.
 The runtime dependencies are limited to pandas, NumPy, and the Python standard
 library.
 
@@ -284,8 +288,9 @@ selection_effect = wP[g,t] * (rP[g,t] - rB[g,t])
 It therefore combines conventional benchmark-weighted selection and interaction.
 This remains the default. The explicit three-effect method and its undefined-return
 boundary are specified in `docs/brinson_fachler_three_effect_specification.md`. The
-Brinson-Hood-Beebower alternative is specified separately in
-`docs/brinson_hood_beebower_three_effect_specification.md`.
+Brinson-Hood-Beebower alternatives are specified separately in
+`docs/brinson_hood_beebower_three_effect_specification.md` and
+`docs/brinson_hood_beebower_two_effect_specification.md`.
 
 ## Multi-period linking
 
@@ -388,9 +393,10 @@ identities must reconcile in the final cumulative row.
 Every result has a zero-based `RangeIndex`. Columns appear exactly in the order below.
 The portable core does not add display names or total rows.
 
-The schemas below are the stable default two-effect schemas. Both three-effect
-specifications reuse the same exact insertion positions for their additional
-interaction columns without reinterpreting any column listed here.
+The schemas below are the stable compact two-effect schemas, reused by both
+Brinson-Fachler and Brinson-Hood-Beebower. Both three-effect specifications reuse the
+same exact insertion positions for their additional interaction columns without
+reinterpreting any column listed here.
 
 In `period_detail`, portfolio and benchmark return columns contain effective period
 returns. In `period_summary`, they contain period totals. In `overall_detail`, they
@@ -541,7 +547,7 @@ linked_total_effect
 
 Weight checks compare each net weight sum with `1.0`. Contribution and total-effect
 checks compare detail sums with their corresponding period or overall return.
-Default component checks compare allocation plus selection with total effect. The
+Two-effect component checks compare allocation plus selection with total effect. A
 three-effect method compares allocation plus selection plus interaction and uses the
 explicit check names defined in its supplemental specification.
 
