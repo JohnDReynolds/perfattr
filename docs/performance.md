@@ -13,7 +13,9 @@ Python-tracked allocations while `calculate_attribution` runs; prepared input me
 is reported separately. `--method two-effect` is the unchanged default;
 `--method three-effect` measures Brinson-Fachler with explicit interaction, and
 `--method bhb-three-effect` and `--method bhb-two-effect` measure explicit and compact
-Brinson-Hood-Beebower on the same inputs.
+Brinson-Hood-Beebower on the same inputs. `--effect-linking-method carino` is the
+unchanged benchmark default; `--effect-linking-method frongello` selects the new
+effect linker without changing contribution linking or workload construction.
 
 The four workloads correspond to the roadmap shapes:
 
@@ -205,6 +207,46 @@ the lower memory footprint expected from omitting the two interaction columns ca
 by three-effect output. These remain observations rather than thresholds; no
 optimization, dependency, formula, or release gate is changed.
 
+## Roadmap 8 Frongello release-candidate observations
+
+These observations were collected on September 5, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Each elapsed result is the
+median of five samples using identical deterministic derived-contribution inputs.
+Carino and Frongello were measured through the same public calculation boundary for
+every attribution method.
+
+| Workload | Method | Carino time | Frongello time | Carino peak | Frongello peak |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `normal` | BF two-effect | 0.0351 s | 0.0321 s | 4.6 MiB | 4.6 MiB |
+| `normal` | BF three-effect | 0.0322 s | 0.0340 s | 4.8 MiB | 4.8 MiB |
+| `normal` | BHB three-effect | 0.0327 s | 0.0339 s | 4.8 MiB | 4.8 MiB |
+| `normal` | BHB two-effect | 0.0321 s | 0.0324 s | 4.6 MiB | 4.6 MiB |
+| `selected_10x` | BF two-effect | 0.1116 s | 0.1165 s | 44.6 MiB | 44.6 MiB |
+| `selected_10x` | BF three-effect | 0.1149 s | 0.1147 s | 47.1 MiB | 47.1 MiB |
+| `selected_10x` | BHB three-effect | 0.1107 s | 0.1165 s | 47.1 MiB | 47.1 MiB |
+| `selected_10x` | BHB two-effect | 0.1110 s | 0.1115 s | 44.6 MiB | 44.6 MiB |
+| `monthly_121260` | BF two-effect | 0.1921 s | 0.2032 s | 89.1 MiB | 89.1 MiB |
+| `monthly_121260` | BF three-effect | 0.1961 s | 0.2044 s | 94.1 MiB | 94.1 MiB |
+| `monthly_121260` | BHB three-effect | 0.1959 s | 0.2059 s | 94.1 MiB | 94.1 MiB |
+| `monthly_121260` | BHB two-effect | 0.1990 s | 0.1964 s | 89.1 MiB | 89.1 MiB |
+| `history_25y` | BF two-effect | 0.0661 s | 0.0703 s | 22.4 MiB | 22.4 MiB |
+| `history_25y` | BF three-effect | 0.0671 s | 0.0716 s | 23.6 MiB | 23.6 MiB |
+| `history_25y` | BHB three-effect | 0.0716 s | 0.0732 s | 23.6 MiB | 23.6 MiB |
+| `history_25y` | BHB two-effect | 0.0669 s | 0.0679 s | 22.4 MiB | 22.4 MiB |
+
+Prepared inputs were 2.0, 20.4, 40.7, and 10.2 MiB respectively for the four
+workloads under both linkers. Frongello medians ranged from 8.5% below to 6.7% above
+the paired Carino measurements. At these short absolute durations, the lower normal-
+workload value is ordinary measurement variation; the largest observed absolute
+increase was 0.0111 seconds on 121,260 rows per side. Peak traced allocations were
+identical at the reported precision for every paired method and workload, consistent
+with calculating one short factor vector per reporting period rather than expanding
+the identifier grid.
+
+These are observations only. They provide no evidence for an optimization or a new
+performance threshold, and no dependency, formula, tolerance, warning, or established
+gate changed.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
@@ -262,3 +304,18 @@ the unchanged 1.58x warning but below the 1.65x failure boundary, so the gate pa
 An immediate repeat observed 1.059x large-site, 2.007x selected-input, and 1.563x
 long-history ratios, with no warning. No `ppar` source, configuration, dependency
 metadata, threshold, or presentation behavior changed.
+
+The Roadmap 8 Frongello candidate was installed into `ppar`'s Python 3.12.1
+development environment. Inspection confirmed that the adapter still omits
+`effect_linking_method`, so all host calculations remained on default Carino and no
+Frongello option or metadata entered the host product. The complete release-candidate
+workflow passed 305 tests and 477 subtests, Mypy, Pyright, both Pylint checks,
+documentation and image validation, universal-wheel construction, Twine, package
+metadata, and installed generic and Axys/APX demonstrations.
+
+The unchanged 500x gate retained byte-identical large-site output and observed a
+1.113x large-site ratio and 2.019x selected-input ratio, both without machine-specific
+performance thresholds. Long-history measured 1.573x, below the unchanged 1.58x
+warning and 1.65x failure boundaries. No `ppar` file, adapter call, schema,
+presentation behavior, dependency declaration, tolerance, warning, or threshold was
+changed for this verification.

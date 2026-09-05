@@ -15,17 +15,18 @@ from perfattr.io import (
 )
 from perfattr.prepare import PreparationResult, prepare_attribution
 from perfattr.mapping import normalize_mapping
-from perfattr.method import AttributionMethod
+from perfattr.method import AttributionMethod, EffectLinkingMethod
 from perfattr.preparation import (
     select_portfolio,
 )
 
-__version__ = "0.6.0a1"
+__version__ = "0.7.0a1"
 
 __all__ = [
     "AttributionError",
     "AttributionMethod",
     "AttributionResult",
+    "EffectLinkingMethod",
     "Frequency",
     "PreparationError",
     "PreparationResult",

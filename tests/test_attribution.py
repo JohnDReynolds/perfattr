@@ -13,6 +13,7 @@ from perfattr import (
     AttributionError,
     AttributionMethod,
     AttributionResult,
+    EffectLinkingMethod,
     calculate_attribution,
 )
 from perfattr._schemas import (
@@ -26,10 +27,7 @@ from perfattr._schemas import (
 
 
 _FIXTURE_ROOT = Path(__file__).parent / "fixtures"
-_SINGLE_PERIOD_CASES = (
-    "single_period_derived",
-    "single_period_authoritative",
-)
+_SINGLE_PERIOD_CASES = ("single_period_derived", "single_period_authoritative")
 _IMPLEMENTED_ATTRIBUTION_METHODS = (
     AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
     AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
@@ -39,9 +37,8 @@ _IMPLEMENTED_ATTRIBUTION_METHODS = (
 _PERIOD_SUMMARY_COLUMNS = """
 from_date thru_date quantity_of_days portfolio_return benchmark_return active_return
 portfolio_contribution benchmark_contribution active_contribution allocation_effect
-selection_effect total_effect linked_portfolio_contribution
-linked_benchmark_contribution linked_active_contribution linked_allocation_effect
-linked_selection_effect linked_total_effect
+selection_effect total_effect linked_portfolio_contribution linked_benchmark_contribution
+linked_active_contribution linked_allocation_effect linked_selection_effect linked_total_effect
 """.split()
 _OVERALL_DETAIL_COLUMNS = """
 from_date thru_date identifier portfolio_weight portfolio_return
@@ -58,9 +55,9 @@ cumulative_active_contribution linked_allocation_effect linked_selection_effect
 linked_total_effect cumulative_allocation_effect cumulative_selection_effect
 cumulative_total_effect
 """.split()
-_RECONCILIATION_COLUMNS = """
-scope from_date thru_date check actual expected residual tolerance passed
-""".split()
+_RECONCILIATION_COLUMNS = (
+    "scope from_date thru_date check actual expected residual tolerance passed".split()
+)
 
 
 def _read_inputs(case_name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -140,6 +137,7 @@ def test_calculate_attribution_matches_independent_period_detail(
 
     assert isinstance(result, AttributionResult)
     assert result.method is AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
+    assert result.effect_linking_method is EffectLinkingMethod.CARINO
     pd.testing.assert_frame_equal(
         result.period_detail,
         _read_expected_detail(case_name),
@@ -240,6 +238,15 @@ def test_explicit_two_effect_method_is_exactly_the_released_default() -> None:
         benchmark,
         method=AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
     )
+    explicit_carino_result = calculate_attribution(
+        portfolio,
+        benchmark,
+        effect_linking_method=EffectLinkingMethod.CARINO,
+    )
+
+    assert default_result.effect_linking_method is EffectLinkingMethod.CARINO
+    assert explicit_result.effect_linking_method is EffectLinkingMethod.CARINO
+    assert explicit_carino_result.effect_linking_method is EffectLinkingMethod.CARINO
 
     for frame_name in (
         "period_detail",
@@ -251,6 +258,11 @@ def test_explicit_two_effect_method_is_exactly_the_released_default() -> None:
         pd.testing.assert_frame_equal(
             getattr(default_result, frame_name),
             getattr(explicit_result, frame_name),
+            check_exact=True,
+        )
+        pd.testing.assert_frame_equal(
+            getattr(default_result, frame_name),
+            getattr(explicit_carino_result, frame_name),
             check_exact=True,
         )
 
@@ -518,19 +530,26 @@ def test_three_effect_handles_missing_sides_signed_and_zero_weights(
 
 
 @pytest.mark.parametrize("method", _IMPLEMENTED_ATTRIBUTION_METHODS)
+@pytest.mark.parametrize("effect_linking_method", tuple(EffectLinkingMethod))
 def test_calculation_is_deterministic_and_does_not_mutate_inputs(
     method: AttributionMethod,
+    effect_linking_method: EffectLinkingMethod,
 ) -> None:
-    """Row order should not matter and caller-owned frames should remain unchanged."""
+    """Both linkers must ignore row order and return independently owned frames."""
     portfolio, benchmark = _read_inputs("multi_period_linking")
     portfolio_before = portfolio.copy(deep=True)
     benchmark_before = benchmark.copy(deep=True)
 
-    ordered = calculate_attribution(portfolio, benchmark, method=method)
+    ordered = calculate_attribution(
+        portfolio, benchmark,
+        method=method,
+        effect_linking_method=effect_linking_method,
+    )
     shuffled = calculate_attribution(
         portfolio.sample(frac=1.0, random_state=7),
         benchmark.sample(frac=1.0, random_state=11),
         method=method,
+        effect_linking_method=effect_linking_method,
     )
 
     pd.testing.assert_frame_equal(portfolio, portfolio_before)

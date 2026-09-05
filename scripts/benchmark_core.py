@@ -28,7 +28,12 @@ from benchmark_support import (
     month_bounds,
     require_positive_samples,
 )
-from perfattr import AttributionMethod, AttributionResult, calculate_attribution
+from perfattr import (
+    AttributionMethod,
+    AttributionResult,
+    EffectLinkingMethod,
+    calculate_attribution,
+)
 
 
 _InputForm = Literal["derived", "authoritative"]
@@ -37,6 +42,10 @@ _METHODS = {
     "three-effect": AttributionMethod.BRINSON_FACHLER_THREE_EFFECT,
     "bhb-three-effect": AttributionMethod.BRINSON_HOOD_BEEBOWER_THREE_EFFECT,
     "bhb-two-effect": AttributionMethod.BRINSON_HOOD_BEEBOWER_TWO_EFFECT,
+}
+_EFFECT_LINKERS = {
+    "carino": EffectLinkingMethod.CARINO,
+    "frongello": EffectLinkingMethod.FRONGELLO,
 }
 
 
@@ -115,9 +124,15 @@ def _calculate(
     portfolio: pd.DataFrame,
     benchmark: pd.DataFrame,
     method: AttributionMethod,
+    effect_linking_method: EffectLinkingMethod,
 ) -> AttributionResult:
     """Call the public core API with benchmark fixture conventions."""
-    return calculate_attribution(portfolio, benchmark, method=method)
+    return calculate_attribution(
+        portfolio,
+        benchmark,
+        method=method,
+        effect_linking_method=effect_linking_method,
+    )
 
 
 def _input_mebibytes(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> float:
@@ -129,11 +144,12 @@ def _profile(
     portfolio: pd.DataFrame,
     benchmark: pd.DataFrame,
     method: AttributionMethod,
+    effect_linking_method: EffectLinkingMethod,
 ) -> None:
     """Print the most expensive cumulative call paths for one calculation."""
     profiler = cProfile.Profile()
     profiler.enable()
-    _calculate(portfolio, benchmark, method)
+    _calculate(portfolio, benchmark, method, effect_linking_method)
     profiler.disable()
     pstats.Stats(profiler).strip_dirs().sort_stats("cumulative").print_stats(25)
 
@@ -155,6 +171,12 @@ def _parse_args() -> argparse.Namespace:
         help="Select the attribution effect convention (default: two-effect).",
     )
     parser.add_argument(
+        "--effect-linking-method",
+        choices=tuple(_EFFECT_LINKERS),
+        default="carino",
+        help="Select the active-effect linker (default: carino).",
+    )
+    parser.add_argument(
         "--profile",
         action="store_true",
         help="Print cProfile results after measuring each selected workload.",
@@ -170,6 +192,7 @@ def main() -> None:
     workload_names = args.workload or list(WORKLOADS)
     input_form: _InputForm = args.input_form
     method = _METHODS[args.method]
+    effect_linking_method = _EFFECT_LINKERS[args.effect_linking_method]
 
     print(
         f"Python {platform.python_version()} | pandas {pd.__version__} | "
@@ -184,12 +207,19 @@ def main() -> None:
         workload = WORKLOADS[workload_name]
         portfolio = _make_side(workload, side="portfolio", input_form=input_form)
         benchmark = _make_side(workload, side="benchmark", input_form=input_form)
-        operation = partial(_calculate, portfolio, benchmark, method)
+        operation = partial(
+            _calculate,
+            portfolio,
+            benchmark,
+            method,
+            effect_linking_method,
+        )
         samples = measure_elapsed(operation, args.samples)
         peak_mebibytes = measure_peak_mebibytes(operation)
 
         print(
-            f"{workload.name}: method={args.method}, form={input_form}, "
+            f"{workload.name}: method={args.method}, "
+            f"effect-linker={args.effect_linking_method}, form={input_form}, "
             f"rows/side={workload.rows_per_side:,}, periods={workload.periods}"
         )
         print(
@@ -201,7 +231,7 @@ def main() -> None:
             f"peak traced allocation={peak_mebibytes:.1f} MiB"
         )
         if args.profile:
-            _profile(portfolio, benchmark, method)
+            _profile(portfolio, benchmark, method, effect_linking_method)
 
 
 if __name__ == "__main__":

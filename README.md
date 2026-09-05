@@ -17,7 +17,8 @@ vendor schemas, and presentation remain outside the package boundary.
 - Apply static or effective-dated classification mappings before consolidation.
 - Calculate Brinson-Fachler or Brinson-Hood-Beebower with compact two-effect selection
   or explicit three-effect selection and interaction.
-- Link contributions logarithmically and attribution effects using Carino linking.
+- Link contributions logarithmically and attribution effects using Carino or
+  Frongello linking, with Carino retained as the default.
 - Preserve zero-weight fee and financing contributions without inventing returns.
 - Return deterministic pandas result frames with explicit financial reconciliation.
 
@@ -40,6 +41,9 @@ and [`docs/brinson_hood_beebower_three_effect_specification.md`][bhb-spec].
 The released compact Brinson-Hood-Beebower work is recorded in
 [`_extras/perfattr_roadmap_7_brinson_hood_beebower_two_effect.md`][bhb-two-roadmap]
 and [`docs/brinson_hood_beebower_two_effect_specification.md`][bhb-two-spec].
+The opt-in Frongello effect-linking work is recorded in
+[`_extras/perfattr_roadmap_8_frongello_recursive_linking.md`][frongello-roadmap]
+and [`docs/frongello_recursive_linking_specification.md`][frongello-spec].
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).
@@ -52,6 +56,8 @@ contract is in [`docs/preparation_specification.md`](docs/preparation_specificat
 [bhb-spec]: docs/brinson_hood_beebower_three_effect_specification.md
 [bhb-two-roadmap]: _extras/perfattr_roadmap_7_brinson_hood_beebower_two_effect.md
 [bhb-two-spec]: docs/brinson_hood_beebower_two_effect_specification.md
+[frongello-roadmap]: _extras/perfattr_roadmap_8_frongello_recursive_linking.md
+[frongello-spec]: docs/frongello_recursive_linking_specification.md
 
 ```python
 import pandas as pd
@@ -172,6 +178,30 @@ those channels apply. Cumulative output also places
 specification][bhb-spec], and [compact BHB specification][bhb-two-spec] for the
 complete schemas, linking rules, null policies, and independently calculated examples.
 
+## Effect linking
+
+Carino remains the default effect linker. Frongello is an explicit opt-in for clients
+that need path-dependent recursive effect linking across multiple periods:
+
+```python
+from perfattr import EffectLinkingMethod, calculate_attribution
+
+frongello_result = calculate_attribution(
+    prepared.portfolio,
+    prepared.benchmark,
+    effect_linking_method=EffectLinkingMethod.FRONGELLO,
+)
+print(frongello_result.effect_linking_method)
+```
+
+The option changes only linked allocation, selection, optional interaction, and total
+effects. Portfolio and benchmark contributions remain logarithmically linked, and
+unlinked effects and result-frame schemas do not change. Each period-detail linked
+effect is the originating source-period effect allocated to the complete requested
+horizon; intermediate cumulative rows are partial sums of those allocations, not
+independent as-of calculations. See the [Frongello specification][frongello-spec] for
+the formula, ordering behavior, worked example, and compatibility contract.
+
 Canonical CSV inputs can be loaded with `read_performance_csv`; optional mapping and
 classification readers are also available at the package root.
 
@@ -234,7 +264,9 @@ python scripts/benchmark_preparation.py --samples 5
 
 Pass `--method three-effect`, `--method bhb-three-effect`, or
 `--method bhb-two-effect` to `benchmark_core.py` to measure an opt-in calculation;
-the default remains `--method two-effect`.
+the default remains `--method two-effect`. Pass
+`--effect-linking-method frongello` to measure Frongello; the benchmark default remains
+Carino.
 
 Add `--workload monthly_121260 --profile` to inspect one workload's cumulative
 calculation-core call profile. The preparation benchmark compares static and

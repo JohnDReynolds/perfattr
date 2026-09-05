@@ -167,14 +167,23 @@ The current baseline already includes logarithmic contribution linking and Carin
 active-effect linking. Reconcile the term "Cariño log-smoothing" with the implemented
 baseline before proposing additional Carino work.
 
-When the first additional method is promoted, introduce one explicit linking-method
+Roadmap 8 is the first promoted proposal and introduces one explicit effect-linking
 policy rather than a general plugin framework. Preserve each method's period effects,
 full-horizon effects, and reconciliation identities.
 
 Suggested evaluation order:
 
-1. **Frongello recursive linking** — candidate reference: Frongello (2002).
-2. **GRAP factor linking** — candidate reference: GRAP (1997).
+1. **Frongello recursive linking** — promoted into active
+   [roadmap 8](perfattr_roadmap_8_frongello_recursive_linking.md) on September 5,
+   2026. Its governing
+   [specification](../docs/frongello_recursive_linking_specification.md) was accepted
+   that day, and implementation is authorized only in Roadmap 8's dependency order.
+   Candidate reference: Frongello (2002).
+2. **GRAP factor linking** — candidate reference: GRAP (1997). The Roadmap 8
+   methodology review found that GRAP's full-horizon factor is algebraically
+   equivalent to the unrolled Frongello recursion. Before promoting GRAP, establish
+   user value beyond a second method label and do not create a duplicate numerical
+   path merely to expose that label.
 3. **Geometric linking** — candidate reference: Bacon (2008), chapter 6.
 4. **Menchero optimized linking** — candidate references: Menchero (2000, 2004).
 

@@ -1,4 +1,4 @@
-"""Define the supported portable attribution calculation methods."""
+"""Define supported portable attribution and effect-linking methods."""
 
 from enum import Enum
 
@@ -23,6 +23,18 @@ class AttributionMethod(str, Enum):
     BRINSON_HOOD_BEEBOWER_TWO_EFFECT = "Brinson-Hood-Beebower Two-Effect"
 
 
+class EffectLinkingMethod(str, Enum):
+    """Identify the requested multi-period attribution-effect linker.
+
+    Attributes:
+        CARINO: Use the released Carino active-effect linking policy.
+        FRONGELLO: Use Frongello recursive effect linking.
+    """
+
+    CARINO = "Carino"
+    FRONGELLO = "Frongello"
+
+
 def uses_explicit_interaction(method: AttributionMethod) -> bool:
     """Return whether a method uses the released explicit-interaction schemas."""
     return method in (
@@ -39,4 +51,4 @@ def uses_bhb_allocation(method: AttributionMethod) -> bool:
     )
 
 
-__all__ = ["AttributionMethod"]
+__all__ = ["AttributionMethod", "EffectLinkingMethod"]

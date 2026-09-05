@@ -20,6 +20,10 @@ interaction schemas while defining its distinct allocation and total-effect poli
 The opt-in compact Brinson-Hood-Beebower extension is defined in
 `docs/brinson_hood_beebower_two_effect_specification.md`; it reuses the two-effect
 schemas while retaining the Brinson-Hood-Beebower allocation and total-effect policy.
+The opt-in Frongello extension is defined in
+`docs/frongello_recursive_linking_specification.md`; it changes only active-effect
+linking and its explicit result metadata while retaining logarithmic contribution
+linking and every result-frame schema.
 
 The words **must**, **must not**, **should**, and **may** describe requirements with
 their ordinary technical meanings.
@@ -44,7 +48,7 @@ The core owns:
 - portfolio and benchmark universe equalization;
 - contribution and method-specific Brinson effects;
 - logarithmic contribution linking;
-- Carino active-effect linking;
+- selectable Carino or Frongello active-effect linking, with Carino as the default;
 - cumulative and overall results; and
 - reconciliation evidence.
 
@@ -62,14 +66,15 @@ def calculate_attribution(
     benchmark: pd.DataFrame,
     *,
     method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+    effect_linking_method: EffectLinkingMethod = EffectLinkingMethod.CARINO,
     reconciliation_tolerance: float = 1e-12,
 ) -> AttributionResult:
     ...
 ```
 
 The root package exports `AttributionError`, `AttributionMethod`,
-`AttributionResult`, and `calculate_attribution`; callers do not need to import an
-internal module.
+`EffectLinkingMethod`, `AttributionResult`, and `calculate_attribution`; callers do
+not need to import an internal module.
 
 The result container is an ordinary dataclass:
 
@@ -82,6 +87,7 @@ class AttributionResult:
     cumulative: pd.DataFrame
     reconciliation: pd.DataFrame
     method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
+    effect_linking_method: EffectLinkingMethod = EffectLinkingMethod.CARINO
 ```
 
 `AttributionError`, a subclass of `ValueError`, reports invalid financial data or a
@@ -330,6 +336,9 @@ linked_active_contribution = (
 
 ### Active-effect linking
 
+`EffectLinkingMethod.CARINO` is the default and preserves the original released
+behavior. Its coefficient is defined as follows.
+
 Define the Carino coefficient:
 
 ```text
@@ -352,8 +361,21 @@ linked_selection_effect = selection_effect * LA[t]
 linked_total_effect = total_effect * LA[t]
 ```
 
-The opt-in three-effect method applies this same `LA[t]` to interaction. It does not
-introduce a second linking policy.
+The opt-in three-effect methods apply the selected effect-linking policy to
+interaction as well. `EffectLinkingMethod.FRONGELLO` instead uses the source-period
+factor:
+
+```text
+LF[t] = product_s<t(1 + P[s]) * product_s>t(1 + B[s])
+```
+
+Every simple effect originating in period `t` is multiplied by `LF[t]`. The final
+sum is equivalent to Frongello's forward recursion and reconciles to `P - B` over the
+complete horizon. Contribution linking remains logarithmic under either policy.
+Period-detail and intermediate cumulative values retain the full-horizon
+source-allocation interpretation described in
+`docs/frongello_recursive_linking_specification.md`; changing chronology can change
+the effect allocation even though compounded returns are order-independent.
 
 Linked active contribution and linked total effect are distinct allocation paths.
 Their period and identifier values need not match, but both reconcile to `P - B` over
@@ -596,6 +618,7 @@ must cover:
 - equivalent calculations from derived and explicitly supplied contributions;
 - one and multiple periods;
 - portfolio-only and benchmark-only identifiers;
+- identifiers that disappear before the horizon ends;
 - signed, leveraged, and zero weights;
 - zero weight with nonzero contribution;
 - equal and near-equal Carino returns;
@@ -616,7 +639,7 @@ Integration tests separately require identical displayed and serialized values a
 
 ## Deferred capabilities
 
-Current deferred calculation capabilities include hierarchical roll-up, alternative
+Current deferred calculation capabilities include hierarchical roll-up, additional
 multi-period linking methods, currency attribution, external-flow attribution effects,
 derivative exposure inference, and presentation or report generation. Add a policy or
 abstraction only when an approved implemented use case requires it.

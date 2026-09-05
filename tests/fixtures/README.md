@@ -17,6 +17,10 @@ effects in `expected_bhb_two_effect_period_detail.csv`.
 `expected_horizon.csv` is included when a case has more than one period; it records
 the full-horizon returns and logarithmic and Carino linking coefficients used in the
 expected detail.
+The `multi_period_linking/expected_frongello_*.csv` files form a complete public-result
+fixture for Frongello: period detail, period summary, identifier-level overall detail,
+cumulative output, and reconciliation evidence. They retain independently calculated
+logarithmic contributions because selecting Frongello changes effects only.
 
 The cases are deliberately small:
 
@@ -71,3 +75,88 @@ Carino coefficient. Its unlinked selections are `-0.008`, `0.012`, `0.0025`, and
 allocation is zero and compact selection equals total. The March total effects of
 `0.05` and `-0.05` are multiplied by the independently calculated active coefficient
 `0.000001000049999195771`; April's coefficient is its exact limit value of one.
+
+## Frongello calculations for `multi_period_linking`
+
+These expectations apply the prefix-portfolio, suffix-benchmark formula documented
+in `docs/frongello_recursive_linking_specification.md`. They were worked from the CSV
+inputs and the formula, then written as literals; they were not captured from
+`perfattr`, `ppar`, `pybrinson`, or another implementation.
+
+The portfolio period returns are the row-contribution sums `0.060` and `-0.005`.
+The benchmark returns are `0.050` and `0.007`. With two chronological periods, the
+Frongello factors are therefore:
+
+```text
+January  K[1] = 1.000 * (1 + 0.007) = 1.007
+February K[2] = (1 + 0.060) * 1.000 = 1.060
+```
+
+The default compact Brinson-Fachler effects and their linked values are:
+
+| Period | Identifier | Allocation | Selection | Total | Linked allocation | Linked selection | Linked total |
+|---|---|---:|---:|---:|---:|---:|---:|
+| January | Bonds | `0.0030` | `-0.0080` | `-0.0050` | `0.003021` | `-0.008056` | `-0.005035` |
+| January | Equity | `0.0030` | `0.0120` | `0.0150` | `0.003021` | `0.012084` | `0.015105` |
+| February | Bonds | `-0.0018` | `0.0025` | `0.0007` | `-0.001908` | `0.002650` | `0.000742` |
+| February | Equity | `-0.0027` | `-0.0100` | `-0.0127` | `-0.002862` | `-0.010600` | `-0.013462` |
+
+For example, January Bonds allocation is
+`(0.40 - 0.50) * (0.02 - 0.05) = 0.003`; its linked value is
+`0.003 * 1.007 = 0.003021`. February Equity selection is
+`0.50 * (-0.04 - -0.02) = -0.010`; its linked value is
+`-0.010 * 1.060 = -0.010600`. These examples also show positive and negative effects.
+None of the four rows has a zero total, but zero values are deliberately retained in
+the unchanged contribution columns, and separate one-period fixtures test zero
+effects and zero-weight rows under the identity factor.
+
+Summing the linked rows produces the two period summaries:
+
+```text
+January:  allocation 0.006042 + selection 0.004028 = total  0.010070
+February: allocation -0.004770 + selection -0.007950 = total -0.012720
+```
+
+Summing by identifier produces:
+
+```text
+Bonds:  allocation 0.001113 + selection -0.005406 = total -0.004293
+Equity: allocation 0.000159 + selection  0.001484 = total  0.001643
+```
+
+The cumulative rows are partial sums of these complete-horizon source allocations,
+not independent as-of Frongello calculations. They end at allocation `0.001272`,
+selection `-0.003922`, and total `-0.002650`. That total independently reconciles to:
+
+```text
+portfolio horizon = (1.060 * 0.995) - 1 = 0.054700
+benchmark horizon = (1.050 * 1.007) - 1 = 0.057350
+active horizon    = 0.054700 - 0.057350 = -0.002650
+```
+
+Portfolio and benchmark contributions retain the logarithmic coefficients stored in
+`expected_horizon.csv`. For example, January benchmark contributions
+`0.010035243908336232 + 0.040140975633344930` sum to
+`0.050176219541681162`. Summing both periods gives linked portfolio and benchmark
+contributions `0.054700` and `0.057350`, so their difference is also `-0.002650`.
+
+The overall identifier weights use 31 January days and 29 February days. Bonds'
+portfolio weight, for example, is `(0.40 * 31 + 0.50 * 29) / 60 =
+0.448333333333333333`. Identifier returns compound their source returns: Bonds'
+benchmark return is `(1.02 * 1.025) - 1 = 0.0455`, and Equity's portfolio return is
+`(1.10 * 0.96) - 1 = 0.0560`. The expected overall-detail file records all such
+values, not only the new effect channels.
+
+Every period reconciliation compares weights to one, contribution sums to the
+period returns, component sums to total effect, and total effect to active return.
+The five horizon checks compare linked portfolio contribution to `0.0547`, linked
+benchmark contribution to `0.05735`, and linked active contribution, component sum,
+and linked total effect to `-0.00265`. Literal zero residuals in the fixture express
+the mathematical expectation; tests allow only the governing `1e-12` floating-point
+tolerance.
+
+The primary two-period linker-only example in `tests/test_frongello_linking.py` is
+transcribed from Andrew S. B. Frongello, “Attribution Linking: Proofed and Clarified,”
+*The Journal of Performance Measurement* 7, no. 1 (Fall 2002), 54–67. Its docstrings
+show the original and reversed chronology arithmetic. Only the published input
+numbers and method were used; no source code or fixture was copied.

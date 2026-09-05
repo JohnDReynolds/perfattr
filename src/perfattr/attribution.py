@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from perfattr._exceptions import AttributionError
-from perfattr._linking import _carino, _compound_returns, _smoothing
+from perfattr._linking import _carino, _compound_returns, _frongello, _smoothing
 from perfattr._reconciliation import _build_reconciliation, _validate_result_values
 from perfattr._schemas import (
     CUMULATIVE_COLUMNS,
@@ -38,6 +38,7 @@ from perfattr._validation import (
 )
 from perfattr.method import (
     AttributionMethod,
+    EffectLinkingMethod,
     uses_bhb_allocation,
     uses_explicit_interaction,
 )
@@ -57,6 +58,8 @@ class AttributionResult:
         cumulative: Chronological period and cumulative totals.
         reconciliation: Passing financial reconciliation evidence.
         method: Attribution effect convention used for the result.
+        effect_linking_method: Multi-period linking policy used for attribution
+            effects. Contribution channels retain logarithmic linking.
 
     Notes:
         The calculator does not mutate caller-supplied frames. Returned frames belong
@@ -69,12 +72,22 @@ class AttributionResult:
     cumulative: pd.DataFrame
     reconciliation: pd.DataFrame
     method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
+    effect_linking_method: EffectLinkingMethod = EffectLinkingMethod.CARINO
 
 
 def _normalize_method(value: AttributionMethod) -> AttributionMethod:
     """Require an explicit supported attribution-method enum member."""
     if not isinstance(value, AttributionMethod):
         raise TypeError("method must be an AttributionMethod")
+    return value
+
+
+def _normalize_effect_linking_method(
+    value: EffectLinkingMethod,
+) -> EffectLinkingMethod:
+    """Require an explicit supported attribution-effect-linking enum member."""
+    if not isinstance(value, EffectLinkingMethod):
+        raise TypeError("effect_linking_method must be an EffectLinkingMethod")
     return value
 
 
@@ -452,16 +465,18 @@ def _build_period_detail(
 def _calculate_linking_coefficients(
     portfolio_period_returns: np.ndarray,
     benchmark_period_returns: np.ndarray,
+    effect_linking_method: EffectLinkingMethod = EffectLinkingMethod.CARINO,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Calculate full-horizon contribution and active-effect coefficients.
 
     Args:
         portfolio_period_returns: Ordered portfolio returns for each period.
         benchmark_period_returns: Ordered benchmark returns for each period.
+        effect_linking_method: Approved attribution-effect-linking policy.
 
     Returns:
-        Portfolio smoothing, benchmark smoothing, and Carino active-effect coefficient
-        arrays in period order.
+        Portfolio smoothing, benchmark smoothing, and selected active-effect
+        coefficient arrays in period order.
 
     Raises:
         AttributionError: If a horizon return or linking coefficient is invalid.
@@ -484,13 +499,19 @@ def _calculate_linking_coefficients(
         benchmark_coefficients = _smoothing(benchmark_period_returns) / _smoothing(
             np.asarray([benchmark_horizon_return], dtype=np.float64)
         )[0]
-        active_coefficients = _carino(
-            portfolio_period_returns,
-            benchmark_period_returns,
-        ) / _carino(
-            np.asarray([portfolio_horizon_return], dtype=np.float64),
-            np.asarray([benchmark_horizon_return], dtype=np.float64),
-        )[0]
+        if effect_linking_method is EffectLinkingMethod.FRONGELLO:
+            active_coefficients = _frongello(
+                portfolio_period_returns,
+                benchmark_period_returns,
+            )
+        else:
+            active_coefficients = _carino(
+                portfolio_period_returns,
+                benchmark_period_returns,
+            ) / _carino(
+                np.asarray([portfolio_horizon_return], dtype=np.float64),
+                np.asarray([benchmark_horizon_return], dtype=np.float64),
+            )[0]
     coefficients = (
         portfolio_coefficients,
         benchmark_coefficients,
@@ -504,12 +525,14 @@ def _calculate_linking_coefficients(
 def _link_period_detail(
     detail: pd.DataFrame,
     method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+    effect_linking_method: EffectLinkingMethod = EffectLinkingMethod.CARINO,
 ) -> pd.DataFrame:
-    """Apply full-horizon logarithmic and Carino linking coefficients.
+    """Apply full-horizon contribution and attribution-effect linking.
 
     Args:
         detail: Unlinked period-detail rows for the selected attribution method.
         method: Approved attribution effect convention.
+        effect_linking_method: Approved attribution-effect-linking policy.
 
     Returns:
         A new period-detail frame with contribution and effect channels linked over
@@ -517,8 +540,9 @@ def _link_period_detail(
 
     Notes:
         Allocation, selection, interaction when selected, and total effect all use
-        the same Carino active coefficient. Applying one coefficient preserves the
-        additive effect identity through linking.
+        the same selected effect coefficient. Applying one coefficient preserves the
+        additive effect identity through linking. Contribution channels retain their
+        logarithmic coefficients under either effect policy.
     """
     period_keys = ["from_date", "thru_date"]
     grouped = detail.groupby(period_keys, sort=False, observed=True)
@@ -535,6 +559,7 @@ def _link_period_detail(
     ) = _calculate_linking_coefficients(
         portfolio_period_returns,
         benchmark_period_returns,
+        effect_linking_method,
     )
     period_codes = np.asarray(grouped.ngroup(), dtype=np.int64)
     linked = detail.copy(deep=True)
@@ -561,9 +586,13 @@ def _link_period_detail(
             ("linked_interaction_effect", "interaction_effect"),
         )
     for linked_column, simple_column in effect_columns:
-        linked[linked_column] = (
-            _float_array(detail, simple_column) * active_coefficients[period_codes]
-        )
+        with np.errstate(over="ignore", invalid="ignore"):
+            linked[linked_column] = (
+                _float_array(detail, simple_column)
+                * active_coefficients[period_codes]
+            )
+        if not np.isfinite(_float_array(linked, linked_column)).all():
+            raise AttributionError("linked attribution effects must be finite")
     return linked.reset_index(drop=True)
 
 
@@ -828,6 +857,7 @@ def calculate_attribution(
     benchmark: pd.DataFrame,
     *,
     method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
+    effect_linking_method: EffectLinkingMethod = EffectLinkingMethod.CARINO,
     reconciliation_tolerance: float = _TOLERANCE,
 ) -> AttributionResult:
     """Calculate portable multi-period Brinson attribution.
@@ -837,6 +867,9 @@ def calculate_attribution(
         benchmark: Prepared benchmark rows for the same reporting periods.
         method: Attribution effect convention to calculate. The default preserves
             portfolio-weighted selection with interaction absorbed.
+        effect_linking_method: Multi-period attribution-effect-linking policy. The
+            default preserves released Carino behavior. Contribution channels retain
+            logarithmic linking independently of this policy.
         reconciliation_tolerance: Positive finite relative and absolute tolerance
             used for input weight totals and returned reconciliation evidence. The
             standalone default is ``1e-12``; a host may explicitly request a wider
@@ -847,8 +880,9 @@ def calculate_attribution(
         and reconciliation values.
 
     Raises:
-        TypeError: If an input is not a pandas DataFrame or ``method`` is not an
-            ``AttributionMethod``.
+        TypeError: If an input is not a pandas DataFrame, ``method`` is not an
+            ``AttributionMethod``, or ``effect_linking_method`` is not an
+            ``EffectLinkingMethod``.
         AttributionError: If financial input is invalid or a calculation invariant
             fails.
 
@@ -857,15 +891,16 @@ def calculate_attribution(
         interaction. They differ in their Brinson-Fachler and BHB allocation and
         identifier-total policies. The opt-in three-effect methods report
         benchmark-weighted selection and interaction separately. Contributions use
-        logarithmic linking; all active effects use the same Carino coefficient.
-        Supplied contribution is authoritative; otherwise contribution is derived as
-        weight multiplied by return.
+        logarithmic linking; all active effects use the same coefficient from the
+        selected Carino or Frongello policy. Supplied contribution is authoritative;
+        otherwise contribution is derived as weight multiplied by return.
     """
     if not isinstance(portfolio, pd.DataFrame):
         raise TypeError("portfolio must be a pandas DataFrame")
     if not isinstance(benchmark, pd.DataFrame):
         raise TypeError("benchmark must be a pandas DataFrame")
     method = _normalize_method(method)
+    effect_linking_method = _normalize_effect_linking_method(effect_linking_method)
     tolerance = _normalize_reconciliation_tolerance(reconciliation_tolerance)
 
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
@@ -880,40 +915,40 @@ def calculate_attribution(
         period_detail = _link_period_detail(
             _build_period_detail(equalized, method),
             method,
+            effect_linking_method,
         )
         period_summary = _build_period_summary(period_detail, method)
-        overall_detail = _build_overall_detail(equalized, period_detail, method)
-        cumulative = _build_cumulative(period_summary, method)
-        reconciliation = _build_reconciliation(
-            period_detail,
-            period_summary,
-            tolerance,
-            method,
+        result = AttributionResult(
+            period_detail=period_detail,
+            period_summary=period_summary,
+            overall_detail=_build_overall_detail(equalized, period_detail, method),
+            cumulative=_build_cumulative(period_summary, method),
+            reconciliation=_build_reconciliation(
+                period_detail,
+                period_summary,
+                tolerance,
+                method,
+            ),
+            method=method,
+            effect_linking_method=effect_linking_method,
         )
     _validate_result_values(
         "period_detail",
-        period_detail,
+        result.period_detail,
         ("portfolio_return", "benchmark_return", "active_return"),
     )
     _validate_result_values(
         "overall_detail",
-        overall_detail,
+        result.overall_detail,
         ("portfolio_return", "benchmark_return", "active_return"),
     )
     for name, frame in (
-        ("period_summary", period_summary),
-        ("cumulative", cumulative),
-        ("reconciliation", reconciliation),
+        ("period_summary", result.period_summary),
+        ("cumulative", result.cumulative),
+        ("reconciliation", result.reconciliation),
     ):
         _validate_result_values(name, frame)
-    return AttributionResult(
-        period_detail=period_detail,
-        period_summary=period_summary,
-        overall_detail=overall_detail,
-        cumulative=cumulative,
-        reconciliation=reconciliation,
-        method=method,
-    )
+    return result
 
 
 __all__ = [

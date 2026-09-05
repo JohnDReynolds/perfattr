@@ -6,7 +6,7 @@ from typing import cast
 import pandas as pd
 import pytest
 
-from perfattr import AttributionMethod, AttributionResult
+from perfattr import AttributionMethod, AttributionResult, EffectLinkingMethod
 from perfattr._schemas import (
     CUMULATIVE_COLUMNS,
     OVERALL_DETAIL_COLUMNS,
@@ -533,8 +533,8 @@ def test_bhb_two_effect_preserves_an_undefined_fee_residual() -> None:
     )
 
 
-def test_attribution_result_method_default_is_independent_of_frames() -> None:
-    """Released construction should receive explicit two-effect method metadata."""
+def test_attribution_result_policy_defaults_are_independent_of_frames() -> None:
+    """Direct construction should receive both released default policy identities."""
     result = AttributionResult(
         pd.DataFrame(),
         pd.DataFrame(),
@@ -544,3 +544,14 @@ def test_attribution_result_method_default_is_independent_of_frames() -> None:
     )
 
     assert result.method is AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
+    assert result.effect_linking_method is EffectLinkingMethod.CARINO
+
+    explicit = AttributionResult(
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+        effect_linking_method=EffectLinkingMethod.FRONGELLO,
+    )
+    assert explicit.effect_linking_method is EffectLinkingMethod.FRONGELLO
