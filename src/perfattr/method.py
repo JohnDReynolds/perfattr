@@ -29,10 +29,12 @@ class EffectLinkingMethod(str, Enum):
     Attributes:
         CARINO: Use the released Carino active-effect linking policy.
         FRONGELLO: Use Frongello recursive effect linking.
+        MENCHERO: Use Menchero optimized effect linking.
     """
 
     CARINO = "Carino"
     FRONGELLO = "Frongello"
+    MENCHERO = "Menchero"
 
 
 def uses_explicit_interaction(method: AttributionMethod) -> bool:

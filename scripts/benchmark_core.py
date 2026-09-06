@@ -46,6 +46,7 @@ _METHODS = {
 _EFFECT_LINKERS = {
     "carino": EffectLinkingMethod.CARINO,
     "frongello": EffectLinkingMethod.FRONGELLO,
+    "menchero": EffectLinkingMethod.MENCHERO,
 }
 
 

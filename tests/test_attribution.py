@@ -535,7 +535,7 @@ def test_calculation_is_deterministic_and_does_not_mutate_inputs(
     method: AttributionMethod,
     effect_linking_method: EffectLinkingMethod,
 ) -> None:
-    """Both linkers must ignore row order and return independently owned frames."""
+    """Every linker must ignore row order and return independently owned frames."""
     portfolio, benchmark = _read_inputs("multi_period_linking")
     portfolio_before = portfolio.copy(deep=True)
     benchmark_before = benchmark.copy(deep=True)

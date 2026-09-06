@@ -555,3 +555,13 @@ def test_attribution_result_policy_defaults_are_independent_of_frames() -> None:
         effect_linking_method=EffectLinkingMethod.FRONGELLO,
     )
     assert explicit.effect_linking_method is EffectLinkingMethod.FRONGELLO
+
+    menchero = AttributionResult(
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+        effect_linking_method=EffectLinkingMethod.MENCHERO,
+    )
+    assert menchero.effect_linking_method is EffectLinkingMethod.MENCHERO

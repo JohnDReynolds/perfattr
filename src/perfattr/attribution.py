@@ -13,7 +13,13 @@ import numpy as np
 import pandas as pd
 
 from perfattr._exceptions import AttributionError
-from perfattr._linking import _carino, _compound_returns, _frongello, _smoothing
+from perfattr._linking import (
+    _carino,
+    _compound_returns,
+    _frongello,
+    _menchero,
+    _smoothing,
+)
 from perfattr._reconciliation import _build_reconciliation, _validate_result_values
 from perfattr._schemas import (
     CUMULATIVE_COLUMNS,
@@ -472,7 +478,7 @@ def _calculate_linking_coefficients(
     Args:
         portfolio_period_returns: Ordered portfolio returns for each period.
         benchmark_period_returns: Ordered benchmark returns for each period.
-        effect_linking_method: Approved attribution-effect-linking policy.
+        effect_linking_method: Approved attribution-effect-linking identity.
 
     Returns:
         Portfolio smoothing, benchmark smoothing, and selected active-effect
@@ -480,6 +486,7 @@ def _calculate_linking_coefficients(
 
     Raises:
         AttributionError: If a horizon return or linking coefficient is invalid.
+        TypeError: If a private caller supplies an unsupported linking identity.
     """
     portfolio_horizon_return = _compound_returns(portfolio_period_returns)
     benchmark_horizon_return = _compound_returns(benchmark_period_returns)
@@ -504,7 +511,14 @@ def _calculate_linking_coefficients(
                 portfolio_period_returns,
                 benchmark_period_returns,
             )
-        else:
+        elif effect_linking_method is EffectLinkingMethod.MENCHERO:
+            active_coefficients = _menchero(
+                portfolio_period_returns,
+                benchmark_period_returns,
+                portfolio_horizon_return,
+                benchmark_horizon_return,
+            )
+        elif effect_linking_method is EffectLinkingMethod.CARINO:
             active_coefficients = _carino(
                 portfolio_period_returns,
                 benchmark_period_returns,
@@ -512,6 +526,8 @@ def _calculate_linking_coefficients(
                 np.asarray([portfolio_horizon_return], dtype=np.float64),
                 np.asarray([benchmark_horizon_return], dtype=np.float64),
             )[0]
+        else:
+            raise TypeError("unsupported effect-linking method")
     coefficients = (
         portfolio_coefficients,
         benchmark_coefficients,
@@ -532,7 +548,7 @@ def _link_period_detail(
     Args:
         detail: Unlinked period-detail rows for the selected attribution method.
         method: Approved attribution effect convention.
-        effect_linking_method: Approved attribution-effect-linking policy.
+        effect_linking_method: Approved attribution-effect-linking identity.
 
     Returns:
         A new period-detail frame with contribution and effect channels linked over
@@ -542,7 +558,7 @@ def _link_period_detail(
         Allocation, selection, interaction when selected, and total effect all use
         the same selected effect coefficient. Applying one coefficient preserves the
         additive effect identity through linking. Contribution channels retain their
-        logarithmic coefficients under either effect policy.
+        logarithmic coefficients under every effect policy.
     """
     period_keys = ["from_date", "thru_date"]
     grouped = detail.groupby(period_keys, sort=False, observed=True)
@@ -867,7 +883,7 @@ def calculate_attribution(
         benchmark: Prepared benchmark rows for the same reporting periods.
         method: Attribution effect convention to calculate. The default preserves
             portfolio-weighted selection with interaction absorbed.
-        effect_linking_method: Multi-period attribution-effect-linking policy. The
+        effect_linking_method: Multi-period attribution-effect-linking identity. The
             default preserves released Carino behavior. Contribution channels retain
             logarithmic linking independently of this policy.
         reconciliation_tolerance: Positive finite relative and absolute tolerance
@@ -892,7 +908,7 @@ def calculate_attribution(
         identifier-total policies. The opt-in three-effect methods report
         benchmark-weighted selection and interaction separately. Contributions use
         logarithmic linking; all active effects use the same coefficient from the
-        selected Carino or Frongello policy. Supplied contribution is authoritative;
+        selected policy. Supplied contribution is authoritative;
         otherwise contribution is derived as weight multiplied by return.
     """
     if not isinstance(portfolio, pd.DataFrame):

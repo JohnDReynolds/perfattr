@@ -30,6 +30,7 @@ def _read_inputs(case_name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     "invalid_linker",
     (
         EffectLinkingMethod.FRONGELLO.value,
+        EffectLinkingMethod.MENCHERO.value,
         AttributionMethod.BRINSON_FACHLER_TWO_EFFECT,
         object(),
     ),
@@ -58,4 +59,14 @@ def test_frongello_reaches_the_released_financial_validation() -> None:
             pd.DataFrame(),
             pd.DataFrame(),
             effect_linking_method=EffectLinkingMethod.FRONGELLO,
+        )
+
+
+def test_menchero_reaches_the_released_financial_validation() -> None:
+    """The implemented public policy must enter ordinary input validation."""
+    with pytest.raises(AttributionError, match="portfolio input is missing required"):
+        calculate_attribution(
+            pd.DataFrame(),
+            pd.DataFrame(),
+            effect_linking_method=EffectLinkingMethod.MENCHERO,
         )

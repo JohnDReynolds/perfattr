@@ -179,26 +179,97 @@ Suggested evaluation order:
    [specification](../docs/frongello_recursive_linking_specification.md) was accepted
    that day; the roadmap was completed and released in `perfattr==0.7.0a1` that day.
    Candidate reference: Frongello (2002).
-2. **GRAP factor linking** — candidate reference: GRAP (1997). The Roadmap 8
-   methodology review found that GRAP's full-horizon factor is algebraically
-   equivalent to the unrolled Frongello recursion. Before promoting GRAP, establish
-   user value beyond a second method label and do not create a duplicate numerical
-   path merely to expose that label.
-3. **Geometric linking** — candidate reference: Bacon (2008), chapter 6.
-4. **Menchero optimized linking** — candidate references: Menchero (2000, 2004).
+2. **GRAP factor linking — not currently pursued.** Candidate reference: GRAP
+   (1997). The Roadmap 8 methodology review found that GRAP's full-horizon factor is
+   algebraically equivalent to the unrolled Frongello recursion. The public market
+   review below found that GRAP is a recognized method, but did not establish that a
+   separately named GRAP policy is a common purchasing or interoperability
+   requirement. Do not create a duplicate numerical path merely to expose a second
+   label.
+3. **Menchero optimized linking** — selected next and promoted into active
+   [roadmap 9](perfattr_roadmap_9_menchero_optimized_linking.md) on September 6,
+   2026. Its governing
+   [specification](../docs/menchero_optimized_linking_specification.md) was accepted
+   that day; Steps 1–7 and the Step 8 prepublication gate are complete, with commit
+   and publication subject to explicit approval. Candidate references:
+   Menchero (2000, 2004).
+4. **Geometric linking** — candidate reference: Bacon (2008), chapter 6.
 
 The order may change after the specifications expose complexity or user value. Verify
 the exact publications, formulas, and intellectual-property status—particularly for
 Menchero—before implementation.
 
-## 5. Add external-flow reconciliation evidence
+### GRAP decision record
 
-- Keep flow-adjusted return measurement in the host accounting layer.
-- Define an optional reconciliation input that discloses external-flow components.
-- Do not silently classify flows as allocation, selection, interaction, or residual
-  attribution effects.
-- Add this only when the evidence improves an actual audit workflow without burdening
-  ordinary weights-and-returns users.
+As of September 6, 2026, do not promote GRAP into a separate roadmap or public
+`EffectLinkingMethod` merely so that `perfattr` can list another supported method.
+
+The decision is based on the following evidence and tradeoff:
+
+- GRAP is an established and recognizable method. For example, AMINDIS and FIDA list
+  it among their available multi-period attribution linkers, and the R
+  `PortfolioAttribution` package exposes it as a selectable policy.
+- Public product material does not provide enough evidence to call GRAP ubiquitous or
+  a standard buyer requirement. The CFA Institute's attribution review also notes
+  that software providers often keep their linking methods proprietary, so public
+  documentation cannot establish reliable market prevalence.
+- The same CFA Institute review reports that GRAP, Frongello, and Bonafede compound
+  effects through time and produce identical results. Roadmap 8 independently
+  confirmed the exact full-horizon equivalence between the GRAP prefix/suffix factor
+  and `perfattr`'s unrolled Frongello recursion.
+- A second implementation would therefore add testing and maintenance cost without
+  adding new numerical capability. Documentation may accurately describe the released
+  Frongello policy as mathematically equivalent to GRAP at the complete-horizon
+  boundary, but must not imply that a separately selectable GRAP policy exists.
+
+Reconsider a public `GRAP` selector only when a real client, file format, comparison,
+or integration requires that method identity. If added, it must reuse the existing
+factor calculation rather than introduce a duplicate algorithm, preserve `"GRAP"` in
+result metadata, and include tests proving exact numerical equality with Frongello.
+
+Market-review sources:
+
+- [CFA Institute Research Foundation, *Performance Attribution* (2019)][cfa-grap]
+- [AMINDIS, *Brinson Performance Attribution*][amindis-grap]
+- [FIDA, *Stats & Quant*][fida-grap]
+- [R-Finance `PortfolioAttribution` documentation][r-grap]
+
+[cfa-grap]: https://rpc.cfainstitute.org/research/foundation/2019/performance-attribution
+[amindis-grap]: https://www.amindis.com/brinson-performance-attribution
+[fida-grap]: https://fidaonline.com/en/rd/stats-quant.html
+[r-grap]: https://rdrr.io/github/R-Finance/PortfolioAttribution/man/Attribution.html
+
+## 5. External-flow reconciliation — not currently pursued
+
+As of September 6, 2026, do not promote external-flow reconciliation into a separate
+roadmap or add flow fields to the portable input and result schemas.
+
+The decision is based on the following scope and auditability considerations:
+
+- External flows belong primarily to return measurement and portfolio accounting,
+  not to the subsequent decomposition of an already measured return into attribution
+  effects. A host accounting layer must apply its chosen time-weighted, Modified
+  Dietz, or other flow-adjusted return policy before calling `perfattr`.
+- `perfattr` receives period weights, returns, and optional authoritative
+  contributions. Once those values are supplied, an external-flow amount does not
+  change the Brinson calculations and must not be classified as allocation,
+  selection, interaction, or a residual attribution effect.
+- A flow amount by itself cannot independently reconcile a reported return. A
+  defensible check would also require valuation observations, exact flow timing, sign
+  conventions, the return-measurement method, and policies for transactions, fees,
+  taxes, and financing. Adding only a nominal flow column would create the appearance
+  of assurance without enough evidence to provide it.
+- Adding that broader accounting contract would burden ordinary weights-and-returns
+  users, expand stable schemas, and duplicate responsibilities intentionally left in
+  host systems such as `ppar`.
+- Treating an unexplained flow as a contribution or balancing residual would risk
+  double counting and could conceal an upstream accounting or timing error.
+
+Hosts may reconcile valuations, flows, and measured returns before constructing
+portable attribution inputs. Reconsider an optional `perfattr` reconciliation input
+only when a concrete audit workflow supplies the complete evidence and conventions
+needed for an independent check. Any future result must remain diagnostic evidence,
+not an attribution effect, and must not alter the ordinary weights-and-returns path.
 
 ## 6. Add currency attribution as a separate calculation family
 

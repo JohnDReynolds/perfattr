@@ -17,8 +17,8 @@ vendor schemas, and presentation remain outside the package boundary.
 - Apply static or effective-dated classification mappings before consolidation.
 - Calculate Brinson-Fachler or Brinson-Hood-Beebower with compact two-effect selection
   or explicit three-effect selection and interaction.
-- Link contributions logarithmically and attribution effects using Carino or
-  Frongello linking, with Carino retained as the default.
+- Link contributions logarithmically and attribution effects using Carino, Frongello,
+  or Menchero optimized linking, with Carino retained as the default.
 - Preserve zero-weight fee and financing contributions without inventing returns.
 - Return deterministic pandas result frames with explicit financial reconciliation.
 
@@ -44,6 +44,9 @@ and [`docs/brinson_hood_beebower_two_effect_specification.md`][bhb-two-spec].
 The released opt-in Frongello effect-linking work is recorded in
 [`_extras/perfattr_roadmap_8_frongello_recursive_linking.md`][frongello-roadmap]
 and [`docs/frongello_recursive_linking_specification.md`][frongello-spec].
+The release-candidate opt-in Menchero optimized-linking work is recorded in
+[`_extras/perfattr_roadmap_9_menchero_optimized_linking.md`][menchero-roadmap]
+and [`docs/menchero_optimized_linking_specification.md`][menchero-spec].
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).
@@ -58,6 +61,8 @@ contract is in [`docs/preparation_specification.md`](docs/preparation_specificat
 [bhb-two-spec]: docs/brinson_hood_beebower_two_effect_specification.md
 [frongello-roadmap]: _extras/perfattr_roadmap_8_frongello_recursive_linking.md
 [frongello-spec]: docs/frongello_recursive_linking_specification.md
+[menchero-roadmap]: _extras/perfattr_roadmap_9_menchero_optimized_linking.md
+[menchero-spec]: docs/menchero_optimized_linking_specification.md
 
 ```python
 import pandas as pd
@@ -181,7 +186,9 @@ complete schemas, linking rules, null policies, and independently calculated exa
 ## Effect linking
 
 Carino remains the default effect linker. Frongello is an explicit opt-in for clients
-that need path-dependent recursive effect linking across multiple periods:
+that need path-dependent recursive linking. Menchero optimized linking is an opt-in
+for clients that require order-independent, minimum-correction allocation of the
+multi-period compounding residual:
 
 ```python
 from perfattr import EffectLinkingMethod, calculate_attribution
@@ -191,7 +198,13 @@ frongello_result = calculate_attribution(
     prepared.benchmark,
     effect_linking_method=EffectLinkingMethod.FRONGELLO,
 )
+menchero_result = calculate_attribution(
+    prepared.portfolio,
+    prepared.benchmark,
+    effect_linking_method=EffectLinkingMethod.MENCHERO,
+)
 print(frongello_result.effect_linking_method)
+print(menchero_result.effect_linking_method)
 ```
 
 The option changes only linked allocation, selection, optional interaction, and total
@@ -199,8 +212,27 @@ effects. Portfolio and benchmark contributions remain logarithmically linked, an
 unlinked effects and result-frame schemas do not change. Each period-detail linked
 effect is the originating source-period effect allocated to the complete requested
 horizon; intermediate cumulative rows are partial sums of those allocations, not
-independent as-of calculations. See the [Frongello specification][frongello-spec] for
-the formula, ordering behavior, worked example, and compatibility contract.
+independent as-of calculations.
+
+Frongello's coefficient for a source period depends on earlier portfolio growth and
+later benchmark growth, so changing the economic chronology can change the allocation
+among effect channels. Menchero uses one common horizon scale plus the smallest
+least-squares period corrections needed to reconcile the compounded active return.
+Moving complete economic periods therefore moves their coefficients with them without
+changing complete-horizon effect totals. A one-period calculation is the identity
+under both policies.
+
+Neither policy changes portfolio or benchmark contribution linking. Cash, fees,
+financing, authoritative contribution, signed weights, and missing identifiers all
+receive the same ordinary coefficient as other effects in their source period. See
+the [Frongello specification][frongello-spec] and [Menchero
+specification][menchero-spec] for formulas, worked examples, ordering behavior, and
+compatibility contracts.
+
+GRAP is intentionally not exposed as another linker name because its unrolled result
+at this library's source-period boundary is the same numerical allocation already
+provided by Frongello. A duplicate public identity would imply a calculation choice
+where none exists.
 
 Canonical CSV inputs can be loaded with `read_performance_csv`; optional mapping and
 classification readers are also available at the package root.
@@ -265,8 +297,8 @@ python scripts/benchmark_preparation.py --samples 5
 Pass `--method three-effect`, `--method bhb-three-effect`, or
 `--method bhb-two-effect` to `benchmark_core.py` to measure an opt-in calculation;
 the default remains `--method two-effect`. Pass
-`--effect-linking-method frongello` to measure Frongello; the benchmark default remains
-Carino.
+`--effect-linking-method frongello` or `--effect-linking-method menchero` to measure an
+opt-in linker; the benchmark default remains Carino.
 
 Add `--workload monthly_121260 --profile` to inspect one workload's cumulative
 calculation-core call profile. The preparation benchmark compares static and

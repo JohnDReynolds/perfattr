@@ -5,7 +5,7 @@ import perfattr
 
 def test_package_exposes_version() -> None:
     """The installed package should expose its distribution version."""
-    assert perfattr.__version__ == "0.7.0a1"
+    assert perfattr.__version__ == "0.8.0a1"
 
 
 def test_package_exposes_attribution_methods() -> None:
@@ -29,9 +29,10 @@ def test_package_exposes_attribution_methods() -> None:
 
 
 def test_package_exposes_effect_linking_methods() -> None:
-    """The root package should expose both approved effect-linking identities."""
+    """The root package should expose every approved effect-linking identity."""
     assert perfattr.EffectLinkingMethod.CARINO.value == "Carino"
     assert perfattr.EffectLinkingMethod.FRONGELLO.value == "Frongello"
+    assert perfattr.EffectLinkingMethod.MENCHERO.value == "Menchero"
 
 
 def test_package_exposes_step_two_preparation_api() -> None:

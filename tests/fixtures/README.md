@@ -21,6 +21,9 @@ The `multi_period_linking/expected_frongello_*.csv` files form a complete public
 fixture for Frongello: period detail, period summary, identifier-level overall detail,
 cumulative output, and reconciliation evidence. They retain independently calculated
 logarithmic contributions because selecting Frongello changes effects only.
+The matching `expected_menchero_*.csv` files form the complete Menchero public-result
+fixture. Their effect values use independently evaluated optimized coefficients; all
+unchanged values retain the original independently derived fixture arithmetic.
 
 The cases are deliberately small:
 
@@ -160,3 +163,103 @@ transcribed from Andrew S. B. Frongello, “Attribution Linking: Proofed and Cla
 *The Journal of Performance Measurement* 7, no. 1 (Fall 2002), 54–67. Its docstrings
 show the original and reversed chronology arithmetic. Only the published input
 numbers and method were used; no source code or fixture was copied.
+
+## Menchero calculations for `multi_period_linking`
+
+These original expectations apply the optimized period-coefficient formula in
+`docs/menchero_optimized_linking_specification.md`. They were derived from the literal
+CSV inputs with 50-digit decimal arithmetic and then written as fixture values; they
+were not captured from `perfattr`, `ppar`, `pybrinson`, or any other implementation.
+The existing independently calculated contribution, exposure, return, and unlinked
+effect values are unchanged because Menchero selects only active-effect linking.
+
+The two period returns and compounded horizon returns are:
+
+```text
+P[1] =  0.060       B[1] = 0.050       d[1] =  0.010
+P[2] = -0.005       B[2] = 0.007       d[2] = -0.012
+P[H] = (1.060 * 0.995) - 1 = 0.054700
+B[H] = (1.050 * 1.007) - 1 = 0.057350
+D    = P[H] - B[H]        = -0.002650
+```
+
+For two periods, the stable difference-of-powers mean reduces to the arithmetic mean
+of the two positive horizon roots:
+
+```text
+M = (sqrt(1.054700) + sqrt(1.057350)) / 2
+  = 1.0276305680441572855867437657161313592361915910889
+
+E = D - M * (0.010 - 0.012)
+  = -0.0005947388639116854288265124685677372815276168178222
+
+Q = 0.010**2 + (-0.012)**2
+  = 0.000244
+
+K[1] = M + E *  0.010 / Q
+     = 1.0032560244412193581758211235617158968785023772437
+K[2] = M + E * -0.012 / Q
+     = 1.0568800203676827984798509363014299140654186477031
+```
+
+Applying the same coefficient to every effect in its source period gives:
+
+| Period | Identifier | Allocation | Selection | Total | Linked allocation | Linked selection | Linked total |
+|---|---|---:|---:|---:|---:|---:|---:|
+| January | Bonds | `0.0030` | `-0.0080` | `-0.0050` | `0.003009768073323658` | `-0.008026048195529755` | `-0.005016280122206097` |
+| January | Equity | `0.0030` | `0.0120` | `0.0150` | `0.003009768073323658` | `0.012039072293294632` | `0.015048840366618290` |
+| February | Bonds | `-0.0018` | `0.0025` | `0.0007` | `-0.001902384036661829` | `0.002642200050919207` | `0.000739816014257378` |
+| February | Equity | `-0.0027` | `-0.0100` | `-0.0127` | `-0.002853576054992744` | `-0.010568800203676828` | `-0.013422376258669572` |
+
+For example, January Bonds selection is
+`-0.008 * 1.003256024441219358... = -0.008026048195529755...`.
+February Equity allocation is
+`-0.0027 * 1.056880020367682798... = -0.002853576054992744...`.
+The positive, negative, and zero source values are preserved rather than classified
+or adjusted by the linker.
+
+Summing the independently linked rows by period gives:
+
+```text
+January:  allocation  0.006019536146647316
+          selection   0.004013024097764877
+          total       0.010032560244412194
+
+February: allocation -0.004755960091654573
+          selection  -0.007926600152757621
+          total      -0.012682560244412194
+```
+
+Summing the same source rows by identifier gives:
+
+```text
+Bonds:  allocation  0.001107384036661829
+        selection  -0.005383848144610548
+        total      -0.004276464107948719
+
+Equity: allocation  0.000156192018330915
+        selection   0.001470272089617804
+        total       0.001626464107948719
+```
+
+The cumulative rows are partial sums of complete-horizon source allocations. They end
+at allocation `0.001263576054992744`, selection `-0.003913576054992744`, and total
+`-0.002650000000000000`. Thus the independent effect calculation reconciles to both
+the compounded active horizon return and the independently logarithmically linked
+active contribution.
+
+The five Menchero CSVs record every public frame, including all 19 reconciliation
+rows. Literal zero residuals state the exact financial identities; fixture comparison
+allows only the unchanged `1e-12` floating-point tolerance. Separate parametrized
+one-period tests use `single_period_derived` and `single_period_authoritative` to
+cover signed and zero weights, missing sides, positive, negative, and zero values,
+authoritative contribution, and null effective return. Dedicated two-period tests
+cover ordinary explicit cash and a disappearing zero-weight fee or financing-style
+charge. Neither identifier name selects special attribution or linking behavior.
+
+The six-period coefficient example in `tests/test_menchero_linking.py` uses the
+published inputs disclosed by José G. Menchero, “An Optimized Approach to Linking
+Attribution Effects over Time,” *The Journal of Performance Measurement* 5, no. 1
+(Fall 2000), 36–42, and the related public patent record. Its expected horizon returns,
+coefficients, and effect totals were independently recomputed from the disclosed
+formula. No external source code, test fixture, or generated package output was used.

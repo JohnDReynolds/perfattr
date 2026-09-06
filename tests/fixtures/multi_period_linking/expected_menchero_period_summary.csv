@@ -1,0 +1,3 @@
+from_date,thru_date,quantity_of_days,portfolio_return,benchmark_return,active_return,portfolio_contribution,benchmark_contribution,active_contribution,allocation_effect,selection_effect,total_effect,linked_portfolio_contribution,linked_benchmark_contribution,linked_active_contribution,linked_allocation_effect,linked_selection_effect,linked_total_effect
+2024-01-01,2024-01-31,31,0.06,0.05,0.01,0.06,0.05,0.01,0.006,0.004,0.01,0.0598484180539304,0.050176219541681162,0.009672198512249243,0.006019536146647316,0.004013024097764877,0.010032560244412194
+2024-02-01,2024-02-29,29,-0.005,0.007,-0.012,-0.005,0.007,-0.012,-0.0045,-0.0075,-0.012,-0.005148418053930404,0.007173780458318846,-0.012322198512249249,-0.004755960091654573,-0.007926600152757621,-0.012682560244412194

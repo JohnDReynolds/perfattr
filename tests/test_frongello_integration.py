@@ -126,9 +126,14 @@ def test_public_frongello_matches_independent_values_in_every_result_frame() -> 
     ("single_period_derived", "single_period_authoritative"),
 )
 @pytest.mark.parametrize("method", _METHODS)
-def test_one_period_frongello_preserves_all_representational_edge_cases(
+@pytest.mark.parametrize(
+    "effect_linking_method",
+    (EffectLinkingMethod.FRONGELLO, EffectLinkingMethod.MENCHERO),
+)
+def test_one_period_effect_linkers_preserve_all_representational_edge_cases(
     case_name: str,
     method: AttributionMethod,
+    effect_linking_method: EffectLinkingMethod,
 ) -> None:
     """One-period identity must preserve the released edge-case representations.
 
@@ -136,25 +141,25 @@ def test_one_period_frongello_preserves_all_representational_edge_cases(
     position, portfolio-only and benchmark-only identifiers, and an explicit neutral
     row. ``single_period_authoritative`` contains supplied contributions that differ
     from weight times return plus an unexposed charge whose effective return is null.
-    With one source period, Frongello's prefix and suffix are both empty products of
-    one, so every financial frame must equal the Carino result exactly.
+    With one source period, both Frongello and Menchero have a coefficient of one, so
+    every financial frame must equal the Carino result exactly.
     """
     portfolio, benchmark = _read_inputs(case_name)
 
     carino = calculate_attribution(portfolio, benchmark, method=method)
-    frongello = calculate_attribution(
+    linked = calculate_attribution(
         portfolio,
         benchmark,
         method=method,
-        effect_linking_method=EffectLinkingMethod.FRONGELLO,
+        effect_linking_method=effect_linking_method,
     )
 
-    frongello_frames = (
-        frongello.period_detail,
-        frongello.period_summary,
-        frongello.overall_detail,
-        frongello.cumulative,
-        frongello.reconciliation,
+    linked_frames = (
+        linked.period_detail,
+        linked.period_summary,
+        linked.overall_detail,
+        linked.cumulative,
+        linked.reconciliation,
     )
     carino_frames = (
         carino.period_detail,
@@ -163,20 +168,42 @@ def test_one_period_frongello_preserves_all_representational_edge_cases(
         carino.cumulative,
         carino.reconciliation,
     )
-    for frongello_frame, carino_frame in zip(
-        frongello_frames,
+    for linked_frame, carino_frame in zip(
+        linked_frames,
         carino_frames,
         strict=True,
     ):
         pd.testing.assert_frame_equal(
-            frongello_frame,
+            linked_frame,
             carino_frame,
             check_exact=True,
         )
 
 
-def test_disappearing_cash_identifier_keeps_its_effect_on_its_source_row() -> None:
-    """A later benchmark return grows an earlier cash effect without inventing a row.
+@pytest.mark.parametrize(
+    ("effect_linking_method", "expected_cash_effects"),
+    (
+        (
+            EffectLinkingMethod.FRONGELLO,
+            np.asarray([-0.00202, 0.02424, 0.02222]),
+        ),
+        (
+            EffectLinkingMethod.MENCHERO,
+            np.asarray(
+                [
+                    -0.002039012172035790,
+                    0.024468146064429481,
+                    0.022429133892393691,
+                ]
+            ),
+        ),
+    ),
+)
+def test_disappearing_cash_identifier_keeps_its_effect_on_its_source_row(
+    effect_linking_method: EffectLinkingMethod,
+    expected_cash_effects: np.ndarray,
+) -> None:
+    """A complete-horizon factor changes cash without inventing a later row.
 
     In January, CASH_USD has portfolio/benchmark weights of 40%/50% and returns of
     10%/4%. The deliberately generic numbers emphasize that a cash label does not
@@ -185,7 +212,10 @@ def test_disappearing_cash_identifier_keeps_its_effect_on_its_source_row() -> No
     ``40% * (10% - 4%) = 2.4%``. CASH_USD disappears completely in February, whose
     benchmark earns 1%. Its January Frongello factor is 1.01, giving linked allocation
     -0.202%, selection 2.424%, and total 2.222% on the January row. No February cash
-    row is synthesized merely to record benchmark carry-forward.
+    row is synthesized merely to record benchmark carry-forward. Menchero instead
+    uses the independently calculated January factor ``1.0195060860178951``, giving
+    linked allocation -0.2039012172%, selection 2.4468146064%, and total
+    2.2429133892%. Both policies finish at the same 3.06% horizon active return.
     """
     columns = "from_date thru_date identifier weight return quantity_of_days".split()
     portfolio = pd.DataFrame(
@@ -208,7 +238,7 @@ def test_disappearing_cash_identifier_keeps_its_effect_on_its_source_row() -> No
     result = calculate_attribution(
         portfolio,
         benchmark,
-        effect_linking_method=EffectLinkingMethod.FRONGELLO,
+        effect_linking_method=effect_linking_method,
     )
     cash = result.period_detail.loc[
         result.period_detail["identifier"] == "CASH_USD"
@@ -224,7 +254,7 @@ def test_disappearing_cash_identifier_keeps_its_effect_on_its_source_row() -> No
                 "linked_total_effect",
             ]
         ].to_numpy(dtype=np.float64),
-        np.asarray([-0.00202, 0.02424, 0.02222]),
+        expected_cash_effects,
         rtol=_TOLERANCE,
         atol=_TOLERANCE,
     )
@@ -235,15 +265,27 @@ def test_disappearing_cash_identifier_keeps_its_effect_on_its_source_row() -> No
     )
 
 
-def test_unexposed_authoritative_charge_uses_the_ordinary_source_factor() -> None:
+@pytest.mark.parametrize(
+    ("effect_linking_method", "expected_linked_charge"),
+    (
+        (EffectLinkingMethod.FRONGELLO, -0.00102),
+        (EffectLinkingMethod.MENCHERO, -0.001019488202244442),
+    ),
+)
+def test_unexposed_authoritative_charge_uses_the_ordinary_source_factor(
+    effect_linking_method: EffectLinkingMethod,
+    expected_linked_charge: float,
+) -> None:
     """An undefined-return charge is a normal finite selection effect.
 
     January portfolio contribution is 1.9%: a 2% Core contribution and a -0.1%
     zero-weight Fee contribution whose return is undefined. The Fee has zero active
     weight, hence zero allocation, while its total and residual selection are -0.1%.
     February's benchmark return is 2%, so the January source factor is 1.02 and the
-    Fee's linked selection and total are both ``-0.1% * 1.02 = -0.102%``. Its later
-    absence creates no row and does not erase the authoritative charge.
+    Fee's linked selection and total are both ``-0.1% * 1.02 = -0.102%`` under
+    Frongello. Menchero's independently calculated January coefficient is
+    ``1.0194882022444422``, giving -0.1019488202%. Its later absence creates no row,
+    and neither policy erases or reinterprets the authoritative charge.
     """
     columns = (
         "from_date thru_date identifier weight return contribution quantity_of_days"
@@ -267,7 +309,7 @@ def test_unexposed_authoritative_charge_uses_the_ordinary_source_factor() -> Non
     result = calculate_attribution(
         portfolio,
         benchmark,
-        effect_linking_method=EffectLinkingMethod.FRONGELLO,
+        effect_linking_method=effect_linking_method,
     )
     fee = result.period_detail.loc[result.period_detail["identifier"] == "Fee"]
 
@@ -275,12 +317,12 @@ def test_unexposed_authoritative_charge_uses_the_ordinary_source_factor() -> Non
     assert pd.isna(fee.iloc[0]["portfolio_return"])
     assert fee.iloc[0]["linked_allocation_effect"] == 0.0
     assert fee.iloc[0]["linked_selection_effect"] == pytest.approx(
-        -0.00102,
+        expected_linked_charge,
         rel=_TOLERANCE,
         abs=_TOLERANCE,
     )
     assert fee.iloc[0]["linked_total_effect"] == pytest.approx(
-        -0.00102,
+        expected_linked_charge,
         rel=_TOLERANCE,
         abs=_TOLERANCE,
     )
@@ -350,9 +392,14 @@ def test_frongello_changes_only_linked_effect_values_and_metadata(
         ),
     ),
 )
-def test_frongello_preserves_two_to_three_effect_collapse_in_every_frame(
+@pytest.mark.parametrize(
+    "effect_linking_method",
+    (EffectLinkingMethod.FRONGELLO, EffectLinkingMethod.MENCHERO),
+)
+def test_effect_linkers_preserve_two_to_three_effect_collapse_in_every_frame(
     compact_method: AttributionMethod,
     explicit_method: AttributionMethod,
+    effect_linking_method: EffectLinkingMethod,
 ) -> None:
     """Linearity must preserve each method family's interaction-collapse identity."""
     portfolio, benchmark = _read_inputs("multi_period_linking")
@@ -360,13 +407,13 @@ def test_frongello_preserves_two_to_three_effect_collapse_in_every_frame(
         portfolio,
         benchmark,
         method=compact_method,
-        effect_linking_method=EffectLinkingMethod.FRONGELLO,
+        effect_linking_method=effect_linking_method,
     )
     explicit = calculate_attribution(
         portfolio,
         benchmark,
         method=explicit_method,
-        effect_linking_method=EffectLinkingMethod.FRONGELLO,
+        effect_linking_method=effect_linking_method,
     )
     frame_pairs = (
         (compact.period_detail, explicit.period_detail, ("", "linked_")),
@@ -398,15 +445,21 @@ def test_frongello_preserves_two_to_three_effect_collapse_in_every_frame(
 
 
 @pytest.mark.parametrize("method", _METHODS)
-def test_frongello_near_minus_one_boundary_reconciles(
+@pytest.mark.parametrize(
+    "effect_linking_method",
+    (EffectLinkingMethod.FRONGELLO, EffectLinkingMethod.MENCHERO),
+)
+def test_effect_linkers_near_minus_one_boundary_reconcile(
     method: AttributionMethod,
+    effect_linking_method: EffectLinkingMethod,
 ) -> None:
-    """The released near-wipeout inputs must remain finite under every method.
+    """The released near-wipeout inputs must remain finite under every policy.
 
     The fixture contains period and compounded returns close to, but strictly above,
-    -100%. Frongello uses multiplication rather than Carino's active log ratio, while
-    contribution linking still uses logarithms. Every linked effect must remain finite
-    and reconcile to the same compounded active return at the unchanged tolerance.
+    -100%. Frongello uses ordered multiplication, while Menchero uses positive horizon
+    growth roots and its scaled active norm. Contribution linking still uses
+    logarithms. Every linked effect must remain finite and reconcile to the same
+    compounded active return at the unchanged tolerance.
     """
     portfolio, benchmark = _read_inputs("linking_boundaries")
 
@@ -414,7 +467,7 @@ def test_frongello_near_minus_one_boundary_reconciles(
         portfolio,
         benchmark,
         method=method,
-        effect_linking_method=EffectLinkingMethod.FRONGELLO,
+        effect_linking_method=effect_linking_method,
     )
 
     effect_columns = _linked_effect_columns(result.cumulative)

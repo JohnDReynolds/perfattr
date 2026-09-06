@@ -24,6 +24,9 @@ The opt-in Frongello extension is defined in
 `docs/frongello_recursive_linking_specification.md`; it changes only active-effect
 linking and its explicit result metadata while retaining logarithmic contribution
 linking and every result-frame schema.
+The opt-in Menchero extension is defined in
+`docs/menchero_optimized_linking_specification.md`; it adds order-independent
+optimized active-effect linking through the same unchanged public boundary.
 
 The words **must**, **must not**, **should**, and **may** describe requirements with
 their ordinary technical meanings.
@@ -48,7 +51,8 @@ The core owns:
 - portfolio and benchmark universe equalization;
 - contribution and method-specific Brinson effects;
 - logarithmic contribution linking;
-- selectable Carino or Frongello active-effect linking, with Carino as the default;
+- selectable Carino, Frongello, or Menchero active-effect linking, with Carino as the
+  default;
 - cumulative and overall results; and
 - reconciliation evidence.
 
@@ -371,11 +375,28 @@ LF[t] = product_s<t(1 + P[s]) * product_s>t(1 + B[s])
 
 Every simple effect originating in period `t` is multiplied by `LF[t]`. The final
 sum is equivalent to Frongello's forward recursion and reconciles to `P - B` over the
-complete horizon. Contribution linking remains logarithmic under either policy.
-Period-detail and intermediate cumulative values retain the full-horizon
-source-allocation interpretation described in
-`docs/frongello_recursive_linking_specification.md`; changing chronology can change
-the effect allocation even though compounded returns are order-independent.
+complete horizon.
+
+`EffectLinkingMethod.MENCHERO` instead defines period active return `d[t] = P[t] -
+B[t]`, a continuous common horizon scale `M`, residual `E`, and coefficient `LM[t]`:
+
+```text
+E     = (P - B) - M * sum_t(d[t])
+LM[t] = M + E * d[t] / sum_t(d[t] ** 2)
+```
+
+The exact zero active vector uses zero correction. The implementation evaluates `M`
+with the stable difference-of-powers identity rather than subtracting nearly equal
+horizon roots; its complete formula and equal-horizon limit are defined in
+`docs/menchero_optimized_linking_specification.md`. Applying one `LM[t]` to every
+effect in period `t` minimizes the squared period corrections and reconciles to
+`P - B`. Unlike Frongello, moving complete economic periods leaves complete-horizon
+effect totals unchanged.
+
+Contribution linking remains logarithmic under every effect policy. Period-detail
+and intermediate cumulative values retain the full-horizon source-allocation
+interpretation described in the applicable supplemental linking specification;
+intermediate cumulative rows are not independently relinked as-of results.
 
 Linked active contribution and linked total effect are distinct allocation paths.
 Their period and identifier values need not match, but both reconcile to `P - B` over
@@ -621,7 +642,7 @@ must cover:
 - identifiers that disappear before the horizon ends;
 - signed, leveraged, and zero weights;
 - zero weight with nonzero contribution;
-- equal and near-equal Carino returns;
+- equal and near-equal Carino and Menchero returns;
 - zero total return;
 - returns close to, equal to, and below `-1.0`;
 - period gaps and overlaps; and

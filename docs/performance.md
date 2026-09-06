@@ -14,8 +14,10 @@ is reported separately. `--method two-effect` is the unchanged default;
 `--method three-effect` measures Brinson-Fachler with explicit interaction, and
 `--method bhb-three-effect` and `--method bhb-two-effect` measure explicit and compact
 Brinson-Hood-Beebower on the same inputs. `--effect-linking-method carino` is the
-unchanged benchmark default; `--effect-linking-method frongello` selects the new
-effect linker without changing contribution linking or workload construction.
+unchanged benchmark default; `--effect-linking-method frongello` selects the
+path-dependent linker, and `--effect-linking-method menchero` selects the optimized
+order-independent linker. Neither option changes contribution linking or workload
+construction.
 
 The four workloads correspond to the roadmap shapes:
 
@@ -246,6 +248,44 @@ the identifier grid.
 These are observations only. They provide no evidence for an optimization or a new
 performance threshold, and no dependency, formula, tolerance, warning, or established
 gate changed.
+
+## Roadmap 9 Menchero release-candidate observations
+
+These observations were collected on September 6, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Each elapsed result is the
+median of five samples using identical deterministic derived-contribution inputs.
+Carino, Frongello, and Menchero were measured through the same public calculation
+boundary for every attribution method and all four established workloads.
+
+| Workload | Method | Carino | Frongello | Menchero | Peak per linker |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `normal` | BF two-effect | 0.0416 s | 0.0326 s | 0.0329 s | 4.6 MiB |
+| `normal` | BF three-effect | 0.0329 s | 0.0317 s | 0.0322 s | 4.8 MiB |
+| `normal` | BHB three-effect | 0.0320 s | 0.0332 s | 0.0327 s | 4.8 MiB |
+| `normal` | BHB two-effect | 0.0319 s | 0.0343 s | 0.0327 s | 4.6 MiB |
+| `selected_10x` | BF two-effect | 0.1139 s | 0.1071 s | 0.1100 s | 44.6 MiB |
+| `selected_10x` | BF three-effect | 0.1109 s | 0.1090 s | 0.1103 s | 47.1 MiB |
+| `selected_10x` | BHB three-effect | 0.1088 s | 0.1151 s | 0.1129 s | 47.1 MiB |
+| `selected_10x` | BHB two-effect | 0.1126 s | 0.1170 s | 0.1094 s | 44.6 MiB |
+| `monthly_121260` | BF two-effect | 0.2008 s | 0.1939 s | 0.1964 s | 89.1 MiB |
+| `monthly_121260` | BF three-effect | 0.1921 s | 0.1918 s | 0.1968 s | 94.1 MiB |
+| `monthly_121260` | BHB three-effect | 0.1917 s | 0.1936 s | 0.2010 s | 94.1 MiB |
+| `monthly_121260` | BHB two-effect | 0.1989 s | 0.1997 s | 0.1928 s | 89.1 MiB |
+| `history_25y` | BF two-effect | 0.0702 s | 0.0645 s | 0.0675 s | 22.4 MiB |
+| `history_25y` | BF three-effect | 0.0698 s | 0.0668 s | 0.0699 s | 23.6 MiB |
+| `history_25y` | BHB three-effect | 0.0673 s | 0.0697 s | 0.0706 s | 23.6 MiB |
+| `history_25y` | BHB two-effect | 0.0673 s | 0.0713 s | 0.0668 s | 22.4 MiB |
+
+Menchero medians ranged from 20.9% below to 4.9% above the paired Carino observations,
+with a largest absolute increase of 0.0093 seconds. The large percentage decrease is
+the visibly noisy 0.0416-second normal Carino sample rather than evidence that
+Menchero accelerates the shared calculation. Against Frongello, Menchero ranged from
+6.5% below to 4.7% above, with a largest absolute increase of 0.0074 seconds. Peak
+traced allocations were identical at reported precision for every paired method and
+workload, consistent with adding only a short period-coefficient vector.
+
+These observations provide no evidence for an optimization or a new performance
+threshold. No dependency, formula, tolerance, warning, or established gate changed.
 
 ## `ppar` adapter observation
 
