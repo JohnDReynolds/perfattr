@@ -190,8 +190,8 @@ Suggested evaluation order:
    [roadmap 9](perfattr_roadmap_9_menchero_optimized_linking.md) on September 6,
    2026. Its governing
    [specification](../docs/menchero_optimized_linking_specification.md) was accepted
-   that day; Steps 1–7 and the Step 8 prepublication gate are complete, with commit
-   and publication subject to explicit approval. Candidate references:
+   that day; the roadmap was completed and released in `perfattr==0.8.0a1` that day.
+   Candidate references:
    Menchero (2000, 2004).
 4. **Geometric linking** — candidate reference: Bacon (2008), chapter 6.
 

@@ -44,7 +44,7 @@ and [`docs/brinson_hood_beebower_two_effect_specification.md`][bhb-two-spec].
 The released opt-in Frongello effect-linking work is recorded in
 [`_extras/perfattr_roadmap_8_frongello_recursive_linking.md`][frongello-roadmap]
 and [`docs/frongello_recursive_linking_specification.md`][frongello-spec].
-The release-candidate opt-in Menchero optimized-linking work is recorded in
+The released opt-in Menchero optimized-linking work is recorded in
 [`_extras/perfattr_roadmap_9_menchero_optimized_linking.md`][menchero-roadmap]
 and [`docs/menchero_optimized_linking_specification.md`][menchero-spec].
 The complete portable calculation contract is defined in

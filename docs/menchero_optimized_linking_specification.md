@@ -1,7 +1,7 @@
 # Menchero Optimized Effect-Linking Specification
 
-**Status:** Accepted and implemented September 6, 2026. Prepared for initial release
-in `perfattr==0.8.0a1`.
+**Status:** Accepted and implemented September 6, 2026. Initially released in
+`perfattr==0.8.0a1`.
 
 This document specifies the opt-in Menchero optimized effect-linking contract for
 [roadmap 9][roadmap-9]. It supplements the released default

@@ -1,7 +1,6 @@
 # perfattr Roadmap 9: Menchero Optimized Effect Linking
 
-**Status:** Active September 6, 2026. Steps 1–7 and the Step 8 prepublication gate
-are complete; commit and publication require explicit approval.
+**Status:** Complete September 6, 2026. Released in `perfattr==0.8.0a1`.
 
 This roadmap promotes the Menchero optimized-linking candidate from roadmap 3. Its
 governing contract is
@@ -414,8 +413,7 @@ exactly its pre-existing modified-file set and diff summary after the gate.
 
 ### 8. Release `perfattr==0.8.0a1`
 
-**Status:** Prepublication gate complete September 6, 2026; commit and publication
-require explicit approval.
+**Status:** Complete September 6, 2026.
 
 - Recheck all identified patent records immediately before publication.
 - Update version and release-facing documentation only after every prior gate passes.
@@ -458,11 +456,34 @@ isolated `site-packages`, and passed all twelve combinations of the four attribu
 methods and three effect linkers with complete reconciliation.
 
 No tolerance, warning, threshold, schema, dependency, invariant, or release gate was
-changed. No commit, tag, push, GitHub release, or PyPI upload has been performed.
-GitHub authentication is active for `JohnDReynolds`; neither tag nor release
-`v0.8.0a1` exists. The public PyPI index lists `0.7.0a1` as the latest prerelease and
-does not list `0.8.0a1`. The exact validated candidate is ready for the required
-explicit approval.
+changed. At that checkpoint, no commit, tag, push, GitHub release, or PyPI upload had
+been performed. GitHub authentication was active for `JohnDReynolds`; neither tag nor
+release `v0.8.0a1` existed. The public PyPI index listed `0.7.0a1` as the latest
+prerelease and did not list `0.8.0a1`. The exact validated candidate was ready for the
+required explicit approval.
+
+**Release evidence:** The user explicitly approved the commit, push, annotated tag,
+GitHub prerelease, PyPI publication, and public-package verification after Steps 1–7
+and the prepublication gate passed. Clean release commit
+`79e7199bcbe135c91fa1d07397acd711eaef94c3` was pushed to `main`. GitHub Actions CI
+run `34035483256` passed the full suite on Python 3.11, 3.12, 3.13, and 3.14 and
+independently built, validated, installed, and imported the distributions.
+
+The release commit was tagged with annotated tag `v0.8.0a1` and published as a
+[GitHub prerelease](https://github.com/JohnDReynolds/perfattr/releases/tag/v0.8.0a1).
+Trusted-publisher run `34035572189` built the tagged source and wheel distributions,
+verified that their metadata matched the tag, uploaded both artifacts, generated
+digital attestations, and published them to PyPI.
+
+After public-index propagation, clean Python 3.11.9, 3.12.1, 3.13.1, and 3.14.7
+environments installed `perfattr==0.8.0a1` from `https://pypi.org/simple` with pip
+caching disabled. Every module resolved from its environment's `site-packages`;
+`pip check` passed; and all twelve combinations of the four attribution methods and
+three effect linkers passed complete reconciliation. The public index identifies
+`0.8.0a1` as the latest prerelease.
+
+**Gate:** Passed. The approved prerelease is published on GitHub and PyPI and is
+independently installable and usable across every supported Python version.
 
 ## Test matrix
 
