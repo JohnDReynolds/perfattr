@@ -49,7 +49,7 @@ and [`docs/frongello_recursive_linking_specification.md`][frongello-spec].
 The released opt-in Menchero optimized-linking work is recorded in
 [`_extras/perfattr_roadmap_9_menchero_optimized_linking.md`][menchero-roadmap]
 and [`docs/menchero_optimized_linking_specification.md`][menchero-spec].
-The release-candidate hierarchical result-roll-up work is recorded in
+The released hierarchical result-roll-up work is recorded in
 [`_extras/perfattr_roadmap_10_hierarchical_result_rollup.md`][hierarchy-roadmap]
 and [`docs/hierarchical_result_rollup_specification.md`][hierarchy-spec].
 The complete portable calculation contract is defined in

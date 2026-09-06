@@ -94,9 +94,8 @@ of roadmap 4.
 **Status:** Promoted into active
 [roadmap 10](perfattr_roadmap_10_hierarchical_result_rollup.md) on September 6, 2026.
 Its governing
-[specification](../docs/hierarchical_result_rollup_specification.md) is accepted, and
-Roadmap 10 Steps 1–7 and its `perfattr==0.9.0a1` prepublication gate are complete.
-Step 8 release is explicitly approved and in progress.
+[specification](../docs/hierarchical_result_rollup_specification.md) is accepted. The
+roadmap was completed and released in `perfattr==0.9.0a1` that day.
 
 - Roll already calculated leaf-level weights, returns, contributions, and effects into
   parent classifications without recalculating attribution at each hierarchy level.

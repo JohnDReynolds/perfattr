@@ -1,7 +1,7 @@
 # Hierarchical Result Roll-Up Specification
 
-**Status:** Accepted, implemented, and prepared for release in `perfattr==0.9.0a1`
-on September 6, 2026.
+**Status:** Accepted, implemented, and released in `perfattr==0.9.0a1` on
+September 6, 2026.
 
 This document is the governing contract for the deliberately limited additive
 hierarchical result roll-up in [roadmap 10][roadmap-10]. It supplements the released

@@ -1,7 +1,6 @@
 # perfattr Roadmap 10: Hierarchical Result Roll-Up
 
-**Status:** Active September 6, 2026. Steps 1–7 are complete; Step 8 has explicit
-release approval and is in progress.
+**Status:** Complete September 6, 2026. Released in `perfattr==0.9.0a1`.
 
 This roadmap promotes the additive hierarchical result-roll-up candidate from roadmap
 3. Its governing contract is
@@ -468,8 +467,7 @@ feature and existing `ppar` behavior remains unchanged.
 
 ### 8. Release `perfattr==0.9.0a1`
 
-**Status:** Prepublication gate complete September 6, 2026; commit and publication
-are explicitly approved and in progress.
+**Status:** Complete September 6, 2026.
 
 - Update version and release-facing documentation only after every prior gate passes.
 - Build and validate fresh source and wheel distributions.
@@ -504,6 +502,27 @@ At this checkpoint, GitHub authentication is active for `JohnDReynolds`; neither
 nor release `v0.9.0a1` exists. The public PyPI index lists `0.8.0a1` as the latest
 prerelease and does not contain `0.9.0a1`. The user explicitly approved Step 8 after
 Steps 1–7 and the hierarchy typing cleanup passed the complete project gates.
+
+**Release evidence:** The user explicitly approved creating the GitHub prerelease and
+the resulting irreversible PyPI publication. Clean release commit
+`75cc0e633c8d9d4f0ac8204ef1380f7d11452593` was pushed to `main`. GitHub Actions CI
+run `34050384123` passed the complete suite on Python 3.11, 3.12, 3.13, and 3.14 and
+independently built, validated, installed, and imported the distributions.
+
+The release commit was tagged with annotated tag `v0.9.0a1` and published as a
+[GitHub prerelease](https://github.com/JohnDReynolds/perfattr/releases/tag/v0.9.0a1).
+Trusted-publisher run `34050551681` built the tagged source and wheel distributions,
+verified that their metadata matched the tag, and published both artifacts to PyPI.
+The public PyPI hashes exactly match the locally validated hashes above.
+
+After public-index propagation, clean no-cache Python 3.11.9, 3.12.1, 3.13.1, and
+3.14.7 environments installed `perfattr==0.9.0a1` from
+`https://pypi.org/simple`. Every module resolved from its environment's
+`site-packages`; `pip check` passed; and the complete 445-test suite passed in all
+four environments.
+
+**Gate:** Passed. The approved prerelease is published on GitHub and PyPI and is
+independently installable and usable across every supported Python version.
 
 ## Test matrix
 
