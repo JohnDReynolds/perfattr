@@ -263,3 +263,36 @@ Attribution Effects over Time,” *The Journal of Performance Measurement* 5, no
 (Fall 2000), 36–42, and the related public patent record. Its expected horizon returns,
 coefficients, and effect totals were independently recomputed from the disclosed
 formula. No external source code, test fixture, or generated package output was used.
+
+## Hierarchical result-roll-up calculations
+
+The hierarchy expectations are literal Python data in
+`tests/test_hierarchy_period_rollup.py`, rather than CSV files. They were written from
+the formulas in `docs/hierarchical_result_rollup_specification.md` and were not copied
+or captured from `perfattr`, `ppar`, `pybrinson`, or another implementation.
+
+The one-period source facts contain leaves A, B, C, D, and FEE. Portfolio weights and
+contributions are `0.6/0.060`, `0.5/0.020`, `-0.1/-0.020`, and `0.0/-0.001` for A, B,
+C, and FEE; the benchmark facts are `0.5/0.040`, `0.3/0.015`, and `0.2/0.006` for A,
+B, and D. Thus Sector 1 has portfolio weight/contribution `1.1/0.080` and benchmark
+weight/contribution `0.8/0.055`; its effective returns are independently
+`0.080 / 1.1` and `0.055 / 0.8`. Sector 2 retains the signed portfolio facts
+`-0.1/-0.020`, while Costs retains the zero-weight authoritative fee and therefore
+has a null portfolio return.
+
+Every parent effect is the literal sum of its leaf effects. Sector 1's
+Brinson-Fachler allocation is `-0.0003`, whereas recalculation from its parent facts
+would produce `0.002325`. Its BHB allocation is `0.018`, whereas parent recalculation
+would produce `0.020625`. The expected tables intentionally retain the former sums;
+the latter values demonstrate the different, deferred hierarchical-recalculation
+question. One-period linking is the identity, so the same independently derived
+values apply to Carino, Frongello, and Menchero without using production output as an
+oracle.
+
+The expected horizon frame contains only the additive fields that remain valid from
+the released result. Reconciliation expectations repeat each independently known
+parent value as the sum of its immediate active children, compare the Total root with
+all five leaves, and separately calculate active-value and effect-component
+identities. Tests cover every method/linker combination at `1e-12`, plus a multi-root
+forest, nontrivial multi-period linked values, source corruption, and a deliberately
+tampered parent effect.

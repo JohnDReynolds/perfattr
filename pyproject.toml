@@ -36,6 +36,7 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
     "build>=1.2",
+    "pandas-stubs>=2.2",
     "pylint>=4.0",
     "pyright>=1.1.409",
     "pytest>=8.0",

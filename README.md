@@ -19,6 +19,8 @@ vendor schemas, and presentation remain outside the package boundary.
   or explicit three-effect selection and interaction.
 - Link contributions logarithmically and attribution effects using Carino, Frongello,
   or Menchero optimized linking, with Carino retained as the default.
+- Roll already calculated leaf attribution into a static hierarchy without
+  recalculating Brinson effects at parent levels.
 - Preserve zero-weight fee and financing contributions without inventing returns.
 - Return deterministic pandas result frames with explicit financial reconciliation.
 
@@ -47,6 +49,9 @@ and [`docs/frongello_recursive_linking_specification.md`][frongello-spec].
 The released opt-in Menchero optimized-linking work is recorded in
 [`_extras/perfattr_roadmap_9_menchero_optimized_linking.md`][menchero-roadmap]
 and [`docs/menchero_optimized_linking_specification.md`][menchero-spec].
+The release-candidate hierarchical result-roll-up work is recorded in
+[`_extras/perfattr_roadmap_10_hierarchical_result_rollup.md`][hierarchy-roadmap]
+and [`docs/hierarchical_result_rollup_specification.md`][hierarchy-spec].
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).
@@ -63,6 +68,8 @@ contract is in [`docs/preparation_specification.md`](docs/preparation_specificat
 [frongello-spec]: docs/frongello_recursive_linking_specification.md
 [menchero-roadmap]: _extras/perfattr_roadmap_9_menchero_optimized_linking.md
 [menchero-spec]: docs/menchero_optimized_linking_specification.md
+[hierarchy-roadmap]: _extras/perfattr_roadmap_10_hierarchical_result_rollup.md
+[hierarchy-spec]: docs/hierarchical_result_rollup_specification.md
 
 ```python
 import pandas as pd
@@ -110,6 +117,33 @@ prepared = prepare_attribution(portfolio, benchmark)
 result = calculate_attribution(prepared.portfolio, prepared.benchmark)
 print(result.period_detail)
 ```
+
+## Hierarchical result roll-up
+
+Use `roll_up_attribution` after calculation when leaf results also need additive
+parent totals:
+
+```python
+from perfattr import roll_up_attribution
+
+hierarchy = pd.DataFrame(
+    {
+        "identifier": ["Equity", "Bonds"],
+        "parent_identifier": ["Total", "Total"],
+    }
+)
+parent_result = roll_up_attribution(result, hierarchy)
+print(parent_result.period_rollup)
+```
+
+The hierarchy is a static child-to-parent forest with complete leaf coverage. Parent
+effects are sums of the already calculated descendant effects; the function does not
+rerun Brinson formulas or linking at a higher level. `period_rollup` includes parent
+effective returns derived from summed weight and authoritative contribution.
+`overall_rollup` deliberately omits returns and cumulative values because the source
+result does not retain enough information to reconstruct them faithfully in every
+case. Leaf rows remain in the original `AttributionResult`, while the hierarchy result
+contains parent rows only and includes explicit parent and root reconciliation.
 
 ## Attribution methods
 
@@ -292,6 +326,7 @@ Run the four roadmap performance workloads:
 python scripts/benchmark_core.py --samples 5
 python scripts/benchmark_core.py --samples 5 --input-form authoritative
 python scripts/benchmark_preparation.py --samples 5
+python scripts/benchmark_hierarchy.py --samples 5
 ```
 
 Pass `--method three-effect`, `--method bhb-three-effect`, or
@@ -299,6 +334,9 @@ Pass `--method three-effect`, `--method bhb-three-effect`, or
 the default remains `--method two-effect`. Pass
 `--effect-linking-method frongello` or `--effect-linking-method menchero` to measure an
 opt-in linker; the benchmark default remains Carino.
+The hierarchy benchmark runs all four attribution methods and all three linkers by
+default across the established selected-result sizes and hierarchy depths. Repeat
+`--method` or `--effect-linking-method` to select a smaller policy subset.
 
 Add `--workload monthly_121260 --profile` to inspect one workload's cumulative
 calculation-core call profile. The preparation benchmark compares static and

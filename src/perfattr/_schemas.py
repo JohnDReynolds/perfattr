@@ -44,6 +44,10 @@ PREPARATION_RECONCILIATION_COLUMNS = (
     "tolerance",
     "passed",
 )
+HIERARCHY_COLUMNS = (
+    "identifier",
+    "parent_identifier",
+)
 PERIOD_DETAIL_COLUMNS = (
     "from_date",
     "thru_date",
@@ -169,6 +173,39 @@ THREE_EFFECT_CUMULATIVE_COLUMNS = _insert_after(
     ),
     "cumulative_selection_effect",
     "cumulative_interaction_effect",
+)
+HIERARCHY_PERIOD_ROLLUP_COLUMNS = PERIOD_DETAIL_COLUMNS
+THREE_EFFECT_HIERARCHY_PERIOD_ROLLUP_COLUMNS = THREE_EFFECT_PERIOD_DETAIL_COLUMNS
+HIERARCHY_OVERALL_ROLLUP_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "identifier",
+    "portfolio_weight",
+    "linked_portfolio_contribution",
+    "benchmark_weight",
+    "linked_benchmark_contribution",
+    "active_weight",
+    "linked_active_contribution",
+    "linked_allocation_effect",
+    "linked_selection_effect",
+    "linked_total_effect",
+)
+THREE_EFFECT_HIERARCHY_OVERALL_ROLLUP_COLUMNS = _insert_after(
+    HIERARCHY_OVERALL_ROLLUP_COLUMNS,
+    "linked_selection_effect",
+    "linked_interaction_effect",
+)
+HIERARCHY_RECONCILIATION_COLUMNS = (
+    "scope",
+    "from_date",
+    "thru_date",
+    "identifier",
+    "check",
+    "actual",
+    "expected",
+    "residual",
+    "tolerance",
+    "passed",
 )
 PERIOD_RECONCILIATION_CHECKS = tuple(
     """portfolio_weight benchmark_weight portfolio_contribution

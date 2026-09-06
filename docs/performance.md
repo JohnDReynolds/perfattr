@@ -37,6 +37,14 @@ maps each identifier to one of twenty classifications. The effective form gives 
 identifier two inclusive assignments and changes its classification at a month
 boundary inside a quarter. Source frames and mappings are constructed before timing.
 
+[`scripts/benchmark_hierarchy.py`](../scripts/benchmark_hierarchy.py) constructs a
+reconciled `AttributionResult` and a static hierarchy before measurement, then times
+the complete public `roll_up_attribution` boundary. It uses the established selected-
+history row counts with fixed leaf universes per period and depths of two, three, six,
+and eight. The default command crosses all four attribution methods with all three
+effect linkers. Source-result and hierarchy memory are reported separately from the
+incremental Python-tracked allocation during roll-up.
+
 ## Initial standalone baseline
 
 These observations were collected on September 3, 2026, on an Apple arm64 machine
@@ -287,6 +295,32 @@ workload, consistent with adding only a short period-coefficient vector.
 These observations provide no evidence for an optimization or a new performance
 threshold. No dependency, formula, tolerance, warning, or established gate changed.
 
+## Roadmap 10 hierarchical roll-up observations
+
+These observations were collected on September 6, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. The complete 48-case
+matrix crossed four selected-result workloads, all four attribution methods, and all
+three effect linkers. Each elapsed range below contains the median of three samples
+for every policy combination.
+
+| Workload | Rows | Periods | Leaves | Depth | Median range | Peak range |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `normal` | 6,063 | 60 | 102 | 2 | 0.0404–0.0511 s | 5.2–5.7 MiB |
+| `selected_10x` | 60,630 | 60 | 1,011 | 3 | 0.1470–0.1687 s | 50.4–55.9 MiB |
+| `monthly_121260` | 121,260 | 120 | 1,011 | 6 | 0.3426–0.3760 s | 200.4–222.6 MiB |
+| `history_25y` | 30,300 | 300 | 101 | 8 | 0.1273–0.1390 s | 66.9–74.3 MiB |
+
+The source results occupied 1.5–29.4 MiB and were built before measurement. The
+largest depth-six case expands 121,260 source rows through six ancestor relationships,
+which explains its higher incremental peak. Three-effect results consistently used
+more memory because they carry interaction and linked-interaction columns. Linker
+choice produced no material structural difference because roll-up sums already
+linked values rather than applying a linker again.
+
+All cases remained below 0.4 seconds in this environment. These results establish a
+repeatable baseline, not a release threshold. They do not justify complicating the
+direct-from-leaf design, changing an invariant, or adding a dependency.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
@@ -359,3 +393,17 @@ performance thresholds. Long-history measured 1.573x, below the unchanged 1.58x
 warning and 1.65x failure boundaries. No `ppar` file, adapter call, schema,
 presentation behavior, dependency declaration, tolerance, warning, or threshold was
 changed for this verification.
+
+The Roadmap 10 hierarchy candidate was then installed without dependencies into the
+same `ppar` Python 3.12.1 release-candidate environment. Inspection confirmed that
+the host adapter does not import or call the new opt-in hierarchy boundary and still
+uses default Brinson-Fachler two-effect attribution with Carino linking. The complete
+gate passed 305 tests and 477 subtests, Mypy, Pyright, both Pylint checks,
+documentation and image validation, universal-wheel construction, Twine, package
+metadata, and installed generic and Axys/APX demonstrations.
+
+The unchanged 500x check retained large-site equivalence and observed a 1.060x
+large-site ratio and 2.018x selected-input ratio, both without machine-specific
+performance thresholds. Long-history measured 1.521x, below the unchanged 1.58x
+warning and 1.65x failure boundaries. Roadmap 10 made no `ppar` source, schema,
+presentation, dependency, tolerance, warning, or threshold change.

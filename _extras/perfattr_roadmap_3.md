@@ -89,15 +89,65 @@ of roadmap 4.
 
 [effective-spec]: ../docs/effective_dated_classification_specification.md
 
-### Multi-level hierarchical roll-up
+### Additive hierarchical result roll-up
 
+**Status:** Promoted into active
+[roadmap 10](perfattr_roadmap_10_hierarchical_result_rollup.md) on September 6, 2026.
+Its governing
+[specification](../docs/hierarchical_result_rollup_specification.md) is accepted, and
+Roadmap 10 Steps 1–7 and its `perfattr==0.9.0a1` prepublication gate are complete.
+Step 8 release is explicitly approved and in progress.
+
+- Roll already calculated leaf-level weights, returns, contributions, and effects into
+  parent classifications without recalculating attribution at each hierarchy level.
 - Support a classification tree of arbitrary documented depth.
-- Define leaf, parent, root, missing-parent, and cycle behavior.
-- Ensure child effects reconcile exactly to every reported parent.
+- Define leaf, parent, root, missing-parent, duplicate-parent, and cycle behavior.
+- Ensure every additive child value reconciles to its reported parents, and derive
+  parent-period returns under an explicitly documented effective-return identity.
+- Preserve the five released `AttributionResult` frames and expose hierarchical output
+  through a separate, explicitly named result boundary.
 - Keep hierarchy metadata separate from numerical identifiers and presentation labels.
+- Reuse the released static and effective-dated leaf-classification preparation without
+  introducing speculative effective-dated hierarchy behavior in the first version.
+- Preserve enough explicit parent-child identity to avoid obstructing a later
+  independently calculated hierarchical methodology, but do not add its parameters or
+  data structures prematurely.
 
-Candidate methodological reference: Bacon (2008), chapter 5. Verify the exact edition
-and applicable formulas during specification.
+Methodological context: Bacon (2008), second edition, chapter 5. Roadmap 10 records the
+verified edition, comparative review, exact aggregation boundary, and provenance
+requirements.
+
+### Hierarchical attribution recalculation — deferred
+
+Retain independently calculated attribution at every hierarchy level as a separate
+future feature candidate. It is not part of the additive result-roll-up proposal and
+must not be introduced implicitly under the same API or result identity.
+
+- Establish a concrete user requirement before promotion. Additive roll-up already
+  answers where leaf-level effects accumulate; recalculation must solve a distinct
+  decision-analysis or reporting need.
+- Specify whether each level is calculated relative to the portfolio total, its parent
+  segment, or both. These are distinct financial policies, not presentation options.
+- Define level-specific weight normalization, portfolio and benchmark reference
+  returns, missing branches, cross-level effects, and reconciliation identities.
+- Calculate from the required prepared weights and returns rather than treating rolled
+  child effects as sufficient inputs.
+- Decide how single-period level calculations interact with contribution and effect
+  linking across time before defining an output schema.
+- Keep any future recalculated result distinguishable from additive hierarchical
+  roll-up so users cannot mistake one methodology for the other.
+
+This candidate depends on experience with the additive roll-up and remains
+noncommitted until its additional value justifies the larger methodology and schema
+surface. Eagle's performance documentation distinguishes simple higher-level roll-up
+from all-level attribution calculated to the total or to each segment; use that
+distinction as comparative product evidence rather than calculation authority.
+
+Comparative product reference:
+[Eagle Performance, *Create Brinson and Fachler Options – Multicurrency
+Analysis*][eagle-hierarchy].
+
+[eagle-hierarchy]: https://eagledocs.atlassian.net/wiki/spaces/Performance2017/pages/856720063
 
 ## 3. Add explicit single-period methodology policies
 

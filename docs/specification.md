@@ -27,6 +27,10 @@ linking and every result-frame schema.
 The opt-in Menchero extension is defined in
 `docs/menchero_optimized_linking_specification.md`; it adds order-independent
 optimized active-effect linking through the same unchanged public boundary.
+The post-calculation hierarchical result-roll-up supplement is defined in
+`docs/hierarchical_result_rollup_specification.md`; it aggregates already calculated
+leaf values into static ancestors without changing any `AttributionResult` frame or
+recalculating attribution at parent levels.
 
 The words **must**, **must not**, **should**, and **may** describe requirements with
 their ordinary technical meanings.
@@ -660,7 +664,9 @@ Integration tests separately require identical displayed and serialized values a
 
 ## Deferred capabilities
 
-Current deferred calculation capabilities include hierarchical roll-up, additional
-multi-period linking methods, currency attribution, external-flow attribution effects,
-derivative exposure inference, and presentation or report generation. Add a policy or
-abstraction only when an approved implemented use case requires it.
+Current deferred calculation capabilities include independently recalculated
+hierarchical attribution, additional multi-period linking methods, currency
+attribution, external-flow attribution effects, derivative exposure inference, and
+presentation or report generation. The released static additive hierarchy operation
+is a post-calculation result roll-up, not the deferred level-relative calculation.
+Add a policy or abstraction only when an approved implemented use case requires it.

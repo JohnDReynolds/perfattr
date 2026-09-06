@@ -224,7 +224,7 @@ def test_three_effect_period_detail_matches_hand_calculated_positive_case() -> N
             expected_row["total_effect"],
             abs=1e-12,
         )
-        assert two_effect.loc[identifier, "selection_effect"] == pytest.approx(
+        assert _scalar(two_effect, identifier, "selection_effect") == pytest.approx(
             expected_row["selection_effect"] + expected_row["interaction_effect"],
             abs=1e-12,
         )
@@ -260,8 +260,8 @@ def test_three_effect_uses_effective_returns_and_preserves_negative_interaction(
     assert detail.loc["B", "benchmark_return"] == pytest.approx(0.06)
     for identifier in expected.index:
         for column in expected.columns:
-            assert detail.loc[identifier, column] == pytest.approx(
-                expected.loc[identifier, column],
+            assert _scalar(detail, str(identifier), str(column)) == pytest.approx(
+                _scalar(expected, str(identifier), str(column)),
                 abs=1e-12,
             )
 
@@ -294,8 +294,8 @@ def test_bhb_period_detail_matches_hand_calculated_positive_case() -> None:
 
     for identifier in expected.index:
         for column in expected.columns:
-            assert bhb.loc[identifier, column] == pytest.approx(
-                expected.loc[identifier, column],
+            assert _scalar(bhb, str(identifier), str(column)) == pytest.approx(
+                _scalar(expected, str(identifier), str(column)),
                 abs=1e-12,
             )
     bhb_allocation = cast(pd.Series, bhb["allocation_effect"])
@@ -349,16 +349,16 @@ def test_bhb_period_detail_uses_authoritative_contributions() -> None:
     assert bhb.loc["B", "benchmark_return"] == pytest.approx(0.06)
     for identifier in expected.index:
         for column in expected.columns:
-            assert bhb.loc[identifier, column] == pytest.approx(
-                expected.loc[identifier, column],
+            assert _scalar(bhb, str(identifier), str(column)) == pytest.approx(
+                _scalar(expected, str(identifier), str(column)),
                 abs=1e-12,
             )
-        assert bhb.loc[identifier, "selection_effect"] == pytest.approx(
-            bf.loc[identifier, "selection_effect"],
+        assert _scalar(bhb, str(identifier), "selection_effect") == pytest.approx(
+            _scalar(bf, str(identifier), "selection_effect"),
             abs=1e-12,
         )
-        assert bhb.loc[identifier, "interaction_effect"] == pytest.approx(
-            bf.loc[identifier, "interaction_effect"],
+        assert _scalar(bhb, str(identifier), "interaction_effect") == pytest.approx(
+            _scalar(bf, str(identifier), "interaction_effect"),
             abs=1e-12,
         )
     assert bhb["total_effect"].sum() == pytest.approx(0.020, abs=1e-12)
