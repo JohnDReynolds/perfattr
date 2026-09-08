@@ -1,7 +1,6 @@
 # perfattr Roadmap 13: Multi-Period Currency Roll-Up
 
-**Status:** Approved September 8, 2026. Steps 1 through 7 are complete; Step 8 release
-is in progress under separate explicit approval.
+**Status:** Complete September 8, 2026. Released in `perfattr==0.12.0a1`.
 
 This roadmap promotes the next currency-attribution candidate from roadmap 3. Its
 governing contract is
@@ -464,7 +463,7 @@ explicit release approval.
 
 ### 8. Release `perfattr==0.12.0a1`
 
-**Status:** In progress; explicitly authorized September 8, 2026.
+**Status:** Complete September 8, 2026.
 
 - Update the version and release documentation for `0.12.0a1`.
 - Commit and push only after the user reviews the final evidence.
@@ -507,6 +506,31 @@ pre-existing worktree change was altered.
 At this checkpoint, neither the remote tag nor GitHub release `v0.12.0a1` exists, and
 the public PyPI project contains versions only through `0.11.0a1`. No release operation
 preceded the explicit approval recorded above.
+
+**Release evidence:** Clean release commit
+`0e8286ac694550c4045ae87a63690dba4480fc27` was pushed to `main`. GitHub Actions CI
+run `34290833304` passed the complete suite on Python 3.11, 3.12, 3.13, and 3.14 and
+independently built, validated, installed, and imported the distributions.
+
+The release commit was tagged with annotated tag `v0.12.0a1` and published as a
+[GitHub prerelease](https://github.com/JohnDReynolds/perfattr/releases/tag/v0.12.0a1).
+Trusted-publisher run `34291024643` built the tagged source and wheel distributions,
+verified that their metadata matched the tag, and published both artifacts to PyPI.
+The public wheel SHA-256 is
+`db87a628b9ada1d17e3dc5f788eaa9708cceeed34e9ce4fc259898abddcae52f`, exactly
+matching the locally validated wheel. The public source-distribution SHA-256 is
+`b8e3a477a9fe857bac7f1788d53352cb0501f7c438033b1aabcbc06d12f177ef`, also exactly
+matching its locally validated artifact.
+
+Fresh no-cache Python 3.11.9, 3.12.1, 3.13.1, and 3.14.7 environments installed
+`perfattr==0.12.0a1` from `https://pypi.org/simple`. Every module resolved from its
+environment's `site-packages`; dependency checks, representative public two-period
+roll-ups, and the complete 618-test suite passed in all four environments. Python
+3.11's first request preceded PyPI index propagation; its unchanged no-cache retry
+completed the same full gate.
+
+**Gate:** Passed. The approved prerelease is published on GitHub and PyPI and is
+independently installable and usable across every supported Python version.
 
 ## Primary methodology reference
 

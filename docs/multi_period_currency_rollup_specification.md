@@ -1,7 +1,7 @@
 # Multi-Period Currency Roll-Up Specification
 
-**Status:** Accepted September 8, 2026; implementation and release-candidate evidence
-complete through Roadmap 13 Step 7; `perfattr==0.12.0a1` release authorized.
+**Status:** Accepted, implemented, and released in `perfattr==0.12.0a1` on September
+8, 2026.
 
 This document is the accepted governing contract for the deliberately limited
 multi-period currency roll-up in [roadmap 13][roadmap-13]. It supplements but does

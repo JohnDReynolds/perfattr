@@ -358,10 +358,10 @@ Primary methodological reference: Karnosky and Singer (1994).
 
 ### Post-Roadmap 12 priorities and completeness decision
 
-**Status:** Multi-period log-effect roll-up is implemented in approved
+**Status:** Multi-period log-effect roll-up is complete in
 [roadmap 13](perfattr_roadmap_13_multi_period_currency_rollup.md). Its
 [governing specification](../docs/multi_period_currency_rollup_specification.md) was
-approved on September 8, 2026, and `perfattr==0.12.0a1` publication is authorized.
+approved and the feature was released in `perfattr==0.12.0a1` on September 8, 2026.
 
 A correctly implemented multi-period roll-up would complete a good, methodology-
 focused multi-currency attribution core. That core would separate market and currency
@@ -372,7 +372,7 @@ pricing, or presentation system.
 
 Prioritize the remaining currency candidates as follows:
 
-1. **Multi-period log-effect roll-up — release authorized.** Sum the already calculated
+1. **Multi-period log-effect roll-up — complete.** Sum the already calculated
    period log returns and log effects directly into cumulative prefixes and a full
    horizon. Preserve identifier-level effect totals without averaging weights or
    returns. This requires no additional user input.
