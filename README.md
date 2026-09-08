@@ -17,6 +17,8 @@ vendor schemas, and presentation remain outside the package boundary.
 - Apply static or effective-dated classification mappings before consolidation.
 - Calculate Brinson-Fachler or Brinson-Hood-Beebower with compact two-effect selection
   or explicit three-effect selection and interaction.
+- Calculate separate Bacon/Burnie geometric excess-return attribution when portfolio
+  wealth should be measured relative to benchmark wealth.
 - Link contributions logarithmically and attribution effects using Carino, Frongello,
   or Menchero optimized linking, with Carino retained as the default.
 - Roll already calculated leaf attribution into a static hierarchy without
@@ -52,6 +54,9 @@ and [`docs/menchero_optimized_linking_specification.md`][menchero-spec].
 The released hierarchical result-roll-up work is recorded in
 [`_extras/perfattr_roadmap_10_hierarchical_result_rollup.md`][hierarchy-roadmap]
 and [`docs/hierarchical_result_rollup_specification.md`][hierarchy-spec].
+The geometric excess-return attribution release candidate is recorded in
+[`_extras/perfattr_roadmap_11_geometric_attribution.md`][geometric-roadmap]
+and [`docs/geometric_attribution_specification.md`][geometric-spec].
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).
@@ -70,6 +75,8 @@ contract is in [`docs/preparation_specification.md`](docs/preparation_specificat
 [menchero-spec]: docs/menchero_optimized_linking_specification.md
 [hierarchy-roadmap]: _extras/perfattr_roadmap_10_hierarchical_result_rollup.md
 [hierarchy-spec]: docs/hierarchical_result_rollup_specification.md
+[geometric-roadmap]: _extras/perfattr_roadmap_11_geometric_attribution.md
+[geometric-spec]: docs/geometric_attribution_specification.md
 
 ```python
 import pandas as pd
@@ -216,6 +223,55 @@ those channels apply. Cumulative output also places
 [Brinson-Fachler specification][three-effect-spec], [BHB three-effect
 specification][bhb-spec], and [compact BHB specification][bhb-two-spec] for the
 complete schemas, linking rules, null policies, and independently calculated examples.
+
+## Geometric excess-return attribution
+
+Use `calculate_geometric_attribution` when the reporting question is how portfolio
+ending wealth compares with benchmark ending wealth:
+
+```python
+from perfattr import calculate_geometric_attribution
+
+geometric_result = calculate_geometric_attribution(
+    prepared.portfolio,
+    prepared.benchmark,
+)
+print(geometric_result.cumulative.tail(1))
+```
+
+This is a separate calculation family, not another arithmetic attribution method or
+effect linker. The arithmetic calculator reconciles the return difference
+`portfolio_return - benchmark_return` through additive effects. The geometric
+calculator instead reconciles:
+
+```text
+(1 + portfolio_return) / (1 + benchmark_return) - 1
+```
+
+It first compares a semi-notional portfolio—portfolio weights earning benchmark
+identifier returns—with the benchmark to calculate allocation. It then compares the
+portfolio with that semi-notional portfolio to calculate portfolio-weighted
+selection. Interaction remains absorbed in selection, and the two channel totals
+combine multiplicatively:
+
+```text
+1 + total_effect = (1 + allocation_effect) * (1 + selection_effect)
+```
+
+Allocation and selection compound directly across periods, so Carino, Frongello, and
+Menchero arithmetic smoothing do not apply. The result provides identifier effects by
+period, period totals, cumulative prefixes, and explicit multiplicative
+reconciliation. It deliberately has no `overall_detail`: allocating cross-period and
+cross-channel compounding terms back to identifiers would require another financial
+policy.
+
+Prepared inputs and authoritative-contribution behavior remain unchanged. Cash is an
+ordinary identifier. A zero-weight portfolio fee remains in selection; a zero-weight
+benchmark charge is preserved through the disclosed benchmark accounting residual.
+If a nonzero portfolio weight would require an undefined benchmark return, the
+calculation rejects the input rather than substituting zero. See the [geometric
+specification][geometric-spec] for exact formulas, schemas, null behavior, and
+reconciliation checks.
 
 ## Effect linking
 

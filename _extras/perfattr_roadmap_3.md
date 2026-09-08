@@ -210,7 +210,7 @@ Candidate methodology: `allocation = (wP - wB) * rB`,
 `selection = wP * (rP - rB)`, with authoritative-contribution residual behavior to be
 specified consistently with roadmap 6.
 
-## 4. Add linking methods one at a time
+## 4. Add linking and geometric methods one at a time
 
 The current baseline already includes logarithmic contribution linking and Carino
 active-effect linking. Reconcile the term "Cariño log-smoothing" with the implemented
@@ -242,11 +242,19 @@ Suggested evaluation order:
    that day; the roadmap was completed and released in `perfattr==0.8.0a1` that day.
    Candidate references:
    Menchero (2000, 2004).
-4. **Geometric linking** — candidate reference: Bacon (2008), chapter 6.
+4. **Geometric excess-return attribution** — implementation complete and prepared as
+   the `perfattr==0.10.0a1` release candidate under
+   [roadmap 11](perfattr_roadmap_11_geometric_attribution.md) on September 6, 2026.
+   Its governing
+   [specification](../docs/geometric_attribution_specification.md) was accepted on
+   September 7, 2026, and records the design review's central correction: geometric
+   attribution changes the single-period formulas, excess-return definition, and
+   multiplicative reconciliation identity, so it is not another arithmetic
+   `EffectLinkingMethod`. Candidate reference: Bacon (2008), chapter 6.
 
-The order may change after the specifications expose complexity or user value. Verify
-the exact publications, formulas, and intellectual-property status—particularly for
-Menchero—before implementation.
+The order may change after specifications expose complexity or user value. Verify the
+exact publications, formulas, licensing, and intellectual-property considerations
+before implementation.
 
 ### GRAP decision record
 

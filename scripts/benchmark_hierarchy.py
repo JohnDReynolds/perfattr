@@ -11,8 +11,8 @@ import argparse
 from dataclasses import dataclass
 from functools import partial
 import math
-import platform
 import statistics
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -26,6 +26,8 @@ from benchmark_support import (
     measure_peak_mebibytes,
     month_bounds,
     require_positive_samples,
+    runtime_versions,
+    selected_workload_names,
 )
 from perfattr import (
     AttributionMethod,
@@ -188,14 +190,11 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     """Run the selected hierarchy matrix and print repeatable observations."""
     args = _parse_args()
-    workload_names = args.workload or list(WORKLOADS)
+    workload_names = selected_workload_names(cast(list[str] | None, args.workload))
     method_names = args.method or list(_METHODS)
     linker_names = args.effect_linking_method or list(_EFFECT_LINKERS)
 
-    print(
-        f"Python {platform.python_version()} | pandas {pd.__version__} | "
-        f"NumPy {np.__version__}"
-    )
+    print(runtime_versions())
     print(
         "Peak memory is incremental Python-tracked allocation during public "
         "hierarchy roll-up; source-result and hierarchy memory are separate."

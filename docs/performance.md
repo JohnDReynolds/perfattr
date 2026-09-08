@@ -45,6 +45,13 @@ and eight. The default command crosses all four attribution methods with all thr
 effect linkers. Source-result and hierarchy memory are reported separately from the
 incremental Python-tracked allocation during roll-up.
 
+[`scripts/benchmark_geometric.py`](../scripts/benchmark_geometric.py) builds the same
+deterministic prepared sides as the arithmetic-core benchmark, then measures the
+complete public `calculate_geometric_attribution` boundary. Its default command runs
+all four workloads in both derived and authoritative input forms. Prepared-input and
+result-frame memory are reported separately from incremental Python-tracked allocation
+during the calculation.
+
 ## Initial standalone baseline
 
 These observations were collected on September 3, 2026, on an Apple arm64 machine
@@ -321,6 +328,30 @@ All cases remained below 0.4 seconds in this environment. These results establis
 repeatable baseline, not a release threshold. They do not justify complicating the
 direct-from-leaf design, changing an invariant, or adding a dependency.
 
+## Roadmap 11 geometric-attribution observations
+
+These observations were collected on September 7, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Each elapsed result is the
+median of three samples from `python scripts/benchmark_geometric.py --samples 3`.
+
+| Workload | Input form | Median | Inputs | Result | Peak traced allocation |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `normal` | derived | 0.0260 s | 2.0 MiB | 1.4 MiB | 3.5 MiB |
+| `normal` | authoritative | 0.0262 s | 2.1 MiB | 1.4 MiB | 3.5 MiB |
+| `selected_10x` | derived | 0.0924 s | 20.4 MiB | 12.9 MiB | 33.1 MiB |
+| `selected_10x` | authoritative | 0.0932 s | 21.3 MiB | 12.9 MiB | 33.1 MiB |
+| `monthly_121260` | derived | 0.1707 s | 40.7 MiB | 25.8 MiB | 66.0 MiB |
+| `monthly_121260` | authoritative | 0.1665 s | 42.6 MiB | 25.8 MiB | 66.0 MiB |
+| `history_25y` | derived | 0.0570 s | 10.2 MiB | 7.2 MiB | 16.7 MiB |
+| `history_25y` | authoritative | 0.0581 s | 10.6 MiB | 7.2 MiB | 16.7 MiB |
+
+All cases remained below 0.2 seconds in this environment. Derived and authoritative
+input elapsed times were within ordinary run-to-run variation, while the authoritative
+form carried only its additional prepared contribution column. The 120-period,
+121,260-row-per-side case had the largest result and traced allocation. These
+observations establish a repeatable baseline, not a release threshold, and provide no
+evidence for complicating the direct implementation or adding a dependency.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
@@ -407,3 +438,19 @@ large-site ratio and 2.018x selected-input ratio, both without machine-specific
 performance thresholds. Long-history measured 1.521x, below the unchanged 1.58x
 warning and 1.65x failure boundaries. Roadmap 10 made no `ppar` source, schema,
 presentation, dependency, tolerance, warning, or threshold change.
+
+The Roadmap 11 geometric-attribution candidate was then installed without
+dependencies into the same `ppar` Python 3.12.1 release-candidate environment.
+Inspection confirmed that the host neither imports nor calls the new opt-in geometric
+boundary and continues to use default arithmetic Brinson-Fachler two-effect
+attribution with Carino linking. The complete gate passed 305 tests and 477 subtests,
+Mypy, Pyright, both Pylint checks, documentation and image validation, universal-wheel
+construction, Twine, package metadata, and installed generic and Axys/APX
+demonstrations.
+
+The unchanged 500x check retained large-site equivalence and observed a 1.065x
+large-site ratio and 2.016x selected-input ratio, both without machine-specific
+performance thresholds. Long history measured 1.552x, below the unchanged 1.58x
+warning and 1.65x failure boundaries. Roadmap 11 made no `ppar` source, schema,
+report, dependency, version, calculation, tolerance, warning, threshold, or
+presentation change.

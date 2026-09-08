@@ -31,6 +31,10 @@ The post-calculation hierarchical result-roll-up supplement is defined in
 `docs/hierarchical_result_rollup_specification.md`; it aggregates already calculated
 leaf values into static ancestors without changing any `AttributionResult` frame or
 recalculating attribution at parent levels.
+The separate geometric excess-return calculation is defined in
+`docs/geometric_attribution_specification.md`; it uses a distinct result type and
+multiplicative wealth-ratio identity without changing this arithmetic calculation,
+its method enums, or its effect linkers.
 
 The words **must**, **must not**, **should**, and **may** describe requirements with
 their ordinary technical meanings.
@@ -665,8 +669,9 @@ Integration tests separately require identical displayed and serialized values a
 ## Deferred capabilities
 
 Current deferred calculation capabilities include independently recalculated
-hierarchical attribution, additional multi-period linking methods, currency
-attribution, external-flow attribution effects, derivative exposure inference, and
-presentation or report generation. The released static additive hierarchy operation
-is a post-calculation result roll-up, not the deferred level-relative calculation.
-Add a policy or abstraction only when an approved implemented use case requires it.
+hierarchical attribution, identifier-level geometric horizon attribution, additional
+multi-period linking methods, currency attribution, external-flow attribution
+effects, derivative exposure inference, and presentation or report generation. The
+released static additive hierarchy operation is a post-calculation result roll-up,
+not the deferred level-relative calculation. Add a policy or abstraction only when an
+approved implemented use case requires it.

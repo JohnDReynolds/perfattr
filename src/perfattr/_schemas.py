@@ -207,6 +207,68 @@ HIERARCHY_RECONCILIATION_COLUMNS = (
     "tolerance",
     "passed",
 )
+GEOMETRIC_PERIOD_DETAIL_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "quantity_of_days",
+    "identifier",
+    "portfolio_weight",
+    "portfolio_return",
+    "portfolio_contribution",
+    "benchmark_weight",
+    "benchmark_return",
+    "benchmark_contribution",
+    "active_weight",
+    "active_return",
+    "active_contribution",
+    "semi_notional_contribution",
+    "benchmark_accounting_residual",
+    "allocation_effect",
+    "selection_effect",
+)
+GEOMETRIC_PERIOD_SUMMARY_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "quantity_of_days",
+    "portfolio_return",
+    "benchmark_return",
+    "semi_notional_return",
+    "geometric_excess_return",
+    "allocation_effect",
+    "selection_effect",
+    "total_effect",
+)
+GEOMETRIC_CUMULATIVE_COLUMNS = GEOMETRIC_PERIOD_SUMMARY_COLUMNS
+GEOMETRIC_RECONCILIATION_COLUMNS = (
+    "scope",
+    "from_date",
+    "thru_date",
+    "check",
+    "actual",
+    "expected",
+    "difference",
+    "tolerance",
+    "passed",
+)
+GEOMETRIC_PERIOD_RECONCILIATION_CHECKS = (
+    "identifier_allocation",
+    "identifier_selection",
+    "allocation_ratio",
+    "selection_ratio",
+    "geometric_excess",
+    "effect_channels",
+)
+GEOMETRIC_CUMULATIVE_RECONCILIATION_CHECKS = (
+    "compounded_portfolio_return",
+    "compounded_benchmark_return",
+    "compounded_semi_notional_return",
+    "compounded_allocation_effect",
+    "compounded_selection_effect",
+    "geometric_excess",
+    "allocation_ratio",
+    "selection_ratio",
+    "effect_channels",
+)
 PERIOD_RECONCILIATION_CHECKS = tuple(
     """portfolio_weight benchmark_weight portfolio_contribution
     benchmark_contribution active_contribution effect_components total_effect""".split()

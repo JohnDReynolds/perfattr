@@ -8,6 +8,10 @@ from perfattr.attribution import (
 from perfattr._exceptions import PreparationError, PreparationWarning
 from perfattr.classification import normalize_classification
 from perfattr.frequency import Frequency
+from perfattr.geometric import (
+    GeometricAttributionResult,
+    calculate_geometric_attribution,
+)
 from perfattr.hierarchy import HierarchicalRollupResult, roll_up_attribution
 from perfattr.io import (
     read_classification_csv,
@@ -21,7 +25,7 @@ from perfattr.preparation import (
     select_portfolio,
 )
 
-__version__ = "0.9.0a1"
+__version__ = "0.10.0a1"
 
 __all__ = [
     "AttributionError",
@@ -29,12 +33,14 @@ __all__ = [
     "AttributionResult",
     "EffectLinkingMethod",
     "Frequency",
+    "GeometricAttributionResult",
     "HierarchicalRollupResult",
     "PreparationError",
     "PreparationResult",
     "PreparationWarning",
     "__version__",
     "calculate_attribution",
+    "calculate_geometric_attribution",
     "normalize_classification",
     "normalize_mapping",
     "prepare_attribution",

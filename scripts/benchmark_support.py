@@ -8,14 +8,17 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import date
 import gc
+import platform
 import time
 import tracemalloc
-from typing import Final
+from typing import Final, Literal
 
+import numpy as np
 import pandas as pd
 
 
 MEBIBYTE: Final = 1024 * 1024
+BenchmarkInputForm = Literal["derived", "authoritative"]
 
 
 @dataclass(frozen=True)
@@ -60,6 +63,103 @@ def month_bounds(month_index: int) -> tuple[date, date]:
     year, zero_based_month = divmod(absolute_month, 12)
     month = zero_based_month + 1
     return date(year, month, 1), date(year, month, monthrange(year, month)[1])
+
+
+def _period_row_counts(workload: BenchmarkWorkload) -> list[int]:
+    """Distribute the exact requested row count as evenly as possible."""
+    base_count, extra_rows = divmod(workload.rows_per_side, workload.periods)
+    return [
+        base_count + (period_index < extra_rows)
+        for period_index in range(workload.periods)
+    ]
+
+
+def _make_attribution_period(
+    period_index: int,
+    row_count: int,
+    *,
+    side: Literal["portfolio", "benchmark"],
+    input_form: BenchmarkInputForm,
+) -> pd.DataFrame:
+    """Build one side of one deterministic attribution benchmark period."""
+    from_date, thru_date = month_bounds(period_index)
+    positions = np.arange(row_count, dtype=np.int64)
+    side_phase = 0.0 if side == "portfolio" else 0.73
+    identifier_shift = 0 if side == "portfolio" else max(1, row_count // 10)
+    identifiers = [f"security_{value:06d}" for value in positions + identifier_shift]
+
+    raw_weights = 1.0 + ((positions + period_index) % 17) / 17.0
+    weights = raw_weights / raw_weights.sum()
+    weights[-1] = 1.0 - weights[:-1].sum()
+    returns = (
+        0.025 * np.sin((positions + 3 * period_index) / 19.0 + side_phase)
+        + 0.004 * np.cos((positions + period_index) / 7.0)
+    )
+    frame_data: dict[str, object] = {
+        "from_date": from_date,
+        "thru_date": thru_date,
+        "identifier": identifiers,
+        "weight": weights,
+        "return": returns,
+        "quantity_of_days": (thru_date - from_date).days + 1,
+    }
+    if input_form == "authoritative":
+        frame_data["contribution"] = weights * returns
+    return pd.DataFrame(frame_data)
+
+
+def make_attribution_side(
+    workload: BenchmarkWorkload,
+    *,
+    side: Literal["portfolio", "benchmark"],
+    input_form: BenchmarkInputForm,
+) -> pd.DataFrame:
+    """Build one deterministic prepared side outside measurement."""
+    frames = [
+        _make_attribution_period(
+            period_index,
+            row_count,
+            side=side,
+            input_form=input_form,
+        )
+        for period_index, row_count in enumerate(_period_row_counts(workload))
+    ]
+    frame = pd.concat(frames, ignore_index=True)
+    if len(frame) != workload.rows_per_side:
+        raise AssertionError("Generated input does not match the requested row count.")
+    return frame
+
+
+def make_attribution_inputs(
+    workload: BenchmarkWorkload,
+    input_form: BenchmarkInputForm,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Build deterministic portfolio and benchmark inputs outside measurement."""
+    return (
+        make_attribution_side(
+            workload,
+            side="portfolio",
+            input_form=input_form,
+        ),
+        make_attribution_side(
+            workload,
+            side="benchmark",
+            input_form=input_form,
+        ),
+    )
+
+
+def selected_workload_names(selected: list[str] | None) -> list[str]:
+    """Return explicitly selected workloads or the complete stable workload order."""
+    return selected or list(WORKLOADS)
+
+
+def runtime_versions() -> str:
+    """Return the benchmark interpreter and numerical-library versions."""
+    return (
+        f"Python {platform.python_version()} | pandas {pd.__version__} | "
+        f"NumPy {np.__version__}"
+    )
 
 
 def add_common_arguments(parser: argparse.ArgumentParser) -> None:
