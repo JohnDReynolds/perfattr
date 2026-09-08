@@ -59,11 +59,11 @@ and [`docs/hierarchical_result_rollup_specification.md`][hierarchy-spec].
 The released geometric excess-return attribution work is recorded in
 [`_extras/perfattr_roadmap_11_geometric_attribution.md`][geometric-roadmap]
 and [`docs/geometric_attribution_specification.md`][geometric-spec].
-The approved single-period currency-attribution work is recorded in
+The released single-period currency-attribution work is recorded in
 [`_extras/perfattr_roadmap_12_currency_attribution.md`][currency-roadmap] and its
 accepted [`docs/currency_attribution_specification.md`][currency-spec]. The complete
 independently reconciled calculation, documentation, direct performance evidence, and
-release-candidate gates are complete for the approved `0.11.0a1` prerelease.
+release-candidate gates were released in `perfattr==0.11.0a1`.
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).

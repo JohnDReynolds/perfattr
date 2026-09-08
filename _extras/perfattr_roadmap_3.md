@@ -333,8 +333,7 @@ not an attribution effect, and must not alter the ordinary weights-and-returns p
 **Status:** Promoted into approved
 [roadmap 12](perfattr_roadmap_12_currency_attribution.md) on September 8, 2026. Its
 governing [specification](../docs/currency_attribution_specification.md) was accepted
-that day. Implementation and release-candidate gates are complete for the approved
-`perfattr==0.11.0a1` prerelease.
+that day. The roadmap was completed and released in `perfattr==0.11.0a1` that day.
 
 - Add one separate, single-period Karnosky-Singer calculation family.
 - Accept ordinary local asset, local cash, and base-currency cash period returns and

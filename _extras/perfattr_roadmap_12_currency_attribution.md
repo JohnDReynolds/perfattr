@@ -1,7 +1,6 @@
 # perfattr Roadmap 12: Single-Period Currency Attribution
 
-**Status:** Implementation and release-candidate gates complete September 8, 2026.
-Release `perfattr==0.11.0a1` is explicitly authorized and in progress under Step 8.
+**Status:** Complete September 8, 2026. Released in `perfattr==0.11.0a1`.
 
 This roadmap promotes the currency-attribution candidate from roadmap 3. Its accepted
 governing contract is
@@ -447,7 +446,7 @@ Step 8 was separately authorized after the user reviewed this evidence.
 
 ### 8. Release `perfattr==0.11.0a1`
 
-**Status:** In progress; explicitly authorized September 8, 2026.
+**Status:** Complete September 8, 2026.
 
 - Update the version and release documentation for `0.11.0a1`.
 - Commit and push only after the user reviews the final evidence.
@@ -469,17 +468,38 @@ under Python 3.11.9, 3.12.1, 3.13.1, and 3.14.7. The final complete `ppar` gate 
 that wheel passes with the unchanged integration boundary and thresholds.
 
 An isolated Hatchling build produced `perfattr-0.11.0a1.tar.gz` and the universal
-`perfattr-0.11.0a1-py3-none-any.whl`; Twine accepts both artifacts. The wheel SHA-256
-is `ad6a24a3eae0bcfc83205569270afaa04219785acb68907b6bb1de44ce45e30f`; the source-
-distribution SHA-256 is
-`ec5e0d34ba4b35da7296858147730be5ddf333f31d83c429931b5c3edd80036e`.
-Metadata and archive inspection confirm the MIT license, Python 3.11 minimum, pandas
-and NumPy runtime dependencies, universal wheel, currency source, benchmark, tests,
+`perfattr-0.11.0a1-py3-none-any.whl`; Twine accepts both artifacts. Metadata and
+archive inspection confirm the MIT license, Python 3.11 minimum, pandas and NumPy
+runtime dependencies, universal wheel, currency source, benchmark, tests,
 specification, and fixture-provenance documentation.
 
 At this checkpoint, neither the remote tag nor GitHub release `v0.11.0a1` exists, and
 the public PyPI project does not contain `0.11.0a1`. No release operation preceded the
 explicit approval recorded above.
+
+**Release evidence:** Clean release commit
+`307f23f4fbb2ef01d5dd32145f4fb91eb7ba26a4` was pushed to `main`. GitHub Actions CI
+run `34261077666` passed the complete suite on Python 3.11, 3.12, 3.13, and 3.14 and
+independently built, validated, installed, and imported the distributions.
+
+The release commit was tagged with annotated tag `v0.11.0a1` and published as a
+[GitHub prerelease](https://github.com/JohnDReynolds/perfattr/releases/tag/v0.11.0a1).
+Trusted-publisher run `34261343736` built the tagged source and wheel distributions,
+verified that their metadata matched the tag, and published both artifacts to PyPI.
+The public wheel SHA-256 is
+`ad6a24a3eae0bcfc83205569270afaa04219785acb68907b6bb1de44ce45e30f`, exactly
+matching the locally validated wheel. The final tagged source-distribution SHA-256 is
+`8110abfbfd81278b47e3c63609a8ba2ede4d9548fc9e43453fc7ff7c30f56df5`.
+
+Fresh no-cache Python 3.11.9, 3.12.1, 3.13.1, and 3.14.7 environments installed
+`perfattr==0.11.0a1` from `https://pypi.org/simple`. Every module resolved from its
+environment's `site-packages`; dependency checks and public currency calculations
+passed; and the complete 566-test suite passed in all four environments. Python 3.11's
+first request preceded PyPI index propagation; its immediate no-cache retry completed
+the same full gate without changing any requirement.
+
+**Gate:** Passed. The approved prerelease is published on GitHub and PyPI and is
+independently installable and usable across every supported Python version.
 
 ## Primary methodology reference
 

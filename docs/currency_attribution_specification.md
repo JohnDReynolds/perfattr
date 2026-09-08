@@ -1,8 +1,7 @@
 # Single-Period Currency Attribution Specification
 
-**Status:** Accepted and implemented September 8, 2026. The complete calculation,
-documentation, fixture provenance, direct performance evidence, and release-candidate
-gates pass for the approved `perfattr==0.11.0a1` prerelease.
+**Status:** Accepted, implemented, and released in `perfattr==0.11.0a1` on
+September 8, 2026.
 
 This document is the accepted governing contract for the deliberately limited
 currency-attribution feature in [roadmap 12][roadmap-12]. It supplements but does not
