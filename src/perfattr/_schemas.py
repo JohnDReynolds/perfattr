@@ -348,6 +348,59 @@ CURRENCY_RECONCILIATION_COLUMNS = (
     "active_total_log_return",
     "total_reconciled",
 )
+CURRENCY_ROLLUP_MARKET_OVERALL_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "market_identifier",
+    "market_allocation_log_effect",
+    "security_selection_log_effect",
+    "total_log_effect",
+)
+CURRENCY_ROLLUP_CURRENCY_OVERALL_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "currency_identifier",
+    "currency_allocation_log_effect",
+    "hedge_selection_log_effect",
+    "total_log_effect",
+)
+CURRENCY_ROLLUP_CUMULATIVE_COLUMNS = CURRENCY_PERIOD_SUMMARY_COLUMNS
+CURRENCY_ROLLUP_RECONCILIATION_COLUMNS = (
+    "scope",
+    "from_date",
+    "thru_date",
+    "check",
+    "actual",
+    "expected",
+    "difference",
+    "tolerance",
+    "passed",
+)
+CURRENCY_ROLLUP_CUMULATIVE_CHECKS = (
+    "portfolio_market_rollup",
+    "benchmark_market_rollup",
+    "active_market_identity",
+    "market_effect_identity",
+    "portfolio_currency_rollup",
+    "benchmark_currency_rollup",
+    "active_currency_identity",
+    "currency_effect_identity",
+    "portfolio_total_rollup",
+    "benchmark_total_rollup",
+    "portfolio_total_components",
+    "benchmark_total_components",
+    "active_total_identity",
+    "active_total_components",
+    "total_effect_identity",
+)
+CURRENCY_ROLLUP_OVERALL_CHECKS = (
+    "market_allocation_detail",
+    "security_selection_detail",
+    "market_total_detail",
+    "currency_allocation_detail",
+    "hedge_selection_detail",
+    "currency_total_detail",
+)
 PERIOD_RECONCILIATION_CHECKS = tuple(
     """portfolio_weight benchmark_weight portfolio_contribution
     benchmark_contribution active_contribution effect_components total_effect""".split()

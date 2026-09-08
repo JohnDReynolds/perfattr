@@ -356,6 +356,48 @@ than claiming that the original methodology intrinsically has only four effects.
 
 Primary methodological reference: Karnosky and Singer (1994).
 
+### Post-Roadmap 12 priorities and completeness decision
+
+**Status:** Multi-period log-effect roll-up is implemented in approved
+[roadmap 13](perfattr_roadmap_13_multi_period_currency_rollup.md). Its
+[governing specification](../docs/multi_period_currency_rollup_specification.md) was
+approved on September 8, 2026, and `perfattr==0.12.0a1` publication is authorized.
+
+A correctly implemented multi-period roll-up would complete a good, methodology-
+focused multi-currency attribution core. That core would separate market and currency
+decisions, represent net hedged exposures, report four explicit channels, retain
+period detail, and reconcile cumulative and full-horizon results on the same
+log-return basis. It would not claim to be a complete accounting, transaction, hedge-
+pricing, or presentation system.
+
+Prioritize the remaining currency candidates as follows:
+
+1. **Multi-period log-effect roll-up — release authorized.** Sum the already calculated
+   period log returns and log effects directly into cumulative prefixes and a full
+   horizon. Preserve identifier-level effect totals without averaging weights or
+   returns. This requires no additional user input.
+2. **Modeled-to-accounting reconciliation — assess after the roll-up.** Consider an
+   optional diagnostic comparison with authoritative portfolio and benchmark base-
+   currency returns. Report any portfolio, benchmark, and active residual explicitly;
+   never force one into a market or currency effect. This would require additional
+   authoritative return inputs and may belong in `ppar` or another host rather than
+   `perfattr`. It is not external-flow attribution.
+3. **Separate interaction effects — defer.** The released portfolio-weighted
+   selection convention already includes both cross-products exactly. Separate
+   columns would improve transparency or interoperability but would not explain
+   additional performance. Require demonstrated user or system compatibility demand
+   and an intentional result-schema plan before promotion.
+4. **Hierarchical currency attribution — defer.** Market hierarchies may be useful,
+   but currencies do not share one universally meaningful hierarchy. Require a
+   concrete reporting use case and explicit market and currency mapping inputs before
+   promotion.
+
+Karnosky and Singer's practical examples support calculating each valuation period
+before aggregation. They warn that average weights and returns across multiple
+valuation periods can mask changing market and currency strategies and become less
+useful as the horizon lengthens. Roadmap 13 must therefore roll up period results, not
+recalculate a long horizon from average inputs.
+
 ## Deliberately deferred architecture
 
 This backlog does not justify a plugin system, universal attribution engine, generic

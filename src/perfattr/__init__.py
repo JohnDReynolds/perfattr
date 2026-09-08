@@ -11,6 +11,10 @@ from perfattr.currency import (
     CurrencyAttributionResult,
     calculate_currency_attribution,
 )
+from perfattr.currency_rollup import (
+    CurrencyAttributionRollupResult,
+    roll_up_currency_attribution,
+)
 from perfattr.frequency import Frequency
 from perfattr.geometric import (
     GeometricAttributionResult,
@@ -29,12 +33,13 @@ from perfattr.preparation import (
     select_portfolio,
 )
 
-__version__ = "0.11.0a1"
+__version__ = "0.12.0a1"
 
 __all__ = [
     "AttributionError",
     "AttributionMethod",
     "AttributionResult",
+    "CurrencyAttributionRollupResult",
     "CurrencyAttributionResult",
     "EffectLinkingMethod",
     "Frequency",
@@ -54,5 +59,6 @@ __all__ = [
     "read_mapping_csv",
     "read_performance_csv",
     "roll_up_attribution",
+    "roll_up_currency_attribution",
     "select_portfolio",
 ]

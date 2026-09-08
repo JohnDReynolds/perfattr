@@ -21,6 +21,8 @@ vendor schemas, and presentation remain outside the package boundary.
   wealth should be measured relative to benchmark wealth.
 - Separate global market and currency decisions with single-period Karnosky-Singer
   attribution using caller-supplied net currency exposures.
+- Roll currency-attribution log returns and effects directly through time, including
+  cumulative prefixes and full-horizon market and currency identifier effects.
 - Link contributions logarithmically and attribution effects using Carino, Frongello,
   or Menchero optimized linking, with Carino retained as the default.
 - Roll already calculated leaf attribution into a static hierarchy without
@@ -64,6 +66,12 @@ The released single-period currency-attribution work is recorded in
 accepted [`docs/currency_attribution_specification.md`][currency-spec]. The complete
 independently reconciled calculation, documentation, direct performance evidence, and
 release-candidate gates were released in `perfattr==0.11.0a1`.
+The approved multi-period currency roll-up and its completed release-candidate gates
+are recorded in
+[`_extras/perfattr_roadmap_13_multi_period_currency_rollup.md`][currency-rollup-roadmap]
+and its accepted
+[`docs/multi_period_currency_rollup_specification.md`][currency-rollup-spec]. It is the
+approved `perfattr==0.12.0a1` prerelease candidate.
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).
@@ -86,6 +94,8 @@ contract is in [`docs/preparation_specification.md`](docs/preparation_specificat
 [geometric-spec]: docs/geometric_attribution_specification.md
 [currency-roadmap]: _extras/perfattr_roadmap_12_currency_attribution.md
 [currency-spec]: docs/currency_attribution_specification.md
+[currency-rollup-roadmap]: _extras/perfattr_roadmap_13_multi_period_currency_rollup.md
+[currency-rollup-spec]: docs/multi_period_currency_rollup_specification.md
 
 ```python
 import pandas as pd
@@ -222,6 +232,32 @@ effects through time, roll them through a hierarchy, add separate interaction co
 or force fees, flows, financing, or an accounting residual into the modeled total.
 Each input period is calculated and reconciled independently. See the accepted
 [currency specification][currency-spec] for exact schemas and interpretation.
+
+### Multi-period currency roll-up
+
+Pass a completed `CurrencyAttributionResult` to `roll_up_currency_attribution` when
+you need cumulative prefixes and full-horizon identifier effects:
+
+```python
+from perfattr import roll_up_currency_attribution
+
+currency_rollup = roll_up_currency_attribution(currency_result)
+complete_horizon = currency_rollup.cumulative.iloc[-1]
+print(complete_horizon)
+```
+
+Log returns and log effects add directly through time, so this operation performs no
+arithmetic smoothing and never averages weights or returns. The final cumulative row
+is the complete supplied horizon. The market and currency overall-detail rows contain
+effects only; they do not report horizon weights or returns.
+
+A date gap means an observation was omitted, not that a zero-return period occurred.
+Convert an aggregate horizon return to a simple return with `np.expm1` if needed, but
+do not convert individual effects independently: they reconcile additively in log
+units. This boundary does not add accounting reconciliation, separate interaction
+effects, hierarchical currency attribution, or `ppar` integration. See the accepted
+[multi-period roll-up specification][currency-rollup-spec] for the hand-calculated
+example, exact schemas, and interpretation.
 
 ## Hierarchical result roll-up
 
@@ -482,6 +518,7 @@ python scripts/benchmark_core.py --samples 5 --input-form authoritative
 python scripts/benchmark_preparation.py --samples 5
 python scripts/benchmark_hierarchy.py --samples 5
 python scripts/benchmark_currency.py --samples 5
+python scripts/benchmark_currency_rollup.py --samples 5
 ```
 
 Pass `--method three-effect`, `--method bhb-three-effect`, or

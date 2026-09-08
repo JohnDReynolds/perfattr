@@ -61,6 +61,12 @@ weights, and distinct actual and passive base-currency cash returns. The market 
 share their exact local-cash references. Input and result memory are reported
 separately from incremental Python-tracked allocation.
 
+[`scripts/benchmark_currency_rollup.py`](../scripts/benchmark_currency_rollup.py)
+first builds each deterministic Roadmap 12 input and completed currency result outside
+measurement, then measures only the public `roll_up_currency_attribution` boundary.
+It uses the same four history shapes and reports completed source-result memory and
+returned-result memory separately from incremental Python-tracked allocation.
+
 ## Initial standalone baseline
 
 These observations were collected on September 3, 2026, on an Apple arm64 machine
@@ -387,6 +393,38 @@ deterministic workloads through the public boundary, whose production reconcilia
 raises before returning a failed result. Absolute elapsed-time and memory observations
 remain diagnostic baselines rather than release thresholds.
 
+## Roadmap 13 multi-period currency-roll-up observations
+
+These observations were collected on September 8, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Two consecutive runs of
+`python scripts/benchmark_currency_rollup.py --samples 5` measured only the public
+roll-up of completed Roadmap 12 results. Each median contains five samples after an
+unrecorded warm-up.
+
+| Workload | Source market rows | Prefixes | Run 1 | Run 2 | Source | Result | Peak |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `normal` | 6,063 | 60 | 0.0171 s | 0.0170 s | 1.3 MiB | 0.2 MiB | 1.2 MiB |
+| `selected_10x` | 60,630 | 60 | 0.0318 s | 0.0318 s | 10.7 MiB | 0.3 MiB | 11.0 MiB |
+| `monthly_121260` | 121,260 | 120 | 0.0480 s | 0.0482 s | 21.5 MiB | 0.5 MiB | 22.0 MiB |
+| `history_25y` | 30,300 | 300 | 0.0256 s | 0.0265 s | 6.3 MiB | 0.9 MiB | 6.2 MiB |
+
+All four cases remained below 0.05 seconds in this environment. Paired medians
+differed by at most 0.0009 seconds, and traced peak memory was unchanged at reported
+precision. Market-detail source size determined the largest traced allocation, while
+the 300-period history produced the largest returned result because reconciliation
+contains fifteen rows per cumulative prefix.
+
+These repeatable observations provide no evidence for an optimization, cache,
+parallel executor, additional dependency, or machine-specific numeric threshold. The
+direct Roadmap 13 performance gate is successful completion of all four deterministic
+workloads through the public roll-up. Absolute time and memory remain diagnostic
+baselines.
+
+The Roadmap 13 release-candidate rerun completed the same four public-boundary
+workloads with median elapsed times of 0.0158, 0.0300, 0.0470, and 0.0244 seconds.
+Incremental Python-traced peaks remained 1.2, 11.0, 22.0, and 6.2 MiB. All production
+source validation and reconciliation remained active.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
@@ -502,5 +540,20 @@ The unchanged 500x check retained large-site equivalence and observed a 1.074x
 large-site ratio and 2.054x selected-input ratio, both without machine-specific
 performance thresholds. Long history measured 1.470x, below the unchanged 1.58x
 warning and 1.65x failure boundaries. Roadmap 12 made no `ppar` source, schema,
+report, dependency, version, calculation, tolerance, warning, threshold, adapter, or
+presentation change; pre-existing user worktree changes remained untouched.
+
+The Roadmap 13 multi-period currency-roll-up candidate was installed without
+dependencies into that same `ppar` Python 3.12.1 release-candidate environment.
+Inspection confirmed that the host neither imports nor calls the new roll-up boundary
+and continues to use only its established arithmetic attribution adapter. The complete
+gate passed 305 tests and 477 subtests, Mypy, Pyright, both Pylint checks,
+documentation and image validation, universal-wheel construction, Twine, package
+metadata, and installed generic and Axys/APX demonstrations.
+
+The unchanged 500x check retained byte-identical large-site output and observed a
+1.037x large-site ratio and 2.044x selected-input ratio, both without machine-specific
+performance thresholds. Long history measured 1.480x, below the unchanged 1.58x
+warning and 1.65x failure boundaries. Roadmap 13 made no `ppar` source, schema,
 report, dependency, version, calculation, tolerance, warning, threshold, adapter, or
 presentation change; pre-existing user worktree changes remained untouched.

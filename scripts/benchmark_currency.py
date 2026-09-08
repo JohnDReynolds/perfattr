@@ -24,6 +24,7 @@ from benchmark_support import (
     measure_elapsed,
     measure_peak_mebibytes,
     month_bounds,
+    require_positive_samples,
     runtime_versions,
 )
 from perfattr import CurrencyAttributionResult, calculate_currency_attribution
@@ -134,7 +135,7 @@ def _make_currency_side(
     )
 
 
-def _make_inputs(workload: BenchmarkWorkload) -> tuple[pd.DataFrame, ...]:
+def make_currency_inputs(workload: BenchmarkWorkload) -> tuple[pd.DataFrame, ...]:
     """Build all four side-separated currency-attribution inputs."""
     return (
         _make_market_side(workload, portfolio=True),
@@ -144,7 +145,7 @@ def _make_inputs(workload: BenchmarkWorkload) -> tuple[pd.DataFrame, ...]:
     )
 
 
-def _result_mebibytes(result: CurrencyAttributionResult) -> float:
+def currency_result_mebibytes(result: CurrencyAttributionResult) -> float:
     """Return the combined deep memory of all currency result frames."""
     return deep_frame_mebibytes(
         (
@@ -162,8 +163,7 @@ def _parse_args() -> argparse.Namespace:
     parser.epilog = "Every selected period contains twenty currency rows per side."
     add_common_arguments(parser)
     namespace = parser.parse_args()
-    if namespace.samples < 1:
-        parser.error("--samples must be at least 1")
+    require_positive_samples(parser, namespace.samples)
     return namespace
 
 
@@ -180,7 +180,7 @@ def main() -> None:
     )
     for workload_name in workload_names:
         workload = WORKLOADS[workload_name]
-        inputs = _make_inputs(workload)
+        inputs = make_currency_inputs(workload)
         operation = partial(
             calculate_currency_attribution,
             *inputs,
@@ -199,7 +199,7 @@ def main() -> None:
         measurement = (
             f"  median={statistics.median(samples):.4f}s; samples=[{sample_values}]\n"
             f"  inputs={deep_frame_mebibytes(inputs):.1f} MiB; "
-            f"result={_result_mebibytes(result):.1f} MiB; "
+            f"result={currency_result_mebibytes(result):.1f} MiB; "
             f"peak traced allocation={peak_mebibytes:.1f} MiB"
         )
         print(measurement)
