@@ -54,7 +54,7 @@ and [`docs/menchero_optimized_linking_specification.md`][menchero-spec].
 The released hierarchical result-roll-up work is recorded in
 [`_extras/perfattr_roadmap_10_hierarchical_result_rollup.md`][hierarchy-roadmap]
 and [`docs/hierarchical_result_rollup_specification.md`][hierarchy-spec].
-The geometric excess-return attribution release candidate is recorded in
+The released geometric excess-return attribution work is recorded in
 [`_extras/perfattr_roadmap_11_geometric_attribution.md`][geometric-roadmap]
 and [`docs/geometric_attribution_specification.md`][geometric-spec].
 The complete portable calculation contract is defined in

@@ -1,7 +1,6 @@
 # perfattr Roadmap 11: Geometric Excess-Return Attribution
 
-**Status:** Active. Steps 1–7 and the Step 8 prepublication gate are complete
-September 7, 2026; commit and publication are explicitly approved and in progress.
+**Status:** Complete September 7, 2026. Released in `perfattr==0.10.0a1`.
 
 This roadmap promotes the geometric-attribution candidate from roadmap 3. Its accepted
 governing contract is
@@ -444,8 +443,7 @@ Step 8 is authorized.
 
 ### 8. Release `perfattr==0.10.0a1`
 
-**Status:** Prepublication gate complete September 7, 2026; commit and publication
-are explicitly approved and in progress.
+**Status:** Complete September 7, 2026.
 
 - Update version and release-facing documentation only after every prior gate passes.
 - Build and validate fresh source and wheel distributions.
@@ -486,6 +484,26 @@ explicit approval.
 The user explicitly approved committing and pushing, tagging `v0.10.0a1`, creating
 the GitHub prerelease, publishing to PyPI, and verifying the public package after all
 prepublication evidence above passed.
+
+**Release evidence:** Clean release commit
+`dbbe8705d77f469df6c4858e93ec5d136df0e818` was pushed to `main`. GitHub Actions CI
+run `34172369502` passed the complete suite on Python 3.11, 3.12, 3.13, and 3.14 and
+independently built, validated, installed, and imported the distributions.
+
+The release commit was tagged with annotated tag `v0.10.0a1` and published as a
+[GitHub prerelease](https://github.com/JohnDReynolds/perfattr/releases/tag/v0.10.0a1).
+Trusted-publisher run `34172508103` built the tagged source and wheel distributions,
+verified that their metadata matched the tag, and published both artifacts to PyPI.
+No-cache downloads from the public index have the exact locally validated SHA-256
+hashes above.
+
+Clean no-cache Python 3.11.9, 3.12.1, 3.13.1, and 3.14.7 environments installed
+`perfattr==0.10.0a1` from `https://pypi.org/simple`. Every module resolved from its
+environment's `site-packages`; dependency checks and public geometric calculations
+passed; and the complete 485-test suite passed in all four environments.
+
+**Gate:** Passed. The approved prerelease is published on GitHub and PyPI and is
+independently installable and usable across every supported Python version.
 
 ## Comparative review and provenance
 

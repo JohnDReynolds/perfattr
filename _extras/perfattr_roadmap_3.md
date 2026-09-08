@@ -242,8 +242,8 @@ Suggested evaluation order:
    that day; the roadmap was completed and released in `perfattr==0.8.0a1` that day.
    Candidate references:
    Menchero (2000, 2004).
-4. **Geometric excess-return attribution** — implementation complete and prepared as
-   the `perfattr==0.10.0a1` release candidate under
+4. **Geometric excess-return attribution** — implementation complete and released in
+   `perfattr==0.10.0a1` under
    [roadmap 11](perfattr_roadmap_11_geometric_attribution.md) on September 6, 2026.
    Its governing
    [specification](../docs/geometric_attribution_specification.md) was accepted on

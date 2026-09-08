@@ -1,7 +1,7 @@
 # Geometric Excess-Return Attribution Specification
 
-**Status:** Accepted and implemented September 7, 2026. Release candidate for
-`perfattr==0.10.0a1`.
+**Status:** Accepted, implemented, and released in `perfattr==0.10.0a1` on
+September 7, 2026.
 
 This document is the governing contract for the deliberately limited geometric
 attribution feature in [roadmap 11][roadmap-11]. It supplements the released
