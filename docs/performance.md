@@ -52,6 +52,15 @@ all four workloads in both derived and authoritative input forms. Prepared-input
 result-frame memory are reported separately from incremental Python-tracked allocation
 during the calculation.
 
+[`scripts/benchmark_currency.py`](../scripts/benchmark_currency.py) builds four
+side-separated prepared inputs before measurement, then measures the complete public
+`calculate_currency_attribution` boundary. Market rows use the four established
+workload sizes. Each period has twenty currency rows per side, including signed
+portfolio net exposures, independently normalized portfolio and benchmark currency
+weights, and distinct actual and passive base-currency cash returns. The market sides
+share their exact local-cash references. Input and result memory are reported
+separately from incremental Python-tracked allocation.
+
 ## Initial standalone baseline
 
 These observations were collected on September 3, 2026, on an Apple arm64 machine
@@ -352,6 +361,32 @@ form carried only its additional prepared contribution column. The 120-period,
 observations establish a repeatable baseline, not a release threshold, and provide no
 evidence for complicating the direct implementation or adding a dependency.
 
+## Roadmap 12 currency-attribution observations
+
+These observations were collected on September 8, 2026, on the same Apple arm64
+machine using Python 3.11.9, pandas 3.0.5, and NumPy 2.4.6. Two consecutive runs of
+`python scripts/benchmark_currency.py --samples 5` measured the complete public
+four-frame calculation. Each median contains five samples after an unrecorded warm-up.
+
+| Workload | Market rows | Currency rows | Periods | Run 1 | Run 2 | Inputs | Result | Peak |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `normal` | 6,063 | 1,200 | 60 | 0.0458 s | 0.0439 s | 1.6 MiB | 1.3 MiB | 3.5 MiB |
+| `selected_10x` | 60,630 | 1,200 | 60 | 0.1079 s | 0.1082 s | 13.1 MiB | 10.7 MiB | 32.2 MiB |
+| `monthly_121260` | 121,260 | 2,400 | 120 | 0.1659 s | 0.1671 s | 26.2 MiB | 21.5 MiB | 64.2 MiB |
+| `history_25y` | 30,300 | 6,000 | 300 | 0.0797 s | 0.0776 s | 8.2 MiB | 6.3 MiB | 16.6 MiB |
+
+All cases remained below 0.2 seconds in this environment. Paired medians differed by
+at most 0.0021 seconds, while traced peak memory was unchanged at reported precision.
+The largest market history determined peak memory; the 300-period case carried the
+most currency rows but materially fewer market rows.
+
+These observations support retaining the direct pandas/NumPy implementation and do
+not justify an optimization, another dependency, or a machine-specific numeric
+threshold. The direct currency performance gate is successful completion of all four
+deterministic workloads through the public boundary, whose production reconciliation
+raises before returning a failed result. Absolute elapsed-time and memory observations
+remain diagnostic baselines rather than release thresholds.
+
 ## `ppar` adapter observation
 
 An isolated 121,260-row-per-side adapter profile used Python 3.12.1, pandas 3.0.0,
@@ -454,3 +489,18 @@ performance thresholds. Long history measured 1.552x, below the unchanged 1.58x
 warning and 1.65x failure boundaries. Roadmap 11 made no `ppar` source, schema,
 report, dependency, version, calculation, tolerance, warning, threshold, or
 presentation change.
+
+The exact Roadmap 12 `0.11.0a1` currency-attribution candidate was installed without
+dependencies into the same `ppar` Python 3.12.1 release-candidate environment.
+Inspection confirmed that the host neither imports nor calls the new currency boundary
+and continues to use only the released arithmetic attribution calculation. The complete
+gate passed 305 tests and 477 subtests, Mypy, Pyright, both Pylint checks,
+documentation and image validation, universal-wheel construction, Twine, package
+metadata, and installed generic and Axys/APX demonstrations.
+
+The unchanged 500x check retained large-site equivalence and observed a 1.074x
+large-site ratio and 2.054x selected-input ratio, both without machine-specific
+performance thresholds. Long history measured 1.470x, below the unchanged 1.58x
+warning and 1.65x failure boundaries. Roadmap 12 made no `ppar` source, schema,
+report, dependency, version, calculation, tolerance, warning, threshold, adapter, or
+presentation change; pre-existing user worktree changes remained untouched.

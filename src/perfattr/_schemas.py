@@ -269,6 +269,85 @@ GEOMETRIC_CUMULATIVE_RECONCILIATION_CHECKS = (
     "selection_ratio",
     "effect_channels",
 )
+CURRENCY_MARKET_INPUT_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "market_identifier",
+    "market_weight",
+    "local_asset_return",
+    "local_cash_return",
+)
+CURRENCY_EXPOSURE_INPUT_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "currency_identifier",
+    "currency_weight",
+    "base_currency_cash_return",
+)
+CURRENCY_MARKET_DETAIL_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "market_identifier",
+    "portfolio_market_weight",
+    "portfolio_local_asset_return",
+    "benchmark_market_weight",
+    "benchmark_local_asset_return",
+    "local_cash_return",
+    "portfolio_local_log_return_premium",
+    "benchmark_local_log_return_premium",
+    "active_market_weight",
+    "active_local_log_return_premium",
+    "market_allocation_log_effect",
+    "security_selection_log_effect",
+    "total_log_effect",
+)
+CURRENCY_DETAIL_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "currency_identifier",
+    "portfolio_currency_weight",
+    "portfolio_base_currency_cash_return",
+    "benchmark_currency_weight",
+    "benchmark_base_currency_cash_return",
+    "portfolio_base_currency_cash_log_return",
+    "benchmark_base_currency_cash_log_return",
+    "active_currency_weight",
+    "active_base_currency_cash_log_return",
+    "currency_allocation_log_effect",
+    "hedge_selection_log_effect",
+    "total_log_effect",
+)
+CURRENCY_PERIOD_SUMMARY_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "portfolio_market_log_return",
+    "benchmark_market_log_return",
+    "active_market_log_return",
+    "portfolio_currency_log_return",
+    "benchmark_currency_log_return",
+    "active_currency_log_return",
+    "portfolio_total_log_return",
+    "benchmark_total_log_return",
+    "active_total_log_return",
+    "market_allocation_log_effect",
+    "security_selection_log_effect",
+    "currency_allocation_log_effect",
+    "hedge_selection_log_effect",
+    "total_log_effect",
+)
+CURRENCY_RECONCILIATION_COLUMNS = (
+    "from_date",
+    "thru_date",
+    "market_log_effect_sum",
+    "active_market_log_return",
+    "market_reconciled",
+    "currency_log_effect_sum",
+    "active_currency_log_return",
+    "currency_reconciled",
+    "total_log_effect_sum",
+    "active_total_log_return",
+    "total_reconciled",
+)
 PERIOD_RECONCILIATION_CHECKS = tuple(
     """portfolio_weight benchmark_weight portfolio_contribution
     benchmark_contribution active_contribution effect_components total_effect""".split()

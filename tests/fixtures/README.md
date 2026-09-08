@@ -36,6 +36,31 @@ The cases are deliberately small:
 | `three_effect_positive` | The governing specification's derived-contribution example with positive interaction |
 | `three_effect_authoritative` | Contributions that imply effective returns distinct from supplied returns and both positive and negative interaction |
 
+## Currency-attribution calculations
+
+Currency tests are expressed directly in `test_currency_market.py` and
+`test_currency_calculation.py` because their four input frames and literal expected
+values are compact. Most are original project-authored examples derived independently
+from `docs/currency_attribution_specification.md`. Their docstrings show the local
+log-return premiums, benchmark aggregate references, four effect formulas, and market,
+currency, and complete reconciliation totals. Randomized expectations are direct
+weighted-return calculations, not captured production output.
+
+The sole source-derived case uses three rows from Karnosky and Singer (1994), Table 21,
+printed page 66: Australia, Japan, and the United States. It transcribes passive and
+active currency weights and U.S.-dollar cash returns. Each side's selected weights are
+divided by its three-country subtotal to satisfy the package's unit-sum input contract;
+the returns remain the reported values. Because the monograph works on a continuously
+compounded basis, the test applies `expm1` before calling the simple-return public API
+and requires the returned `log1p` values to recover `-3.25%`, `5.00%`, and `4.09%`.
+One return series is available, so it is supplied to both sides and independently
+implies zero hedge selection.
+
+Only those numerical facts and the methodology are reused. No implementation source,
+fixture file, table image, or prose was copied from the monograph, `ppar`, `pybrinson`,
+or another package. This limited factual transcription is compatible with the
+project's MIT outbound license.
+
 Blank return cells represent null. All other blank cells are invalid. Values are
 decimal returns, weights, contributions, or effects; `0.01` means one percent.
 

@@ -7,6 +7,10 @@ from perfattr.attribution import (
 )
 from perfattr._exceptions import PreparationError, PreparationWarning
 from perfattr.classification import normalize_classification
+from perfattr.currency import (
+    CurrencyAttributionResult,
+    calculate_currency_attribution,
+)
 from perfattr.frequency import Frequency
 from perfattr.geometric import (
     GeometricAttributionResult,
@@ -25,12 +29,13 @@ from perfattr.preparation import (
     select_portfolio,
 )
 
-__version__ = "0.10.0a1"
+__version__ = "0.11.0a1"
 
 __all__ = [
     "AttributionError",
     "AttributionMethod",
     "AttributionResult",
+    "CurrencyAttributionResult",
     "EffectLinkingMethod",
     "Frequency",
     "GeometricAttributionResult",
@@ -40,6 +45,7 @@ __all__ = [
     "PreparationWarning",
     "__version__",
     "calculate_attribution",
+    "calculate_currency_attribution",
     "calculate_geometric_attribution",
     "normalize_classification",
     "normalize_mapping",

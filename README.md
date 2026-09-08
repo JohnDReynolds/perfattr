@@ -19,6 +19,8 @@ vendor schemas, and presentation remain outside the package boundary.
   or explicit three-effect selection and interaction.
 - Calculate separate Bacon/Burnie geometric excess-return attribution when portfolio
   wealth should be measured relative to benchmark wealth.
+- Separate global market and currency decisions with single-period Karnosky-Singer
+  attribution using caller-supplied net currency exposures.
 - Link contributions logarithmically and attribution effects using Carino, Frongello,
   or Menchero optimized linking, with Carino retained as the default.
 - Roll already calculated leaf attribution into a static hierarchy without
@@ -57,6 +59,11 @@ and [`docs/hierarchical_result_rollup_specification.md`][hierarchy-spec].
 The released geometric excess-return attribution work is recorded in
 [`_extras/perfattr_roadmap_11_geometric_attribution.md`][geometric-roadmap]
 and [`docs/geometric_attribution_specification.md`][geometric-spec].
+The approved single-period currency-attribution work is recorded in
+[`_extras/perfattr_roadmap_12_currency_attribution.md`][currency-roadmap] and its
+accepted [`docs/currency_attribution_specification.md`][currency-spec]. The complete
+independently reconciled calculation, documentation, direct performance evidence, and
+release-candidate gates are complete for the approved `0.11.0a1` prerelease.
 The complete portable calculation contract is defined in
 [`docs/specification.md`](docs/specification.md), and the accepted roadmap 2 preparation
 contract is in [`docs/preparation_specification.md`](docs/preparation_specification.md).
@@ -77,6 +84,8 @@ contract is in [`docs/preparation_specification.md`](docs/preparation_specificat
 [hierarchy-spec]: docs/hierarchical_result_rollup_specification.md
 [geometric-roadmap]: _extras/perfattr_roadmap_11_geometric_attribution.md
 [geometric-spec]: docs/geometric_attribution_specification.md
+[currency-roadmap]: _extras/perfattr_roadmap_12_currency_attribution.md
+[currency-spec]: docs/currency_attribution_specification.md
 
 ```python
 import pandas as pd
@@ -124,6 +133,95 @@ prepared = prepare_attribution(portfolio, benchmark)
 result = calculate_attribution(prepared.portfolio, prepared.benchmark)
 print(result.period_detail)
 ```
+
+## Currency attribution
+
+Use `calculate_currency_attribution` when global market allocation and net currency
+exposure are separate decisions. It accepts four prepared frames: portfolio and
+benchmark market facts, plus portfolio and benchmark currency facts. Market weights
+and currency weights are independent vectors; multiple markets may share a currency,
+and hedges may make a currency exposure zero, negative, or greater than one.
+
+Inputs are ordinary simple period returns. The result uses explicitly named log-return
+and log-effect columns because the Karnosky-Singer decomposition is additive on a
+continuously compounded basis. This small example uses `expm1` only to create simple
+inputs from convenient hand-calculated log returns:
+
+```python
+import numpy as np
+import pandas as pd
+
+from perfattr import calculate_currency_attribution
+
+market_columns = [
+    "from_date",
+    "thru_date",
+    "market_identifier",
+    "market_weight",
+    "local_asset_return",
+    "local_cash_return",
+]
+currency_columns = [
+    "from_date",
+    "thru_date",
+    "currency_identifier",
+    "currency_weight",
+    "base_currency_cash_return",
+]
+period = ("2024-01-01", "2024-01-31")
+
+portfolio_markets = pd.DataFrame(
+    [
+        (*period, "Equity", 0.60, np.expm1(0.08), 0.0),
+        (*period, "Bonds", 0.40, np.expm1(0.02), 0.0),
+    ],
+    columns=market_columns,
+)
+benchmark_markets = pd.DataFrame(
+    [
+        (*period, "Equity", 0.50, np.expm1(0.05), 0.0),
+        (*period, "Bonds", 0.50, np.expm1(0.03), 0.0),
+    ],
+    columns=market_columns,
+)
+portfolio_currencies = pd.DataFrame(
+    [
+        (*period, "EUR", 0.70, np.expm1(0.04)),
+        (*period, "USD", 0.30, np.expm1(0.015)),
+    ],
+    columns=currency_columns,
+)
+benchmark_currencies = pd.DataFrame(
+    [
+        (*period, "EUR", 0.50, np.expm1(0.03)),
+        (*period, "USD", 0.50, np.expm1(0.01)),
+    ],
+    columns=currency_columns,
+)
+
+currency_result = calculate_currency_attribution(
+    portfolio_markets,
+    benchmark_markets,
+    portfolio_currencies,
+    benchmark_currencies,
+    base_currency="USD",
+)
+print(currency_result.period_summary)
+```
+
+The benchmark market log return is `0.04`. Market allocation is `0.002` and
+portfolio-weighted security selection is `0.014`, giving active market return `0.016`.
+The benchmark currency log return is `0.02`. Currency allocation is `0.004` and
+portfolio-weighted hedge selection is `0.0085`, giving active currency return
+`0.0125`. All four effects sum to the modeled active total log return `0.0285`.
+
+The host supplies net currency exposures after holdings, cash, and hedges; `perfattr`
+does not infer exposures or price hedge transactions. Portfolio-weighted selection
+absorbs each grid's interaction effect. This first calculation does not link currency
+effects through time, roll them through a hierarchy, add separate interaction columns,
+or force fees, flows, financing, or an accounting residual into the modeled total.
+Each input period is calculated and reconciled independently. See the accepted
+[currency specification][currency-spec] for exact schemas and interpretation.
 
 ## Hierarchical result roll-up
 
@@ -376,13 +474,14 @@ python -m pylint src/perfattr tests scripts
 python -m pyright
 ```
 
-Run the four roadmap performance workloads:
+Run the direct performance benchmarks:
 
 ```bash
 python scripts/benchmark_core.py --samples 5
 python scripts/benchmark_core.py --samples 5 --input-form authoritative
 python scripts/benchmark_preparation.py --samples 5
 python scripts/benchmark_hierarchy.py --samples 5
+python scripts/benchmark_currency.py --samples 5
 ```
 
 Pass `--method three-effect`, `--method bhb-three-effect`, or

@@ -1,6 +1,6 @@
 # perfattr Roadmap 3: Subsequent Feature Backlog
 
-**Status:** Noncommitted backlog as of September 5, 2026.
+**Status:** Noncommitted backlog as of September 8, 2026.
 
 This document records possible work after roadmap 2. It is ordered primarily by
 technical dependency, not by promised delivery. Nothing here authorizes implementation
@@ -330,16 +330,32 @@ not an attribution effect, and must not alter the ordinary weights-and-returns p
 
 ## 6. Add currency attribution as a separate calculation family
 
-- Specify required local, currency, and base-currency returns before adding columns.
-- Define portfolio and benchmark currency exposures, hedging conventions, and
-  reconciliation identities explicitly.
-- Keep currency attribution separate from the existing domestic Brinson result schema.
-- Reuse general validation or linking helpers only where the financial meaning remains
-  identical.
+**Status:** Promoted into approved
+[roadmap 12](perfattr_roadmap_12_currency_attribution.md) on September 8, 2026. Its
+governing [specification](../docs/currency_attribution_specification.md) was accepted
+that day. Implementation and release-candidate gates are complete for the approved
+`perfattr==0.11.0a1` prerelease.
 
-Candidate methodology: Karnosky-Singer four-effect additive currency attribution.
-Candidate reference: Karnosky and Singer (1994). Verify the primary methodology and
-input requirements during specification.
+- Add one separate, single-period Karnosky-Singer calculation family.
+- Accept ordinary local asset, local cash, and base-currency cash period returns and
+  convert them internally to the methodology's continuously compounded basis.
+- Accept separate portfolio and benchmark market frames and separate portfolio and
+  benchmark currency frames. Require caller-supplied net currency exposures; do not
+  infer exposures from holdings or hedge transactions.
+- Report market allocation, security selection, currency allocation, and hedge
+  selection under an explicit policy that absorbs each attribution grid's interaction
+  into portfolio-weighted selection.
+- Report all four channels explicitly in log-return units and reconcile them to the
+  modeled active log return for every period.
+- Keep the calculation separate from domestic Brinson schemas and omit multi-period
+  currency linking from the first version.
+
+The primary review corrected the backlog's shorthand. Karnosky and Singer's full
+market and currency grids each contain allocation, selection, and a cross-product.
+Roadmap 12 therefore describes a deliberate four-channel reporting convention rather
+than claiming that the original methodology intrinsically has only four effects.
+
+Primary methodological reference: Karnosky and Singer (1994).
 
 ## Deliberately deferred architecture
 
