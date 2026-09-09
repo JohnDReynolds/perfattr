@@ -1,6 +1,6 @@
 # Stable Release 0.12.0
 
-**Status:** Release gate passed September 9, 2026; publication pending
+**Status:** Released September 9, 2026
 
 ## Purpose
 
@@ -77,3 +77,35 @@ The isolated artifacts are `perfattr-0.12.0.tar.gz` and
 maturity, Python `>=3.11`, MIT licensing, only NumPy and pandas runtime dependencies,
 and all four public project URLs. The source distribution contains the public README,
 documentation index, and user guide.
+
+## Publication Evidence
+
+Release commit `34f47b8e4875cccd5c410041e11f0db2a43cd312` passed all six jobs in
+[release-candidate CI run `34385116420`][candidate-run]. The commit was tagged with
+annotated tag `v0.12.0` and published as a non-prerelease
+[GitHub release][github-release].
+
+[Trusted-publishing run `34385397818`][publish-run] passed its tagged functional test,
+build, tag/version, Twine, clean-wheel, artifact-upload, and PyPI publication steps.
+The version-specific PyPI endpoint then returned successfully, and the default public
+index reported `0.12.0` as its latest stable version.
+
+A new Python 3.11 environment installed `perfattr` from `https://pypi.org/simple`
+without `--pre` or a version pin. The public wheel:
+
+- reported package and distribution version `0.12.0`;
+- resolved from the new environment's `site-packages`;
+- exposed every declared root API;
+- carried the Beta classifier and four project URLs;
+- passed `pip check`; and
+- completed the README preparation and attribution calculation with exact expected
+  total effect and passing reconciliation.
+
+The first no-cache request reached PyPI before its default index had propagated and
+selected `0.3.0`. Verification correctly remained open. The immediately subsequent
+public-index check identified `0.12.0`, and the repeated unpinned request upgraded to
+it successfully.
+
+[candidate-run]: https://github.com/JohnDReynolds/perfattr/actions/runs/34385116420
+[github-release]: https://github.com/JohnDReynolds/perfattr/releases/tag/v0.12.0
+[publish-run]: https://github.com/JohnDReynolds/perfattr/actions/runs/34385397818

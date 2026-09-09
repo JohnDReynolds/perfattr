@@ -86,9 +86,9 @@ runtime dependency list remains pandas and NumPy.
 
 ## Findings
 
-### UX-001: public installation does not lead to the current product
+### UX-001: public installation did not lead to the current product
 
-**Priority:** Address before the next public-facing release
+**Priority:** Resolved September 9, 2026
 **Risk:** High user confusion; no calculation defect
 
 As of September 9, 2026, the [default PyPI project][pypi] identifies `0.3.0` as the
@@ -111,9 +111,9 @@ installed perfattr 0.12.0a1
 
 At the time of the review, the [latest GitHub release][latest-release] was correctly
 marked as a prerelease but the repository was private. The user subsequently made it
-public, resolving source and issue-tracker access. PyPI still lists `0.3.0` as its
-default and needs a new release before its description, documentation links, and
-project URLs reflect the current public repository.
+public, resolving source and issue-tracker access. The subsequent stable `0.12.0`
+release resolved the PyPI default, description, documentation-link, and project-URL
+gaps recorded here.
 
 Choose and state one release story:
 
@@ -309,7 +309,7 @@ architecture.
 ## Follow-up disposition
 
 The subsequent [Step 1 onboarding pass](2026-09-09_user_onboarding_step_1.md) made
-these unreleased documentation and metadata changes:
+these documentation and metadata changes:
 
 - added installation and explicit stable-versus-prerelease guidance;
 - added a task-oriented user guide and documentation index;
@@ -324,9 +324,9 @@ these unreleased documentation and metadata changes:
   language.
 
 UX-004's possible strict-completeness API and UX-006's possible common reconciliation
-boundary remain deliberately deferred. The next stable release remains a separate
-decision and is still required to make plain `pip install perfattr` select the current
-feature set.
+boundary remain deliberately deferred. The subsequent
+[stable `0.12.0` release](2026-09-09_stable_release_0.12.0.md) made plain
+`pip install perfattr` select the current feature set.
 
 ## Evidence collected
 
