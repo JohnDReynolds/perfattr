@@ -351,13 +351,6 @@ Primary methodology:
 Crossref metadata for the title, authors, journal, volume, issue, pages, publication
 date, and DOI was verified on September 5, 2026.
 
-Comparative design review:
-
-- [`gghez/pybrinson`](https://github.com/gghez/pybrinson/), reviewed at commit
-  `529b0940937caacec3f2a30609b9ce6b86316a7b` on September 5, 2026.
-
-The review reinforced explicit method identity, independent effect channels, the
-two-effect collapse identity, and applying one linking coefficient consistently to
-each additive effect. It does not govern `perfattr`'s APIs or its authoritative-
-contribution and null-return policies. No external source, fixture, expected value, or
-documentation text is copied into this project.
+The specification keeps method identity and effect channels explicit, enforces the
+two-effect collapse identity, and applies one linking coefficient consistently to
+each additive effect. Fixtures and expected values are constructed independently.

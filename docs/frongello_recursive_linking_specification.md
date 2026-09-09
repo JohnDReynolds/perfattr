@@ -301,7 +301,7 @@ all five public result frames. `tests/fixtures/README.md` derives the source-per
 factors, identifier effects, period and identifier aggregates, cumulative results,
 logarithmic contributions, observed-day weights, compounded returns, and
 reconciliation expectations. The expectations were written independently of
-`perfattr`, `ppar`, `pybrinson`, and every other implementation.
+`perfattr`, `ppar`, and every other implementation.
 
 ## Authoritative contributions and null behavior
 
@@ -413,17 +413,6 @@ Primary methodology:
 
 The Fall paper is the governing source for the recursion, proof, order dependence,
 and numerical examples. The Spring paper is the original presentation.
-
-Comparative review:
-
-- [`gghez/pybrinson`](https://github.com/gghez/pybrinson/), reviewed at commit
-  `529b0940937caacec3f2a30609b9ce6b86316a7b` on September 5, 2026.
-
-That review helped identify the Frongello/GRAP full-horizon equivalence and the value
-of primary-source regression fixtures. `pybrinson` returns horizon totals rather than
-`perfattr`'s period and identifier frames, so it does not govern this specification's
-source-period presentation. No code, test data, expected value, or documentation text
-is copied from it.
 
 A targeted public patent search identified no Frongello-specific claim. This is not a
 legal opinion. The implementation must be written independently from the published

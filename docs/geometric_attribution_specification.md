@@ -442,8 +442,8 @@ producing an infinite or complex result.
 ## Independent fixture requirements
 
 Expected results must be calculated from literal inputs by hand or an independently
-documented derivation. Production output, `ppar`, `pybrinson`, and other
-implementations may not supply expected values.
+documented derivation. Production output, `ppar`, and other implementations may not
+supply expected values.
 
 The basic fixture should include two identifiers whose allocation and selection have
 opposing signs. One useful independent case is:
@@ -508,22 +508,15 @@ The following require separate future specifications:
 
 Do not expose placeholders, enums, columns, or callback hooks for those possibilities.
 
-## Comparative review and provenance
-
-`gghez/pybrinson` was reviewed at commit
-`529b0940937caacec3f2a30609b9ce6b86316a7b`. Its geometric module reconstructs a
-semi-notional return from an arithmetic result, absorbs interaction into selection,
-compounds aggregate allocation and selection channels, and rejects nonpositive
-wealth bases. Those ideas are useful confirmation of the method boundary.
+## Design decisions and provenance
 
 This specification independently chooses direct prepared inputs, identifier-level
 period effects, cumulative-prefix evidence, and explicit authoritative-contribution
 behavior. It deliberately omits identifier-level horizon output rather than treating
 aggregate channel compounding as an allocation policy.
 
-The reviewed project is MIT-licensed, but no source, test value, fixture, or prose may
-be copied. Primary financial references and independently constructed project
-fixtures govern implementation.
+Primary financial references and independently constructed project fixtures govern
+implementation.
 
 Roadmap 11's implementation tests were constructed independently in this repository.
 `tests/test_geometric_period.py` starts from literal weights, returns, and
@@ -533,7 +526,7 @@ multiplies literal period wealth independently, cross-checks logarithmic prefixe
 against direct products, and deliberately corrupts a period total to prove the public
 reconciliation gate. `tests/test_geometric_behavior.py` verifies public schemas,
 dtypes, nulls, ordering, ownership, and unchanged arithmetic results. Production
-output was never captured as an expectation, and neither `ppar`, `pybrinson`, nor
+output was never captured as an expectation, and neither `ppar` nor
 another package supplied a test value.
 
 ## References
@@ -555,9 +548,6 @@ Comparative implementation and product behavior:
   [Method overview][eagle-overview].
 - Eagle Performance, *Brinson-Fachler Effects for the Geometric Attribution Method*.
   [Effect formulas][eagle-effects].
-- `gghez/pybrinson`, commit
-  `529b0940937caacec3f2a30609b9ce6b86316a7b`, reviewed September 6, 2026.
-
 [cfa-history]: https://rpc.cfainstitute.org/research/foundation/2019/performance-attribution
 [eagle-overview]: https://eagledocs.atlassian.net/wiki/spaces/Performance2017/pages/856719916
 [eagle-effects]: https://eagledocs.atlassian.net/wiki/spaces/Performance2017/pages/856719436

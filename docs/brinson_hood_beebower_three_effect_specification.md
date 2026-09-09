@@ -329,12 +329,6 @@ The publisher record and the paper's CFA/AIMR 1995 reprint were reviewed on Sept
 cross-product. This specification uses the now-common allocation, selection, and
 interaction labels while retaining that algebra.
 
-Comparative design review:
-
-- [`gghez/pybrinson`](https://github.com/gghez/pybrinson/), reviewed at commit
-  `529b0940937caacec3f2a30609b9ce6b86316a7b` on September 5, 2026.
-
-That review supports a distinct BHB method identity, a shared three-effect result
-shape, explicit conservation checks, and cross-method invariant tests. It does not
-govern `perfattr`'s API, authoritative-contribution rules, null policy, or tolerance.
-No source code, fixtures, expected values, or documentation text is copied.
+The specification preserves a distinct BHB method identity, a shared three-effect
+result shape, explicit conservation checks, and cross-method invariant tests.
+Fixtures and expected values are constructed independently.

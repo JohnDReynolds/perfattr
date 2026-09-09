@@ -531,7 +531,7 @@ boundary difference.
 
 Expected results must be constructed independently from literal inputs, with extensive
 docstrings and comments explaining every nontrivial calculation, financial meaning,
-sign convention, and reconciliation step. Production output, `ppar`, `pybrinson`, or
+sign convention, and reconciliation step. Production output, `ppar`, or
 another library must not generate expected values.
 
 At minimum, fixtures cover:
@@ -568,7 +568,7 @@ original project-authored numbers to keep provenance simple.
 The calculation tests use original project-authored inputs and literal expectations
 evaluated independently from this specification. Their docstrings show the nontrivial
 premium, allocation, selection, hedge, and reconciliation arithmetic. No production
-output, `ppar`, `pybrinson`, or another implementation generated an expected value.
+output, `ppar`, or another implementation generated an expected value.
 
 One deliberately small primary-source check uses Australia, Japan, and the United
 States from Karnosky and Singer (1994), Table 21, printed page 66. It transcribes only

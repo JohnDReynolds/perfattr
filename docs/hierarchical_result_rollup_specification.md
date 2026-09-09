@@ -606,12 +606,7 @@ across all methods and linkers. Establish no new threshold until a correct proto
 produces repeatable evidence. Every existing direct-core and `ppar` threshold remains
 unchanged.
 
-## Comparative `pybrinson` review
-
-`gghez/pybrinson` was reviewed at commit
-`529b0940937caacec3f2a30609b9ce6b86316a7b`. Its hierarchy implementation reinforced
-four useful ideas: explicit parent relationships, cached ancestor chains, cycle
-detection, and strict additive parent effects.
+## Design decisions and provenance
 
 This specification makes independent choices suited to `perfattr`'s released pandas
 and multi-period result boundary:
@@ -623,9 +618,8 @@ and multi-period result boundary:
 - valid unused taxonomy branches are retained; and
 - unrecoverable horizon returns are omitted rather than fabricated.
 
-The reviewed source is MIT-licensed, but no code, test value, fixture, or documentation
-text is copied. Primary financial references and independent project fixtures govern
-the implementation.
+Primary financial references and independent project fixtures govern the
+implementation.
 
 ## References and provenance
 
@@ -648,5 +642,5 @@ Comparative product behavior:
 
 All implementation, tests, fixtures, and prose must be original project work under
 the existing MIT license. Fixture provenance must record literal source facts and
-independent arithmetic; production output, `ppar`, `pybrinson`, and other
-implementations may not supply expected values.
+independent arithmetic; production output, `ppar`, and other implementations may not
+supply expected values.

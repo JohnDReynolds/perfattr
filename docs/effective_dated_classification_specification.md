@@ -279,22 +279,13 @@ performance threshold only from repeatable evidence and with explicit approval.
 Run the 500x `ppar` release-candidate workflow only if the host adapter or another
 cross-cutting integration boundary changes.
 
-## Comparative design review and provenance
-
-`pybrinson` was reviewed as requested by roadmap 3. Its public boundary starts from
-already prepared period segments and keeps attribution formulas and hierarchy
-invariants explicit. It does not provide the effective-dated preparation contract
-needed here. This specification adopts only the general lesson of keeping preparation
-separate from attribution mathematics; it copies no source, fixture, or formula.
-
-- Repository: <https://github.com/gghez/pybrinson/>
-- Reviewed implementation plan:
-  <https://github.com/gghez/pybrinson/blob/main/docs/implementation-v1.md>
+## Methodology and provenance
 
 Effective-dated assignment is a temporal data contract, not a new financial
 methodology. The existing mapping and consolidation formulas remain governed by the
 accepted preparation specification. Any future methodology change still requires its
-own primary-source review.
+own primary-source review. Preparation remains separate from attribution mathematics,
+and all source, fixtures, and formulas are original or independently derived.
 
 ## Approved decisions
 

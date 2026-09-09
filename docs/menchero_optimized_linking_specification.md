@@ -401,20 +401,14 @@ attribution methods on the established direct-core workloads. Establish no new
 threshold before correct, repeatable evidence exists. All released gates remain
 unchanged.
 
-## Comparative `pybrinson` review
+## Design decisions
 
-`gghez/pybrinson` was reviewed at commit
-`529b0940937caacec3f2a30609b9ce6b86316a7b`. Its implementation reinforced the value
-of a separate Menchero identity, a primary patent-status gate, one coefficient per
-period, and cross-linker reconciliation tests.
-
-This specification deliberately does not adopt its one-period rejection or its
-near-zero horizon-active shortcut. The released `perfattr` calculator already defines
-one-period linking as the identity. More importantly, matching compounded returns can
-still require nonzero period corrections, as the equal-horizon example above proves.
-
-No `pybrinson` code, test value, fixture, or documentation text is copied. Primary
-methodology and patent records govern this proposal.
+This specification keeps a separate Menchero identity, a primary patent-status gate,
+one coefficient per period, and cross-linker reconciliation tests. It defines
+one-period linking as the identity and does not use a near-zero horizon-active
+shortcut. Matching compounded returns can still require nonzero period corrections,
+as the equal-horizon example above proves. Primary methodology and patent records
+govern this proposal.
 
 ## References, intellectual property, and provenance
 

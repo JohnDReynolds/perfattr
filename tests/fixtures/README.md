@@ -57,9 +57,9 @@ One return series is available, so it is supplied to both sides and independentl
 implies zero hedge selection.
 
 Only those numerical facts and the methodology are reused. No implementation source,
-fixture file, table image, or prose was copied from the monograph, `ppar`, `pybrinson`,
-or another package. This limited factual transcription is compatible with the
-project's MIT outbound license.
+fixture file, table image, or prose was copied from the monograph, `ppar`, or another
+package. This limited factual transcription is compatible with the project's MIT
+outbound license.
 
 Blank return cells represent null. All other blank cells are invalid. Values are
 decimal returns, weights, contributions, or effects; `0.01` means one percent.
@@ -109,7 +109,7 @@ allocation is zero and compact selection equals total. The March total effects o
 These expectations apply the prefix-portfolio, suffix-benchmark formula documented
 in `docs/frongello_recursive_linking_specification.md`. They were worked from the CSV
 inputs and the formula, then written as literals; they were not captured from
-`perfattr`, `ppar`, `pybrinson`, or another implementation.
+`perfattr`, `ppar`, or another implementation.
 
 The portfolio period returns are the row-contribution sums `0.060` and `-0.005`.
 The benchmark returns are `0.050` and `0.007`. With two chronological periods, the
@@ -194,7 +194,7 @@ numbers and method were used; no source code or fixture was copied.
 These original expectations apply the optimized period-coefficient formula in
 `docs/menchero_optimized_linking_specification.md`. They were derived from the literal
 CSV inputs with 50-digit decimal arithmetic and then written as fixture values; they
-were not captured from `perfattr`, `ppar`, `pybrinson`, or any other implementation.
+were not captured from `perfattr`, `ppar`, or any other implementation.
 The existing independently calculated contribution, exposure, return, and unlinked
 effect values are unchanged because Menchero selects only active-effect linking.
 
@@ -294,7 +294,7 @@ formula. No external source code, test fixture, or generated package output was 
 The hierarchy expectations are literal Python data in
 `tests/test_hierarchy_period_rollup.py`, rather than CSV files. They were written from
 the formulas in `docs/hierarchical_result_rollup_specification.md` and were not copied
-or captured from `perfattr`, `ppar`, `pybrinson`, or another implementation.
+or captured from `perfattr`, `ppar`, or another implementation.
 
 The one-period source facts contain leaves A, B, C, D, and FEE. Portfolio weights and
 contributions are `0.6/0.060`, `0.5/0.020`, `-0.1/-0.020`, and `0.0/-0.001` for A, B,

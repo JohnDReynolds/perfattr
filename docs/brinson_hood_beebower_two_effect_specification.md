@@ -273,7 +273,6 @@ That paper supports the allocation basis and three-component decomposition, not 
 historical two-effect label. Combining selection and interaction is the explicitly
 disclosed `perfattr` reporting convention specified here.
 
-The previous comparative review of `gghez/pybrinson` used commit
-`529b0940937caacec3f2a30609b9ce6b86316a7b`. It reinforces explicit method identity
-and shared mechanics but is not the calculation authority for this compact form. No
-source code, fixtures, expected values, or documentation text are copied.
+The compact form retains an explicit method identity and shares only the governed
+mechanics with the three-effect form. Fixtures and expected values are constructed
+independently.

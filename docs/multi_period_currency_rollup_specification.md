@@ -402,7 +402,7 @@ not values copied from the implementation under test.
 The deterministic one-, two-, and three-period cases in
 `tests/test_currency_rollup_calculation.py` were authored specifically for this MIT-
 licensed repository from the formulas in this specification. They were not copied
-from `ppar`, `pybrinson`, or another implementation. Their four input frames start
+from `ppar` or another implementation. Their four input frames start
 with independently selected weights and log-return facts, convert those facts to the
 public simple-return inputs, and state every expected cumulative and identifier value
 as a literal hand calculation. Randomized tests supplement those fixtures only by
