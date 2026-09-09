@@ -7,7 +7,7 @@ This document specifies an opt-in compact Brinson-Hood-Beebower (BHB) reporting
 contract for [roadmap 7][roadmap-7]. It supplements the released default
 [`specification.md`](specification.md) and released BHB three-effect
 [specification][bhb-three-spec]. Every released rule remains unchanged unless this
-document explicitly defines behavior for the new method.
+document explicitly defines behavior for the opt-in method.
 
 [roadmap-7]: ../_extras/perfattr_roadmap_7_brinson_hood_beebower_two_effect.md
 [bhb-three-spec]: brinson_hood_beebower_three_effect_specification.md

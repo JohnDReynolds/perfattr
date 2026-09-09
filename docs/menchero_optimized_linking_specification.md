@@ -39,7 +39,7 @@ adds no distinct numerical result at `perfattr`'s boundary; Menchero does.
 
 ## Public API
 
-Extend the released string enum by one member:
+The released string enum includes the Menchero member:
 
 ```python
 class EffectLinkingMethod(str, Enum):
@@ -48,9 +48,9 @@ class EffectLinkingMethod(str, Enum):
     MENCHERO = "Menchero"
 ```
 
-The released keyword-only `effect_linking_method` argument and matching
-`AttributionResult.effect_linking_method` metadata remain unchanged. The new member
-must be exported from `perfattr.method` and the root package.
+The keyword-only `effect_linking_method` argument and matching
+`AttributionResult.effect_linking_method` metadata carry the selected policy. The
+member is exported from `perfattr.method` and the root package.
 
 The argument continues to accept only an `EffectLinkingMethod` member. Strings,
 members of other enums, and arbitrary objects raise `TypeError`. Carino remains the

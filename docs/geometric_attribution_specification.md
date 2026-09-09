@@ -35,7 +35,7 @@ Adding `GEOMETRIC` to `EffectLinkingMethod` would falsely suggest that the same
 single-period effects and five result schemas remain meaningful. A separate function
 and result type make the changed financial identity explicit.
 
-This first version implements one method only. It does not add an enum merely to hold
+The released calculation implements one method only. It does not add an enum merely to hold
 one value.
 
 ## User problem
@@ -52,7 +52,7 @@ shared one denominator.
 
 ## Public API
 
-Add a public function in `perfattr.geometric` and export it from the package root:
+The package exports this public function from `perfattr.geometric` and its root:
 
 ```python
 def calculate_geometric_attribution(
@@ -64,7 +64,7 @@ def calculate_geometric_attribution(
     ...
 ```
 
-Add and export:
+The package also exports this result type:
 
 ```python
 @dataclass

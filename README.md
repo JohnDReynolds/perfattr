@@ -7,6 +7,19 @@ The package provides a reusable Brinson attribution calculation core and a porta
 preparation layer for source-period weights and returns. Portfolio accounting,
 vendor schemas, and presentation remain outside the package boundary.
 
+## Installation and release status
+
+`perfattr` requires Python 3.11 or later. The complete current API is published as the
+`0.12.0a1` prerelease:
+
+```bash
+python -m pip install --pre --upgrade perfattr
+```
+
+Until the current feature set receives its next stable release, plain
+`python -m pip install perfattr` selects the older stable `0.3.0` package. See the
+[public releases][releases] for available versions.
+
 ## Main features
 
 - Accept weights and returns, or authoritative contributions when accounting results
@@ -32,23 +45,10 @@ vendor schemas, and presentation remain outside the package boundary.
 
 ## Documentation
 
-The governing contracts and supporting records are grouped by purpose:
-
-- [Arithmetic calculation specification](docs/specification.md)
-- [Preparation specification](docs/preparation_specification.md)
-- [Attribution-method specifications][bf-three-spec] for Brinson-Fachler three-effect,
-  [BHB three-effect][bhb-three-spec], and [compact BHB][bhb-two-spec]
-- [Effect-linking specifications](docs/frongello_recursive_linking_specification.md) for
-  Frongello and [Menchero](docs/menchero_optimized_linking_specification.md)
-- [Geometric attribution specification](docs/geometric_attribution_specification.md)
-- [Hierarchical roll-up specification](docs/hierarchical_result_rollup_specification.md)
-- [Currency attribution specification](docs/currency_attribution_specification.md) and
-  [multi-period currency roll-up](docs/multi_period_currency_rollup_specification.md)
-- [Effective-dated classification specification][effective-spec]
-- [Performance method and current observations](docs/performance.md)
-- [Completed initial roadmap](_extras/perfattr_roadmap_1.md),
-  [completed preparation roadmap](_extras/perfattr_roadmap_2.md), and
-  [subsequent-feature backlog](_extras/perfattr_roadmap_3.md)
+Start with the task-oriented [user guide][user-guide]. The
+[documentation index][docs] links every governing calculation and preparation
+contract. Current benchmark guidance is in [Performance][performance], and completed
+plans and future candidates remain available in the [roadmap records][roadmaps].
 
 ## Minimal arithmetic example
 
@@ -96,8 +96,35 @@ benchmark = pd.DataFrame(
 
 prepared = prepare_attribution(portfolio, benchmark)
 result = calculate_attribution(prepared.portfolio, prepared.benchmark)
-print(result.period_detail)
+print(
+    result.period_summary[
+        [
+            "portfolio_return",
+            "benchmark_return",
+            "active_return",
+            "allocation_effect",
+            "selection_effect",
+            "total_effect",
+        ]
+    ]
+)
 ```
+
+### Which result should I use?
+
+| Frame | Use it for |
+| --- | --- |
+| `period_detail` | Identifier effects within each reporting period |
+| `period_summary` | Portfolio, benchmark, and effect totals by period |
+| `overall_detail` | Identifier results across the complete horizon |
+| `cumulative` | Chronological cumulative returns and effects |
+| `reconciliation` | Evidence of the financial identities checked |
+
+Values are decimals: `0.01` means one percent. The calculation raises before returning
+a failed reconciliation. It returns numerical data rather than percent formatting,
+charts, or presentation total rows. The [user guide][user-guide] explains source-
+period preparation, linked versus unlinked effects, coverage checks, and each result
+frame.
 
 ## Currency attribution
 
@@ -177,8 +204,8 @@ print(currency_result.period_summary)
 The four effects in this example sum to modeled active total log return of `0.0285`.
 The host supplies net exposures after holdings, cash, and hedges; `perfattr` neither
 infers exposures nor prices hedge transactions. See the
-[currency specification](docs/currency_attribution_specification.md) for formulas,
-schemas, and reconciliation rules.
+[documentation index][docs] for the currency specification's formulas, schemas, and
+reconciliation rules.
 
 ### Multi-period currency roll-up
 
@@ -195,8 +222,8 @@ print(complete_horizon)
 
 Log returns and effects add directly through time, so this operation neither applies
 arithmetic smoothing nor averages weights or returns. See the
-[multi-period roll-up specification](docs/multi_period_currency_rollup_specification.md)
-for exact schemas, gap handling, and interpretation.
+[documentation index][docs] for the multi-period currency specification's exact
+schemas, gap handling, and interpretation.
 
 ## Hierarchical result roll-up
 
@@ -218,8 +245,8 @@ print(parent_result.period_rollup)
 
 The hierarchy is a static child-to-parent forest with complete leaf coverage. It sums
 already calculated descendant effects and does not rerun attribution at parent levels.
-See the [hierarchy specification](docs/hierarchical_result_rollup_specification.md) for
-schemas and reconciliation rules.
+See the hierarchy contract in the [documentation index][docs] for schemas and
+reconciliation rules.
 
 ## Attribution methods
 
@@ -234,7 +261,7 @@ Select a released arithmetic method with `AttributionMethod`:
 
 Two-effect selection absorbs interaction; three-effect methods expose it separately.
 The default is Brinson-Fachler two-effect. See the
-[arithmetic specification](docs/specification.md) and its
+[arithmetic specification][arithmetic-spec] and its
 linked method supplements for formulas, schemas, and null behavior.
 
 ## Geometric excess-return attribution
@@ -255,8 +282,8 @@ print(geometric_result.cumulative.tail(1))
 This separate calculation family reconciles portfolio ending wealth relative to
 benchmark ending wealth. Allocation and selection combine multiplicatively and
 compound directly across periods, so arithmetic effect linkers do not apply. See the
-[geometric specification](docs/geometric_attribution_specification.md) for formulas,
-schemas, authoritative-contribution behavior, and reconciliation rules.
+[documentation index][docs] for the geometric specification's formulas, schemas,
+authoritative-contribution behavior, and reconciliation rules.
 
 ## Effect linking
 
@@ -282,11 +309,9 @@ print(menchero_result.effect_linking_method)
 
 The option changes linked attribution effects only; contribution linking and unlinked
 effects remain unchanged. See the
-[Frongello specification](docs/frongello_recursive_linking_specification.md) and
-[Menchero specification](docs/menchero_optimized_linking_specification.md) for formulas,
-ordering behavior, and worked examples. The
-[feature backlog](_extras/perfattr_roadmap_3.md#grap-decision-record) records why GRAP
-is not exposed as a numerically duplicate public choice.
+[documentation index][docs] for the Frongello and Menchero specifications, formulas,
+ordering behavior, and worked examples. The [feature backlog][roadmap] records why
+GRAP is not exposed as a numerically duplicate public choice.
 
 ## Input loading and mapping
 
@@ -366,13 +391,16 @@ default across the established selected-result sizes and hierarchy depths. Repea
 Add `--workload monthly_121260 --profile` to inspect one workload's cumulative
 calculation-core call profile. The preparation benchmark compares static and
 effective-dated mappings through quarterly consolidation. The benchmark methodology
-and observations are recorded in [`docs/performance.md`](docs/performance.md).
+and observations are recorded in [Performance][performance].
 
 ## License
 
 `perfattr` is distributed under the MIT License.
 
-[bf-three-spec]: docs/brinson_fachler_three_effect_specification.md
-[bhb-three-spec]: docs/brinson_hood_beebower_three_effect_specification.md
-[bhb-two-spec]: docs/brinson_hood_beebower_two_effect_specification.md
-[effective-spec]: docs/effective_dated_classification_specification.md
+[arithmetic-spec]: https://github.com/JohnDReynolds/perfattr/blob/main/docs/specification.md
+[docs]: https://github.com/JohnDReynolds/perfattr/blob/main/docs/README.md
+[performance]: https://github.com/JohnDReynolds/perfattr/blob/main/docs/performance.md
+[releases]: https://github.com/JohnDReynolds/perfattr/releases
+[roadmap]: https://github.com/JohnDReynolds/perfattr/blob/main/_extras/perfattr_roadmap_3.md
+[roadmaps]: https://github.com/JohnDReynolds/perfattr/tree/main/_extras
+[user-guide]: https://github.com/JohnDReynolds/perfattr/blob/main/docs/user_guide.md

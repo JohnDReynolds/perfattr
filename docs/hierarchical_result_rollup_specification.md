@@ -37,7 +37,7 @@ level-specific methodology.
 
 ## Public API
 
-Add a public function in `perfattr.hierarchy` and export it from the package root:
+The package exports this public function from `perfattr.hierarchy` and its root:
 
 ```python
 def roll_up_attribution(
@@ -49,7 +49,7 @@ def roll_up_attribution(
     ...
 ```
 
-Add and export:
+The package also exports this result type:
 
 ```python
 @dataclass

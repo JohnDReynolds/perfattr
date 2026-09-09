@@ -10,9 +10,9 @@ This document is the normative preparation contract for roadmap 2. The words **m
 `docs/specification.md` continues to govern the calculation core. This specification
 governs only the upstream preparation that produces the core's existing input frames.
 The accepted effective-dated classification extension is governed by
-`docs/effective_dated_classification_specification.md` and roadmap 4. Until its
-implementation steps are complete, the released preparation API supports only the
-static mapping contract documented here.
+`docs/effective_dated_classification_specification.md` and roadmap 4. The released
+preparation API supports both the static mapping contract documented here and that
+effective-dated extension.
 
 ## Design principles
 
@@ -301,10 +301,10 @@ collapse. Conflicting names for one identifier are invalid. The preparation and
 calculation results do not propagate display names; a host may join this metadata for
 presentation.
 
-Roadmap 2 did not implement effective-dated mappings. The user approved that extension
-on September 4, 2026; its additional normative contract is in
-`docs/effective_dated_classification_specification.md`, and implementation is governed
-by `_extras/perfattr_roadmap_4_effective_dated_classification.md`.
+Roadmap 2 initially specified static mappings. The released effective-dated extension
+has its additional normative contract in
+`docs/effective_dated_classification_specification.md`; its implementation record is
+`_extras/perfattr_roadmap_4_effective_dated_classification.md`.
 
 ## Frequency and holiday contract
 

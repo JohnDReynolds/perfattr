@@ -44,6 +44,9 @@ dev = [
 ]
 
 [project.urls]
+Documentation = "https://github.com/JohnDReynolds/perfattr/blob/main/docs/user_guide.md"
+Issues = "https://github.com/JohnDReynolds/perfattr/issues"
+Releases = "https://github.com/JohnDReynolds/perfattr/releases"
 Repository = "https://github.com/JohnDReynolds/perfattr"
 
 [tool.hatch.version]

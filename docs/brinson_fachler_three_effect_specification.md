@@ -7,7 +7,7 @@ This document specifies the approved opt-in Brinson-Fachler three-effect calcula
 governed by
 [`perfattr_roadmap_5_brinson_fachler_three_effect.md`][roadmap-5]. It supplements the
 released [`specification.md`](specification.md). Every released rule remains unchanged
-unless this document explicitly defines behavior for the new method.
+unless this document explicitly defines behavior for the opt-in method.
 
 [roadmap-5]: ../_extras/perfattr_roadmap_5_brinson_fachler_three_effect.md
 
@@ -19,12 +19,12 @@ Brinson-Fachler report cannot observe how much active return came from
 benchmark-weighted selection versus the interaction between active weight and active
 group return.
 
-The new method separates those components without changing allocation, total effect,
+The opt-in method separates those components without changing allocation, total effect,
 input preparation, or the default two-effect result.
 
 ## Public API
 
-Add this public string enum:
+The public string enum includes:
 
 ```python
 class AttributionMethod(str, Enum):
@@ -32,7 +32,7 @@ class AttributionMethod(str, Enum):
     BRINSON_FACHLER_THREE_EFFECT = "Brinson-Fachler Three-Effect"
 ```
 
-Export `AttributionMethod` from `perfattr`. Extend the calculation entry point to:
+The root package exports `AttributionMethod`. The calculation entry point accepts:
 
 ```python
 def calculate_attribution(
@@ -49,7 +49,7 @@ The argument must be an `AttributionMethod`. A different object, including an
 unvalidated string, raises `TypeError`. This keeps misspelled method names from
 silently selecting financial behavior.
 
-`AttributionResult` adds this sixth field after its five released frame fields:
+`AttributionResult` includes this sixth field after its five frame fields:
 
 ```python
 method: AttributionMethod = AttributionMethod.BRINSON_FACHLER_TWO_EFFECT
@@ -286,13 +286,13 @@ selection is already defined as the exact residual.
 
 ## Error behavior
 
-The new method introduces only one new public-boundary error:
+The opt-in method adds only one public-boundary error:
 
 - a non-`AttributionMethod` `method` argument raises `TypeError` identifying the
   invalid argument.
 
 All input, period, linking, finite-value, and reconciliation errors remain unchanged.
-Selecting the new method never turns an existing error into a warning or partial
+Selecting the opt-in method never turns an existing error into a warning or partial
 result.
 
 ## `ppar` compatibility

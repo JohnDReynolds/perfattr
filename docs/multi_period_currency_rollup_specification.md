@@ -46,7 +46,7 @@ and auditable.
 
 ## Public API
 
-Add a module `perfattr.currency_rollup` and export these names from the package root:
+The package exports these names from `perfattr.currency_rollup` and its root:
 
 ```python
 def roll_up_currency_attribution(
@@ -466,14 +466,14 @@ Benchmark the public roll-up using Roadmap 12's normal, selected-input, monthly,
 25-year history shapes. Measure elapsed time, source-result memory, returned-result
 memory, and incremental Python-traced peak allocation.
 
-The expected implementation is direct pandas/NumPy grouping and cumulative addition.
+The implementation uses direct pandas/NumPy grouping and cumulative addition.
 Do not add an optimization, cache, parallel executor, or dependency without repeatable
 evidence of a real bottleneck. Establish a numeric threshold only after a correct
 prototype produces stable measurements.
 
-## Compatibility and release gates
+## Compatibility and release-gate record
 
-Before release:
+The release required:
 
 - all functional tests pass on Python 3.11 through 3.14;
 - Pyright reports no errors or warnings;
@@ -487,8 +487,7 @@ Before release:
 - `ppar` passes its established release-candidate workflow and 500x check without a
   new roll-up adapter.
 
-No release operation is authorized until the user reviews those results and gives
-separate explicit approval.
+The user reviewed these results and separately approved the release operation.
 
 ## Primary reference and research conclusion
 

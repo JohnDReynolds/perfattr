@@ -56,9 +56,9 @@ decision in the market result. Using local asset returns without subtracting loc
 cash embeds a manageable cash-market return in the market decision. This contract
 keeps those effects in the currency grid.
 
-## Deliberately limited first version
+## Deliberately limited released calculation
 
-The first version calculates each supplied period independently. It requires already
+The released calculation treats each supplied period independently. It requires already
 prepared return and exposure facts and does not:
 
 - load prices, FX rates, holdings, cash balances, or forward transactions;
@@ -80,7 +80,7 @@ justify it.
 
 ## Public API
 
-Add a public function in `perfattr.currency` and export it from the package root:
+The package exports this public function from `perfattr.currency` and its root:
 
 ```python
 def calculate_currency_attribution(
@@ -95,7 +95,7 @@ def calculate_currency_attribution(
     ...
 ```
 
-Add and export:
+The package also exports this result type:
 
 ```python
 @dataclass

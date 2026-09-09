@@ -19,7 +19,7 @@ against the group's benchmark return relative to the total benchmark return. Som
 users require the original BHB decomposition, where allocation evaluates the same
 active weight against the group's absolute benchmark return.
 
-The new method provides that convention explicitly. It does not silently reinterpret
+The opt-in method provides that convention explicitly. It does not silently reinterpret
 either released BF method or claim that one convention is universally preferable.
 
 ## Public API

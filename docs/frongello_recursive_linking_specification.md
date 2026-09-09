@@ -31,7 +31,7 @@ class EffectLinkingMethod(str, Enum):
     FRONGELLO = "Frongello"
 ```
 
-The public calculator becomes:
+The public calculator accepts:
 
 ```python
 def calculate_attribution(
@@ -59,7 +59,7 @@ class AttributionResult:
     effect_linking_method: EffectLinkingMethod = EffectLinkingMethod.CARINO
 ```
 
-The new argument is keyword-only and accepts only an `EffectLinkingMethod` member.
+The argument is keyword-only and accepts only an `EffectLinkingMethod` member.
 Passing a string, another enum member, or any other object raises `TypeError` with no
 calculation. The default and direct-construction default are Carino.
 
