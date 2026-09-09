@@ -7,18 +7,16 @@ The package provides a reusable Brinson attribution calculation core and a porta
 preparation layer for source-period weights and returns. Portfolio accounting,
 vendor schemas, and presentation remain outside the package boundary.
 
-## Installation and release status
+## Installation
 
-`perfattr` requires Python 3.11 or later. The complete current API is published as the
-`0.12.0a1` prerelease:
+`perfattr` requires Python 3.11 or later. Install or upgrade the current stable release
+from PyPI:
 
 ```bash
-python -m pip install --pre --upgrade perfattr
+python -m pip install --upgrade perfattr
 ```
 
-Until the current feature set receives its next stable release, plain
-`python -m pip install perfattr` selects the older stable `0.3.0` package. See the
-[public releases][releases] for available versions.
+See the [public releases][releases] for release notes and earlier versions.
 
 ## Main features
 

@@ -16,3 +16,6 @@ calculations, compatibility behavior, or release state.
 - [September 9, 2026: package gate Step 2](2026-09-09_package_gate_step_2.md)
   — records the complete local functional, static-analysis, distribution, supported-
   Python, minimum-dependency, and clean-wheel verification
+- [September 9, 2026: stable release 0.12.0](2026-09-09_stable_release_0.12.0.md)
+  — records the stable-release scope, proposed release notes, required gate, and
+  publication verification

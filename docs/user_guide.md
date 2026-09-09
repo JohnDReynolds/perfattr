@@ -4,18 +4,14 @@
 that have already been produced by a portfolio accounting system; it does not derive
 weights or returns from holdings, transactions, prices, or external flows.
 
-## Install the current release
+## Install
 
-Python 3.11 or later is required. The complete current API is the `0.12.0a1`
-prerelease:
+Python 3.11 or later is required. Install or upgrade the current stable release from
+PyPI:
 
 ```bash
-python -m pip install --pre --upgrade perfattr
+python -m pip install --upgrade perfattr
 ```
-
-Plain `python -m pip install perfattr` currently selects the older stable `0.3.0`
-release. This distinction will disappear when the current feature set receives its
-next stable release.
 
 ## The ordinary workflow
 
