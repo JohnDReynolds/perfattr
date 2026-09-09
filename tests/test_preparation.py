@@ -455,6 +455,57 @@ def test_select_portfolio_is_exact_deterministic_and_nonmutating() -> None:
     pd.testing.assert_frame_equal(source, source_before)
 
 
+def test_select_portfolio_copies_only_matching_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Selection should not copy every nonselected financial and metadata value."""
+    source = pd.DataFrame(
+        {
+            "portfolio_code": ["P", "Q", "Q", "Q"],
+            "identifier": ["A", "B", "C", "D"],
+            "metadata": ["selected", "unused-1", "unused-2", "unused-3"],
+        }
+    )
+    copy_calls: list[tuple[int, bool]] = []
+    original_copy = pd.DataFrame.copy
+
+    def _recording_copy(frame: pd.DataFrame, deep: bool = True) -> pd.DataFrame:
+        copy_calls.append((len(frame), deep))
+        return original_copy(frame, deep=deep)
+
+    monkeypatch.setattr(pd.DataFrame, "copy", _recording_copy)
+
+    selected = select_portfolio(source, "P")
+
+    assert list(selected["identifier"]) == ["A"]
+    assert (len(source), True) not in copy_calls
+    assert (1, True) in copy_calls
+
+
+@pytest.mark.parametrize(
+    ("invalid_code", "message"),
+    [
+        pytest.param(None, "non-null strings", id="null"),
+        pytest.param(7, "non-null strings", id="numeric"),
+        pytest.param("   ", "empty string", id="blank"),
+    ],
+)
+def test_select_portfolio_validates_nonselected_codes(
+    invalid_code: object,
+    message: str,
+) -> None:
+    """Invalid rows must not disappear merely because another code was requested."""
+    source = pd.DataFrame(
+        {
+            "portfolio_code": ["P", invalid_code],
+            "identifier": ["A", "INVALID"],
+        }
+    )
+
+    with pytest.raises(PreparationError, match=message):
+        select_portfolio(source, "P")
+
+
 @pytest.mark.parametrize(
     ("source", "code", "error_type", "message"),
     [

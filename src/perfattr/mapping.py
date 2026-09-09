@@ -321,6 +321,40 @@ def _resolve_effective_identifier(
     )
 
 
+def _raise_effective_mapping_diagnostic(
+    matched: pd.DataFrame,
+    invalid: pd.Series,
+    mapping: pd.DataFrame,
+    context: str,
+) -> NoReturn:
+    """Raise the existing precise error for the first invalid matched source row.
+
+    Args:
+        matched: Vector-matched source rows containing their original positions.
+        invalid: Boolean mask identifying source rows without a containing assignment.
+        mapping: Normalized, nonoverlapping effective-dated assignments.
+        context: Human-readable mapping boundary included in errors.
+
+    Raises:
+        PreparationError: Always, distinguishing a classification boundary crossing
+            from a gap in effective assignments.
+    """
+    invalid_positions = np.flatnonzero(np.asarray(invalid, dtype=np.bool_))
+    invalid_rows = matched.iloc[invalid_positions]
+    source_position = int(invalid_rows["_source_position"].min())
+    failed = matched.loc[matched["_source_position"].eq(source_position)].iloc[0]
+    identifier = str(failed["identifier"])
+    lookup = _effective_mapping_lookup(mapping)
+    _resolve_effective_identifier(
+        identifier,
+        cast(pd.Timestamp, failed["from_date"]),
+        cast(pd.Timestamp, failed["thru_date"]),
+        lookup[identifier],
+        context,
+    )
+    raise AssertionError("effective-dated diagnostic resolver did not raise")
+
+
 def _effective_mapped_identifiers(
     performance: pd.DataFrame,
     mapping: pd.DataFrame,
@@ -344,28 +378,62 @@ def _effective_mapped_identifiers(
     Notes:
         Assignment is intentionally separate from financial roll-up. It changes only
         the identifier attached to each complete source-period row and never splits or
-        prorates weight, return, or authoritative contribution.
+        prorates weight, return, or authoritative contribution. The normal valid path
+        resolves all rows together. The scalar resolver remains the diagnostic path
+        for the first invalid source row so gap and boundary errors retain their
+        precise financial meaning.
     """
-    lookup = _effective_mapping_lookup(mapping)
-    resolved: list[str] = []
-    source_periods = performance.loc[:, ["from_date", "thru_date", "identifier"]]
-    for row in source_periods.itertuples(index=False, name=None):
-        from_value, thru_value, identifier_value = row
-        identifier = str(identifier_value)
-        assignments = lookup.get(identifier)
-        if assignments is None:
-            resolved.append(identifier)
-            continue
-        resolved.append(
-            _resolve_effective_identifier(
-                identifier,
-                cast(pd.Timestamp, from_value),
-                cast(pd.Timestamp, thru_value),
-                assignments,
-                context,
-            )
-        )
-    return pd.Series(resolved, index=performance.index, dtype="string[python]")
+    source = performance.loc[:, ["from_date", "thru_date", "identifier"]].copy()
+    source["_source_position"] = np.arange(len(source), dtype=np.int64)
+    assignments = mapping.rename(
+        columns={
+            "from_date": "_assignment_from",
+            "thru_date": "_assignment_thru",
+        }
+    )
+
+    # The latest assignment starting on or before a source period is the only
+    # possible containing interval because normalized assignments do not overlap.
+    matched = pd.merge_asof(
+        source.sort_values("from_date", kind="stable"),
+        assignments.sort_values("_assignment_from", kind="stable"),
+        by="identifier",
+        left_on="from_date",
+        right_on="_assignment_from",
+        direction="backward",
+        allow_exact_matches=True,
+    )
+    mapped_source = cast(
+        pd.Series,
+        matched["identifier"].isin(mapping["identifier"]),
+    )
+    valid_assignment = cast(
+        pd.Series,
+        matched["_assignment_thru"].notna()
+        & (matched["thru_date"] <= matched["_assignment_thru"]),
+    )
+    invalid = mapped_source & ~valid_assignment
+    if np.any(np.asarray(invalid, dtype=np.bool_)):
+        _raise_effective_mapping_diagnostic(matched, invalid, mapping, context)
+
+    resolved = cast(
+        pd.Series,
+        matched["classification_identifier"].where(
+            mapped_source,
+            matched["identifier"],
+        ),
+    )
+    ordered = pd.DataFrame(
+        {
+            "_source_position": matched["_source_position"],
+            "resolved": resolved,
+        }
+    ).sort_values("_source_position", kind="stable")
+    return pd.Series(
+        cast(pd.Series, ordered["resolved"]).array,
+        index=performance.index,
+        dtype="string[python]",
+    )
 
 
 def _derive_mapped_returns(frame: pd.DataFrame, context: str) -> pd.Series:

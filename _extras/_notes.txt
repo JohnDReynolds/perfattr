@@ -49,12 +49,13 @@ Currency	Karnosky-Singer (4-effect, additive)	Karnosky & Singer (1994)
 
 Before creating a new roadmap(s), can you give me your thoughts.  Especially around the feasibility of the first group of features, and if you think they really should be moved from ppar to perfattr.
 
-##################################################### OBSOLETE ABOVE HERE
-#Maybe add a "trace" or "debug" mode that prints the calculations.
-Eventually go through the 4 below "Codex Reviews".
-Eventually remove all references to pybrinson.
+Would it be feasible for you to compare the results of your test cases with the results delivered by the GitHub repo pybrinson.
+Just your thoughts please.
 
-Eventually add new perfattr features to ppar... maybe?
+
+##################################################### OBSOLETE ABOVE HERE
+Eventually go through the project review prompts in ../pr-workflow-common/checkpoint_prompts.md
+Eventually remove all references to pybrinson.
 
 
 #################################################### COMMANDS
@@ -64,22 +65,3 @@ python --version
 which python
 deactivate
 
-
-
-################################################################# CODEX REVIEWS #####################################################
-#################### -1.
-Would it be feasible for you to compare the results of your test cases with the results delivered by the GitHub repo pybrinson.
-
-#################### 1. Cleanup (Extra High)
-Can you do a read-only review of the entire project for dead code, unnecessary backward-compatibility, inconsistencies, opportunities for simplification, opportunities for 80/20 refactoring, unsupported features, etc.
-Use the lenses of "less is more" and "keep it simple stupid".
-
-#################### 2. Correctness (Extra High)
-Can you do a read-only review of this project for obvious bugs, especially mathematical or logic issues?
-
-#################### 3. Optimizations (Extra High)
-Do you see any places in this project where the execution times could be substantially increased?
-I'm looking for simple 80/20 wins, not micro-optimizations or complicated re-factors.
-
-#################### 4. User View (Extra High)
-Approach the project as a user.  Look at documentation, workflow, user API, outputs.  What would a user think?

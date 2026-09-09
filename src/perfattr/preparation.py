@@ -908,19 +908,20 @@ def select_portfolio(
     if not requested_code:
         raise PreparationError("portfolio_code must not be blank")
 
-    selected = performance.copy(deep=True)
-    selected["portfolio_code"] = normalize_identity(
-        selected,
+    normalized_codes = normalize_identity(
+        performance,
         "portfolio_code",
         "performance input",
         PreparationError,
     )
+    matching = normalized_codes.eq(requested_code)
     selected = cast(
         pd.DataFrame,
-        selected.loc[selected["portfolio_code"] == requested_code].copy(deep=True),
+        performance.loc[matching].copy(deep=True),
     )
     if selected.empty:
         raise PreparationError(f"no performance rows match portfolio_code {requested_code!r}")
+    selected["portfolio_code"] = normalized_codes.loc[matching]
     return selected.reset_index(drop=True)
 
 

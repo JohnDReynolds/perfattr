@@ -13,6 +13,7 @@ import pytest
 from perfattr import PreparationError, normalize_mapping
 from perfattr._schemas import NORMALIZED_PERFORMANCE_COLUMNS
 from perfattr.mapping import (
+    _effective_mapped_identifiers,
     _map_performance,
     _normalize_mapping,
     _resolve_effective_identifier,
@@ -447,6 +448,61 @@ def test_effective_mapping_resolves_exact_contained_and_fallback_rows() -> None:
     pd.testing.assert_frame_equal(mapping, mapping_before)
 
 
+def test_effective_mapping_batches_valid_rows_without_scalar_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Valid dated rows should use the vectorized assignment path.
+
+    This test deliberately interleaves two source periods, assignments with exact and
+    wider inclusive boundaries, and an unmapped identity-fallback row. The scalar
+    resolver is retained only to produce precise diagnostics for invalid periods, so
+    calling it on this valid batch would also regress the intended 80/20 speedup.
+    """
+    source = pd.DataFrame(
+        {
+            "from_date": ["2024-02-01"] * 3 + ["2024-01-01"] * 3,
+            "thru_date": ["2024-02-29"] * 3 + ["2024-01-31"] * 3,
+            "identifier": ["C", "B", "A", "C", "B", "A"],
+            "weight": [0.5, 0.3, 0.2, 0.5, 0.3, 0.2],
+            "return": [0.04, 0.20, 0.10, 0.04, 0.20, 0.10],
+        }
+    )
+    performance = _normalize_performance(source, "portfolio input").frame
+    mapping = _normalize_mapping(
+        pd.DataFrame(
+            {
+                "from_date": ["2024-02-01", "2024-01-01", "2024-01-01"],
+                "thru_date": ["2024-02-29", "2024-01-31", "2024-12-31"],
+                "identifier": ["A", "A", "B"],
+                "classification_identifier": ["FI", "EQ", "FIXED"],
+            }
+        ),
+        "portfolio input mapping",
+    )
+
+    def _reject_scalar_resolution(
+        _identifier: str,
+        _source_from: pd.Timestamp,
+        _source_thru: pd.Timestamp,
+        _assignments: list[tuple[pd.Timestamp, pd.Timestamp, str]],
+        _context: str,
+    ) -> str:
+        raise AssertionError("valid rows must not use scalar resolution")
+
+    monkeypatch.setattr(
+        "perfattr.mapping._resolve_effective_identifier",
+        _reject_scalar_resolution,
+    )
+
+    resolved = _effective_mapped_identifiers(
+        performance,
+        mapping,
+        "portfolio input mapping",
+    )
+
+    assert list(resolved) == ["EQ", "FIXED", "C", "FI", "FIXED", "C"]
+
+
 @pytest.mark.parametrize(
     ("source_from", "source_thru"),
     [
@@ -823,6 +879,24 @@ def test_empty_mapping_uses_identity_fallback_but_applies_effective_returns() ->
     """An explicitly supplied empty mapping should classify every row as itself."""
     performance = _basic_performance()
     empty_mapping = pd.DataFrame(columns=["identifier", "classification_identifier"])
+
+    mapped = _map_performance(performance, empty_mapping, "portfolio input")
+
+    assert list(mapped["identifier"]) == ["A", "B", "EQ"]
+    np.testing.assert_allclose(mapped["return"], [0.10, 0.04, 0.20])
+
+
+def test_empty_effective_mapping_uses_identity_fallback() -> None:
+    """An empty dated mapping should retain every source identifier unchanged."""
+    performance = _basic_performance()
+    empty_mapping = pd.DataFrame(
+        columns=[
+            "from_date",
+            "thru_date",
+            "identifier",
+            "classification_identifier",
+        ]
+    )
 
     mapped = _map_performance(performance, empty_mapping, "portfolio input")
 

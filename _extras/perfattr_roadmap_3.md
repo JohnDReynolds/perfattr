@@ -27,6 +27,10 @@ boundaries, public APIs, invariants, fixtures, hierarchy, and linking. Treat it 
 comparative design reference rather than the calculation authority: verify formulas
 against primary sources, make independent design decisions for `perfattr`, and complete
 the required license and fixture-provenance review before reusing code or test data.
+The completed September 2026
+[`pybrinson` differential cross-check](pybrinson_cross_check_2026-09-09.md) records
+13,739 passing ordinary comparisons, the deliberately excluded non-equivalent
+contracts, and the independently confirmed Menchero equal-horizon limitation.
 
 ## 1. Record supported modeling conventions
 

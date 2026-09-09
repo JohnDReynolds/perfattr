@@ -8,7 +8,12 @@ from typing import NoReturn, cast
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from pandas.api.types import is_bool_dtype, is_datetime64_dtype, is_numeric_dtype
+from pandas.api.types import (
+    infer_dtype,
+    is_bool_dtype,
+    is_datetime64_dtype,
+    is_numeric_dtype,
+)
 
 
 def float_array(frame: pd.DataFrame, column: str) -> npt.NDArray[np.float64]:
@@ -178,6 +183,16 @@ def normalize_numeric(
     return normalized
 
 
+def _identity_inferred_dtype(values: pd.Series) -> str:
+    """Infer observed identity types, including string-valued categoricals."""
+    if isinstance(values.dtype, pd.CategoricalDtype):
+        # ``infer_dtype(Series)`` reports only ``categorical``. Inspecting its observed
+        # values preserves the prior behavior when all rows are strings, even if the
+        # categorical definition contains an unused non-string category.
+        return infer_dtype(values.to_numpy(dtype=object, copy=False), skipna=False)
+    return infer_dtype(values, skipna=False)
+
+
 def normalize_identity(
     frame: pd.DataFrame,
     column: str,
@@ -203,9 +218,8 @@ def normalize_identity(
         from being silently reinterpreted.
     """
     values = cast(pd.Series, frame[column])
-    value_types = cast(pd.Series, values.map(lambda value: isinstance(value, str)))
-    if has_true(values.isna()) or not bool(
-        np.asarray(value_types, dtype=np.bool_).all()
+    if has_true(values.isna()) or (
+        not values.empty and _identity_inferred_dtype(values) != "string"
     ):
         raise_invalid(
             error_type,
