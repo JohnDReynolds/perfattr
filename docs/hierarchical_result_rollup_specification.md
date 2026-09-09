@@ -6,8 +6,8 @@ September 6, 2026.
 This document is the governing contract for the deliberately limited additive
 hierarchical result roll-up in [roadmap 10][roadmap-10]. It supplements the released
 [`specification.md`](specification.md). The user approved this contract and Roadmap 10
-on September 6, 2026. Implementation is authorized only in the roadmap's dependency
-order.
+on September 6, 2026. The completed implementation followed the roadmap's
+dependency-ordered gates.
 
 [roadmap-10]: ../_extras/perfattr_roadmap_10_hierarchical_result_rollup.md
 

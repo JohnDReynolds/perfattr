@@ -1,6 +1,5 @@
 """Tests for the public attribution-effect-linking policy boundary."""
 
-from pathlib import Path
 from typing import cast
 
 import pandas as pd
@@ -12,18 +11,7 @@ from perfattr import (
     EffectLinkingMethod,
     calculate_attribution,
 )
-
-
-_FIXTURE_ROOT = Path(__file__).parent / "fixtures"
-
-
-def _read_inputs(case_name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Read a fixture's two prepared input frames."""
-    case_path = _FIXTURE_ROOT / case_name
-    return (
-        pd.read_csv(case_path / "portfolio.csv"),
-        pd.read_csv(case_path / "benchmark.csv"),
-    )
+from tests.fixture_helpers import read_prepared_inputs
 
 
 @pytest.mark.parametrize(
@@ -39,7 +27,7 @@ def test_calculation_rejects_an_unvalidated_effect_linker(
     invalid_linker: object,
 ) -> None:
     """Only the dedicated enum may select a financial linking policy."""
-    portfolio, benchmark = _read_inputs("single_period_derived")
+    portfolio, benchmark = read_prepared_inputs("single_period_derived")
 
     with pytest.raises(
         TypeError,

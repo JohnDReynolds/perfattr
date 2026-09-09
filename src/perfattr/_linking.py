@@ -9,13 +9,36 @@ from perfattr._exceptions import AttributionError
 
 
 def _compound_returns(returns: npt.NDArray[np.float64]) -> float:
-    """Compound period returns with stable logarithmic arithmetic."""
+    """Compound a chronological series of simple returns.
+
+    Args:
+        returns: Finite simple period returns greater than ``-1``.
+
+    Returns:
+        The full-horizon simple return.
+
+    Notes:
+        This evaluates ``expm1(sum(log1p(return)))`` instead of multiplying wealth
+        relatives directly. The caller validates the return domain and the finite
+        result.
+    """
     with np.errstate(over="ignore", invalid="ignore"):
         return float(np.expm1(np.log1p(returns).sum(dtype=np.float64)))
 
 
 def _smoothing(returns: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-    """Evaluate logarithmic smoothing with its exact zero-return limit."""
+    """Evaluate the logarithmic contribution-smoothing coefficient.
+
+    Args:
+        returns: Finite simple period returns greater than ``-1``.
+
+    Returns:
+        One ``log1p(return) / return`` coefficient per period.
+
+    Notes:
+        The coefficient's exact continuous limit at a zero return is one. This makes
+        period contribution times the coefficient additive on a log-return basis.
+    """
     coefficients = np.ones_like(returns, dtype=np.float64)
     nonzero = returns != 0.0
     np.divide(
@@ -31,7 +54,25 @@ def _carino(
     portfolio_returns: npt.NDArray[np.float64],
     benchmark_returns: npt.NDArray[np.float64],
 ) -> npt.NDArray[np.float64]:
-    """Evaluate Carino coefficients stably for equal and near-equal returns."""
+    """Evaluate unnormalized Carino active-effect coefficients.
+
+    Args:
+        portfolio_returns: Total portfolio simple return for each period.
+        benchmark_returns: Total benchmark simple return for each period.
+
+    Returns:
+        One stable Carino coefficient per period.
+
+    Notes:
+        For unequal returns, the coefficient is the difference of portfolio and
+        benchmark log returns divided by their simple-return difference. Expressing
+        it through their relative difference avoids cancellation for near-equal
+        returns. At equality, the exact limit is ``1 / (1 + benchmark_return)``.
+
+    References:
+        Carino, D. R. “Combining Attribution Effects Over Time.”
+        *The Journal of Performance Measurement* 3, no. 4 (1999): 5–14.
+    """
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
         relative_difference = (
             portfolio_returns - benchmark_returns

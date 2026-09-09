@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 
 from perfattr._exceptions import PreparationError, PreparationWarning
+from perfattr._performance_rows import _normalize_performance_row_values
 from perfattr.frequency import (
     Frequency,
     _date_matches_frequency,
@@ -724,80 +725,6 @@ def _normalize_source_columns(frame: pd.DataFrame, context: str) -> None:
     frame["quantity_of_days"] = inclusive_days.astype("int64")
 
 
-def _normalize_contributions(frame: pd.DataFrame, context: str) -> bool:
-    """Normalize authoritative contribution or derive it from weight and return.
-
-    Args:
-        frame: Independently owned normalized source frame modified in place.
-        context: Human-readable input label used in errors.
-
-    Returns:
-        ``True`` when contribution was supplied and authoritative; otherwise
-        ``False`` after derived contribution has been added.
-
-    Raises:
-        PreparationError: If return/contribution semantics are invalid or would
-            produce a non-finite effective return.
-
-    Notes:
-        Division is used only to prove that later attribution can form a finite
-        effective return. The authoritative contribution remains unchanged.
-    """
-    weights = _float_array(frame, "weight")
-    input_returns = _float_array(frame, "return")
-    present_returns = ~np.isnan(input_returns)
-    if np.any(input_returns[present_returns] <= -1.0):
-        _raise_invalid(context, "column 'return' must be greater than -1.0 when present")
-    if np.any((weights != 0.0) & ~present_returns):
-        _raise_invalid(context, "contains a nonzero weight with a null return")
-
-    contribution_was_supplied = "contribution" in frame.columns
-    if contribution_was_supplied:
-        frame["contribution"] = normalize_numeric(
-            frame,
-            "contribution",
-            context,
-            PreparationError,
-            nullable=False,
-        )
-        contributions = _float_array(frame, "contribution")
-        invalid_undefined_returns = (
-            (weights == 0.0) & (contributions != 0.0) & present_returns
-        )
-        if np.any(invalid_undefined_returns):
-            _raise_invalid(
-                context,
-                "requires a null return when weight is zero and contribution is nonzero",
-            )
-    else:
-        contributions = np.zeros(len(frame), dtype=np.float64)
-        # Missing return is valid only at zero weight, where the mathematical
-        # contribution is exactly zero and no undefined multiplication is needed.
-        with np.errstate(over="ignore", invalid="ignore"):
-            np.multiply(
-                weights,
-                input_returns,
-                out=contributions,
-                where=present_returns,
-            )
-        if not np.isfinite(contributions).all():
-            _raise_invalid(context, "derives a non-finite contribution")
-        frame["contribution"] = contributions
-
-    effective_returns = np.zeros(len(frame), dtype=np.float64)
-    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
-        np.divide(
-            contributions,
-            weights,
-            out=effective_returns,
-            where=weights != 0.0,
-        )
-    effective_returns[(weights == 0.0) & (contributions != 0.0)] = np.nan
-    if not np.isfinite(effective_returns[~np.isnan(effective_returns)]).all():
-        _raise_invalid(context, "produces a non-finite effective return")
-    return contribution_was_supplied
-
-
 def _normalize_performance(
     frame: pd.DataFrame,
     context: str,
@@ -852,7 +779,12 @@ def _normalize_performance(
         frame.loc[:, selected_columns].copy(deep=True),
     )
     _normalize_source_columns(normalized, context)
-    contribution_was_supplied = _normalize_contributions(normalized, context)
+    contribution_was_supplied = _normalize_performance_row_values(
+        normalized,
+        context,
+        PreparationError,
+        nonfinite_derived_message="derives a non-finite contribution",
+    ).contribution_was_supplied
     _validate_period_totals(normalized, context, tolerance)
     ordered_columns = [*NORMALIZED_PERFORMANCE_COLUMNS]
     ordered_columns.extend(
@@ -865,7 +797,10 @@ def _normalize_performance(
             kind="stable",
         ),
     ).reset_index(drop=True)
-    return _NormalizedPerformance(normalized, contribution_was_supplied)
+    return _NormalizedPerformance(
+        normalized,
+        contribution_was_supplied,
+    )
 
 
 def select_portfolio(

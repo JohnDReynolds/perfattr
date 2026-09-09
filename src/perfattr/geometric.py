@@ -1,8 +1,4 @@
-"""Public boundary for geometric excess-return attribution.
-
-The financial calculation remains deliberately guarded until Roadmap 11's
-single-period formulas have independent fixtures and complete reconciliation tests.
-"""
+"""Calculate and reconcile Bacon/Burnie geometric excess-return attribution."""
 
 from __future__ import annotations
 
@@ -14,6 +10,11 @@ import numpy.typing as npt
 import pandas as pd
 
 from perfattr._exceptions import AttributionError
+from perfattr._prepared_input import (
+    _equalize_universe,
+    _normalize_input,
+    _validate_matched_periods,
+)
 from perfattr._reconciliation import _validate_result_values
 from perfattr._schemas import (
     GEOMETRIC_CUMULATIVE_COLUMNS,
@@ -26,11 +27,6 @@ from perfattr._schemas import (
 from perfattr._validation import float_array as _float_array
 from perfattr._validation import is_close as _is_close
 from perfattr._validation import normalize_reconciliation_tolerance
-from perfattr.attribution import (
-    _equalize_universe,
-    _normalize_input,
-    _validate_matched_periods,
-)
 
 
 @dataclass
@@ -313,8 +309,8 @@ def _calculate_geometric_period_frames(
         Independently owned period-detail and period-summary frames.
 
     Notes:
-        This private vertical slice supports independent Step 3 verification while
-        the public function remains guarded pending cumulative reconciliation.
+        This shared period stage runs before cumulative compounding and
+        reconciliation are constructed by the public calculation.
     """
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
         normalized_portfolio, normalized_benchmark = tuple(

@@ -55,6 +55,7 @@ Just your thoughts please.
 
 ##################################################### OBSOLETE ABOVE HERE
 Eventually go through the project review prompts in ../pr-workflow-common/checkpoint_prompts.md
+Manually review the user-facing documentation.
 Eventually remove all references to pybrinson.
 
 

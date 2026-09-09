@@ -2,7 +2,7 @@
 
 This package-internal stage follows source validation, period alignment, and optional
 classification mapping. It preserves authoritative contribution through logarithmic
-linking while keeping the public preparation API decision for roadmap step 6.
+linking and returns canonical prepared reporting-period rows.
 """
 
 from __future__ import annotations

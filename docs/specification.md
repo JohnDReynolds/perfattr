@@ -35,6 +35,12 @@ The separate geometric excess-return calculation is defined in
 `docs/geometric_attribution_specification.md`; it uses a distinct result type and
 multiplicative wealth-ratio identity without changing this arithmetic calculation,
 its method enums, or its effect linkers.
+The separate single-period currency calculation is defined in
+`docs/currency_attribution_specification.md`; it accepts side-separated market and
+currency frames and reports reconciled effects in log-return units.
+The multi-period currency roll-up is defined in
+`docs/multi_period_currency_rollup_specification.md`; it sums those period log returns
+and effects into cumulative prefixes and a full horizon.
 
 The words **must**, **must not**, **should**, and **may** describe requirements with
 their ordinary technical meanings.
@@ -70,7 +76,7 @@ calendars, currencies, charts, reports, or presentation total rows.
 
 ## Public API
 
-The first public calculation entry point is:
+The public calculation entry point for this arithmetic contract is:
 
 ```python
 def calculate_attribution(
@@ -607,7 +613,7 @@ explicit check names defined in its supplemental specification.
 A successful result contains only passing reconciliation rows. Any failed financial
 reconciliation raises `AttributionError` before a result is returned. The frame is
 retained as positive audit evidence rather than as a warning channel.
-The first release emits no warnings and never returns a partial result.
+The calculation emits no warnings and never returns a partial result.
 
 ## Numerical contract
 
@@ -670,10 +676,12 @@ Integration tests separately require identical displayed and serialized values a
 
 ## Deferred capabilities
 
-Current deferred calculation capabilities include independently recalculated
+Current deferred calculation candidates include independently recalculated
 hierarchical attribution, identifier-level geometric horizon attribution, additional
-multi-period linking methods, currency attribution, external-flow attribution
-effects, derivative exposure inference, and presentation or report generation. The
-released static additive hierarchy operation is a post-calculation result roll-up,
+nonduplicative multi-period linking methods, modeled-to-accounting currency
+reconciliation, separate currency interaction effects, and hierarchical currency
+attribution. External-flow measurement, derivative exposure inference, and
+presentation or report generation remain outside the portable calculation boundary.
+The released static additive hierarchy operation is a post-calculation result roll-up,
 not the deferred level-relative calculation. Add a policy or abstraction only when an
 approved implemented use case requires it.

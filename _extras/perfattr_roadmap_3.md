@@ -1,6 +1,6 @@
 # perfattr Roadmap 3: Subsequent Feature Backlog
 
-**Status:** Noncommitted backlog as of September 8, 2026.
+**Status:** Noncommitted backlog as of September 9, 2026.
 
 This document records possible work after roadmap 2. It is ordered primarily by
 technical dependency, not by promised delivery. Nothing here authorizes implementation
@@ -32,6 +32,29 @@ The completed September 2026
 13,739 passing ordinary comparisons, the deliberately excluded non-equivalent
 contracts, and the independently confirmed Menchero equal-horizon limitation.
 
+## Current backlog at a glance
+
+No next feature is currently selected. The remaining named candidates and deliberately
+closed proposals are:
+
+- **Hierarchical attribution recalculation — deferred.** Require a concrete
+  level-relative decision or reporting need.
+- **Identifier-level geometric horizon allocation — deferred.** Require an approved
+  policy for allocating cross-period compounding terms.
+- **Modeled-to-accounting currency reconciliation — assess.** Require authoritative
+  return inputs and a demonstrated reason the operation belongs in `perfattr`.
+- **Separate currency interaction effects — deferred.** Require user or
+  interoperability demand and an intentional schema plan.
+- **Hierarchical currency attribution — deferred.** Require a concrete use case and
+  explicit market and currency mappings.
+- **GRAP selector — not currently pursued.** Reconsider only for a client or
+  integration that requires distinct GRAP identity.
+- **External-flow reconciliation — not currently pursued.** Reconsider only with a
+  complete accounting evidence contract; it would likely remain a host concern.
+
+The detailed records below govern each disposition. Selection or implementation still
+requires the promotion process above.
+
 ## 1. Record supported modeling conventions
 
 **Status:** Existing conventions documented as of September 4, 2026; cash and
@@ -40,9 +63,7 @@ unexposed-charge behavior are covered by focused tests.
 These are existing input representations, not future calculation features. They use
 the released formulas, schemas, and reconciliation rules without special numerical
 treatment. Host accounting adapters remain responsible for deciding what a source row
-means and supplying the appropriate facts. The next feature selected for consideration
-after roadmap 6 is the BHB two-effect reporting convention recorded below. Selection
-as the next candidate does not authorize implementation.
+means and supplying the appropriate facts.
 
 ### Explicit cash — supported
 
@@ -88,8 +109,7 @@ as the next candidate does not authorize implementation.
 Roadmap 2 establishes the required pipeline order. The accepted governing contract is
 in [roadmap 4](perfattr_roadmap_4_effective_dated_classification.md) and
 [`effective_dated_classification_specification.md`][effective-spec].
-Implementation is authorized only in the dependency order and within the boundaries
-of roadmap 4.
+The completed implementation followed roadmap 4's dependency order and boundaries.
 
 [effective-spec]: ../docs/effective_dated_classification_specification.md
 

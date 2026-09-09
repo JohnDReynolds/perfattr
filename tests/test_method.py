@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from perfattr import AttributionMethod, AttributionResult, EffectLinkingMethod
+from perfattr._prepared_input import _equalize_universe, _normalize_input
 from perfattr._schemas import (
     CUMULATIVE_COLUMNS,
     OVERALL_DETAIL_COLUMNS,
@@ -21,11 +22,7 @@ from perfattr._schemas import (
     THREE_EFFECT_PERIOD_RECONCILIATION_CHECKS,
     THREE_EFFECT_PERIOD_SUMMARY_COLUMNS,
 )
-from perfattr.attribution import (
-    _build_period_detail,
-    _equalize_universe,
-    _normalize_input,
-)
+from perfattr.attribution import _build_period_detail
 from perfattr.method import uses_bhb_allocation, uses_explicit_interaction
 
 

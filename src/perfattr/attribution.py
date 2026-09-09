@@ -1,8 +1,4 @@
-"""Portable Brinson-Fachler performance-attribution calculations.
-
-Input normalization, financial validation, calculation, linking, and reconciliation
-remain in one explicit path so the financial behavior is straightforward to audit.
-"""
+"""Calculate, link, and reconcile portable arithmetic Brinson attribution."""
 
 from __future__ import annotations
 
@@ -20,13 +16,17 @@ from perfattr._linking import (
     _menchero,
     _smoothing,
 )
+from perfattr._prepared_input import (
+    _equalize_universe,
+    _normalize_input,
+    _validate_matched_periods,
+)
 from perfattr._reconciliation import _build_reconciliation, _validate_result_values
 from perfattr._schemas import (
     CUMULATIVE_COLUMNS,
     OVERALL_DETAIL_COLUMNS,
     PERIOD_DETAIL_COLUMNS,
     PERIOD_SUMMARY_COLUMNS,
-    PREPARED_REQUIRED_COLUMNS,
     THREE_EFFECT_CUMULATIVE_COLUMNS,
     THREE_EFFECT_OVERALL_DETAIL_COLUMNS,
     THREE_EFFECT_PERIOD_DETAIL_COLUMNS,
@@ -34,14 +34,7 @@ from perfattr._schemas import (
 )
 from perfattr._validation import (
     float_array as _float_array,
-    has_true as _has_true,
-    is_close as _is_close,
-    normalize_dates,
-    normalize_identity,
-    normalize_numeric,
-    normalize_positive_int64,
     normalize_reconciliation_tolerance,
-    raise_invalid,
 )
 from perfattr.method import (
     AttributionMethod,
@@ -51,7 +44,6 @@ from perfattr.method import (
 )
 
 _TOLERANCE = 1e-12
-_REQUIRED_COLUMNS = PREPARED_REQUIRED_COLUMNS
 
 
 @dataclass
@@ -101,248 +93,6 @@ def _normalize_effect_linking_method(
 def _normalize_reconciliation_tolerance(value: float) -> float:
     """Require a finite, positive, non-boolean reconciliation tolerance."""
     return normalize_reconciliation_tolerance(value, AttributionError)
-
-
-def _raise_invalid(side: str, message: str) -> None:
-    """Raise a consistently formatted input error."""
-    raise_invalid(AttributionError, f"{side} input", message)
-
-
-def _normalize_dates(frame: pd.DataFrame, column: str, side: str) -> pd.Series:
-    """Normalize a required date column to timezone-naive midnight values."""
-    return normalize_dates(frame, column, f"{side} input", AttributionError)
-
-
-def _normalize_numeric(
-    frame: pd.DataFrame,
-    column: str,
-    side: str,
-    *,
-    nullable: bool,
-) -> pd.Series:
-    """Validate and normalize one financial numeric column."""
-    return normalize_numeric(
-        frame,
-        column,
-        f"{side} input",
-        AttributionError,
-        nullable=nullable,
-    )
-
-
-def _normalize_identifiers(frame: pd.DataFrame, side: str) -> pd.Series:
-    """Validate identifiers without coercing their values."""
-    return normalize_identity(frame, "identifier", f"{side} input", AttributionError)
-
-
-def _validate_period_structure(frame: pd.DataFrame, side: str) -> None:
-    """Validate dates, unique keys, non-overlap, and constant day counts."""
-    key_columns = ["from_date", "thru_date", "identifier"]
-    if frame.duplicated(key_columns).any():
-        _raise_invalid(side, "contains a duplicate period and identifier key")
-    if (frame["from_date"] > frame["thru_date"]).any():
-        _raise_invalid(side, "contains a from_date after its thru_date")
-
-    periods = cast(
-        pd.DataFrame,
-        frame[["from_date", "thru_date", "quantity_of_days"]].drop_duplicates(),
-    ).sort_values(["thru_date", "from_date"], kind="stable")
-    thru_dates = cast(pd.Series, periods["thru_date"])
-    if _has_true(thru_dates.duplicated()):
-        _raise_invalid(side, "maps one thru_date to more than one reporting period")
-    day_counts = cast(
-        pd.Series,
-        frame.groupby(["from_date", "thru_date"])["quantity_of_days"].nunique(),
-    )
-    if _has_true(day_counts.gt(1)):
-        _raise_invalid(side, "has inconsistent quantity_of_days within a period")
-    if len(periods) > 1:
-        starts = np.asarray(periods["from_date"], dtype="datetime64[ns]")
-        ends = np.asarray(periods["thru_date"], dtype="datetime64[ns]")
-        if np.any(starts[1:] <= ends[:-1]):
-            _raise_invalid(side, "contains overlapping reporting periods")
-
-
-def _normalize_input(frame: pd.DataFrame, side: str) -> pd.DataFrame:
-    """Validate and copy one caller-owned prepared attribution frame."""
-    if frame.columns.has_duplicates:
-        _raise_invalid(side, "contains duplicate column labels")
-    missing = [column for column in _REQUIRED_COLUMNS if column not in frame.columns]
-    if missing:
-        _raise_invalid(side, f"is missing required columns: {', '.join(missing)}")
-    if frame.empty:
-        _raise_invalid(side, "must not be empty")
-
-    selected_columns = [*_REQUIRED_COLUMNS]
-    if "contribution" in frame.columns:
-        selected_columns.append("contribution")
-    normalized = cast(pd.DataFrame, frame.loc[:, selected_columns].copy(deep=True))
-    normalized["from_date"] = _normalize_dates(normalized, "from_date", side)
-    normalized["thru_date"] = _normalize_dates(normalized, "thru_date", side)
-    normalized["identifier"] = _normalize_identifiers(normalized, side)
-    normalized["weight"] = _normalize_numeric(
-        normalized, "weight", side, nullable=False
-    )
-    normalized["return"] = _normalize_numeric(
-        normalized, "return", side, nullable=True
-    )
-    normalized["quantity_of_days"] = normalize_positive_int64(
-        normalized,
-        "quantity_of_days",
-        f"{side} input",
-        AttributionError,
-    )
-
-    input_returns = _float_array(normalized, "return")
-    weights = _float_array(normalized, "weight")
-    present_returns = ~np.isnan(input_returns)
-    if np.any(input_returns[present_returns] <= -1.0):
-        _raise_invalid(side, "column 'return' must be greater than -1.0 when present")
-    if np.any((weights != 0.0) & ~present_returns):
-        _raise_invalid(side, "contains a nonzero weight with a null return")
-
-    if "contribution" in normalized.columns:
-        normalized["contribution"] = _normalize_numeric(
-            normalized, "contribution", side, nullable=False
-        )
-        contributions = _float_array(normalized, "contribution")
-        invalid_undefined_returns = (
-            (weights == 0.0) & (contributions != 0.0) & present_returns
-        )
-        if np.any(invalid_undefined_returns):
-            _raise_invalid(
-                side,
-                "requires a null return when weight is zero and contribution is nonzero",
-            )
-    else:
-        contributions = np.zeros(len(normalized), dtype=np.float64)
-        np.multiply(weights, input_returns, out=contributions, where=present_returns)
-        normalized["contribution"] = contributions
-
-    effective_returns = np.zeros(len(normalized), dtype=np.float64)
-    nonzero_weights = weights != 0.0
-    np.divide(
-        contributions,
-        weights,
-        out=effective_returns,
-        where=nonzero_weights,
-    )
-    effective_returns[(weights == 0.0) & (contributions != 0.0)] = np.nan
-    if not np.isfinite(effective_returns[~np.isnan(effective_returns)]).all():
-        _raise_invalid(side, "produces a non-finite effective return")
-
-    normalized["input_return"] = input_returns
-    normalized["effective_return"] = effective_returns
-    _validate_period_structure(normalized, side)
-    return normalized.reset_index(drop=True)
-
-
-def _period_keys(frame: pd.DataFrame) -> pd.MultiIndex:
-    """Return the distinct normalized reporting-period keys."""
-    periods = cast(
-        pd.DataFrame, frame[["from_date", "thru_date"]].drop_duplicates()
-    ).sort_values(["thru_date", "from_date"], kind="stable")
-    return pd.MultiIndex.from_frame(periods)
-
-
-def _period_totals(frame: pd.DataFrame) -> pd.DataFrame:
-    """Return sorted day, weight, and contribution totals for each period."""
-    totals = cast(
-        pd.DataFrame,
-        frame.groupby(
-            ["from_date", "thru_date"],
-            as_index=False,
-            sort=False,
-            observed=True,
-        ).agg(
-            quantity_of_days=("quantity_of_days", "first"),
-            weight=("weight", "sum"),
-            period_return=("contribution", "sum"),
-        ),
-    )
-    return cast(
-        pd.DataFrame,
-        totals.sort_values(["thru_date", "from_date"], kind="stable"),
-    ).reset_index(drop=True)
-
-
-def _validate_matched_periods(
-    portfolio: pd.DataFrame,
-    benchmark: pd.DataFrame,
-    reconciliation_tolerance: float,
-) -> None:
-    """Validate cross-side period, day-count, weight, and return contracts."""
-    portfolio_periods = _period_keys(portfolio)
-    benchmark_periods = _period_keys(benchmark)
-    if not portfolio_periods.equals(benchmark_periods):
-        raise AttributionError("portfolio and benchmark reporting periods must match exactly")
-
-    portfolio_totals = _period_totals(portfolio)
-    benchmark_totals = _period_totals(benchmark)
-    portfolio_days = np.asarray(portfolio_totals["quantity_of_days"], dtype=np.int64)
-    benchmark_days = np.asarray(benchmark_totals["quantity_of_days"], dtype=np.int64)
-    if not np.array_equal(portfolio_days, benchmark_days):
-        raise AttributionError(
-            "portfolio and benchmark quantity_of_days must match for each period"
-        )
-    for side, totals in (
-        ("portfolio", portfolio_totals),
-        ("benchmark", benchmark_totals),
-    ):
-        weight_sums = _float_array(totals, "weight")
-        expected_weights = np.ones_like(weight_sums)
-        if not _is_close(
-            weight_sums,
-            expected_weights,
-            reconciliation_tolerance,
-        ).all():
-            _raise_invalid(side, "weights must sum to 1.0 within tolerance")
-        period_returns = _float_array(totals, "period_return")
-        if not np.isfinite(period_returns).all():
-            _raise_invalid(side, "period returns must be finite")
-        if np.any(period_returns <= -1.0):
-            _raise_invalid(side, "period return must be greater than -1.0")
-
-
-def _equalize_universe(portfolio: pd.DataFrame, benchmark: pd.DataFrame) -> pd.DataFrame:
-    """Outer-join the two sides and synthesize neutral missing rows."""
-    key_columns = ["from_date", "thru_date", "identifier"]
-    side_columns = [
-        *key_columns,
-        "quantity_of_days",
-        "weight",
-        "input_return",
-        "effective_return",
-        "contribution",
-    ]
-    portfolio_side = cast(pd.DataFrame, portfolio.loc[:, side_columns]).assign(
-        portfolio_present=True
-    )
-    benchmark_side = cast(pd.DataFrame, benchmark.loc[:, side_columns]).assign(
-        benchmark_present=True
-    )
-    equalized = portfolio_side.merge(
-        benchmark_side,
-        on=key_columns,
-        how="outer",
-        suffixes=("_portfolio", "_benchmark"),
-        validate="one_to_one",
-        sort=False,
-    )
-
-    for side in ("portfolio", "benchmark"):
-        missing = equalized[f"{side}_present"].isna()
-        for column in ("weight", "input_return", "effective_return", "contribution"):
-            equalized.loc[missing, f"{column}_{side}"] = 0.0
-    equalized["quantity_of_days"] = equalized[
-        "quantity_of_days_portfolio"
-    ].fillna(equalized["quantity_of_days_benchmark"])
-
-    equalized = cast(
-        pd.DataFrame,
-        equalized.sort_values(["thru_date", "identifier"], kind="stable"),
-    ).reset_index(drop=True)
-    return equalized
 
 
 def _build_period_detail(
