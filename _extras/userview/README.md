@@ -19,3 +19,6 @@ calculations, compatibility behavior, or release state.
 - [September 9, 2026: stable release 0.12.0](2026-09-09_stable_release_0.12.0.md)
   — records the stable-release scope, proposed release notes, required gate, and
   publication verification
+- [September 9, 2026: public release audit](2026-09-09_public_release_audit.md)
+  — verifies the anonymous clone, public installation, first calculation, live links,
+  and remaining low-priority discoverability opportunity
