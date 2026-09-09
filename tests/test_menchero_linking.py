@@ -286,6 +286,30 @@ def test_one_period_coefficient_is_the_identity() -> None:
     )
 
 
+def test_one_period_identity_ignores_horizon_reconstruction_noise() -> None:
+    """Preserve exact identity when equivalent horizon reconstruction moves one ULP.
+
+    A one-period horizon has no compounding to allocate, so its coefficient is exactly
+    one. Platform math libraries may place ``expm1(log1p(return))`` one representable
+    float above or below the source return. That numerical artifact must not become a
+    least-squares correction to the period's effects.
+    """
+    portfolio_returns = np.asarray([0.028], dtype=np.float64)
+    benchmark_returns = np.asarray([0.0225], dtype=np.float64)
+    reconstructed_portfolio_return = float(
+        np.nextafter(portfolio_returns[0], -np.inf)
+    )
+
+    coefficients = _menchero(
+        portfolio_returns,
+        benchmark_returns,
+        reconstructed_portfolio_return,
+        float(benchmark_returns[0]),
+    )
+
+    np.testing.assert_array_equal(coefficients, np.asarray([1.0], dtype=np.float64))
+
+
 def test_scaled_active_norm_avoids_overflow_from_squaring() -> None:
     """Keep a finite coefficient when a naive active-return square overflows.
 

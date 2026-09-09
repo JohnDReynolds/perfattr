@@ -1,6 +1,6 @@
 # Package Gate Step 2
 
-**Status:** Passed on September 9, 2026
+**Status:** Local gate passed on September 9, 2026; GitHub follow-up recorded below
 **Scope:** Complete local release-candidate verification of the Step 1 onboarding
 changes
 
@@ -61,7 +61,39 @@ directory.
 
 ## Readiness
 
-The local Step 2 gate is complete. Committing and pushing the onboarding changes would
-let GitHub repeat the repository's Python 3.11–3.14, minimum-dependency, and package
-jobs. Selecting and publishing a stable version remains the separately approved
-release step.
+The initial local Step 2 gate was complete. Commit `e43c397` then let GitHub repeat the
+repository's Python 3.11–3.14, minimum-dependency, and package jobs. Selecting and
+publishing a stable version remains the separately approved release step.
+
+## GitHub Follow-up
+
+GitHub run `34382657979` passed the Python 3.11–3.14 current-dependency jobs and the
+package job, but its Linux Python 3.11 minimum-dependency job exposed eight exact-
+identity failures in one-period Menchero linking. Values differed only by
+platform-dependent floating-point reconstruction noise, but the established tests
+correctly require an exact coefficient of one and were not weakened.
+
+The follow-up change implements the governing one-period identity directly after
+validating the Menchero inputs. A focused regression test perturbs the reconstructed
+horizon return by one representable float and requires the coefficient to remain
+exactly `1.0`.
+
+The corrected source and rebuilt wheel passed:
+
+```text
+focused Menchero and integration tests: 53 passed
+complete development suite:             655 passed
+pylint:                                  10.00/10
+pyright:                                 0 errors, 0 warnings, 0 informations
+Python 3.11.9 minimum dependencies:      655 passed
+Python 3.12.1:                           655 passed
+Python 3.13.1:                           655 passed
+Python 3.14.7:                           655 passed
+sdist and wheel build:                   passed
+Twine metadata validation:               passed
+pip check and installed-wheel smoke:     passed
+```
+
+The minimum-dependency retest retained NumPy 1.26.0 and pandas 2.2.0. No threshold,
+tolerance, dependency constraint, or test expectation changed. Repository history and
+GitHub Actions retain the replacement-run result.

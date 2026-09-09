@@ -171,6 +171,11 @@ def _menchero(
     maximum_active_return = float(np.max(np.abs(active_returns)))
     if not np.isfinite(active_returns).all() or not np.isfinite(maximum_active_return):
         raise AttributionError("Menchero linking values must be finite")
+    # A one-period horizon is the identity by definition. Returning it explicitly
+    # prevents expm1(log1p(return)) reconstruction noise from creating a spurious
+    # least-squares correction on platforms with different math libraries.
+    if period_count == 1:
+        return np.ones(1, dtype=np.float64)
     if maximum_active_return == 0.0:
         return np.full(period_count, common_scale, dtype=np.float64)
 
