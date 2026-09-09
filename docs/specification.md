@@ -152,6 +152,7 @@ result. Duplicate column labels are invalid.
   output uses `float64`; day counts use `int64`; pass flags use `bool`.
 - Numeric strings are rejected rather than silently converted.
 - Boolean values are not accepted as numbers.
+- Complex values are not accepted as real-valued financial numbers.
 - Caller-owned DataFrames are never mutated.
 
 ### Row and period rules
@@ -162,8 +163,9 @@ result. Duplicate column labels are invalid.
 - `from_date` must not exceed `thru_date`.
 - Periods must not overlap. Gaps are allowed.
 - Portfolio and benchmark period keys must match exactly.
-- `quantity_of_days` must be constant within a period and equal across both inputs.
-  It is authoritative observed coverage and is not recalculated from the dates.
+- `quantity_of_days` must be a positive integer representable as `int64`, constant
+  within a period, and equal across both inputs. It is authoritative observed coverage
+  and is not recalculated from the dates.
 - Portfolio and benchmark weights must each sum to `1.0` within tolerance in every
   period. Negative weights and weights greater than `1.0` are allowed.
 - An input `return` must be finite and greater than `-1.0` when it is present.

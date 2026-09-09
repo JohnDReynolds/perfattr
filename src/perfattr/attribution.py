@@ -39,6 +39,7 @@ from perfattr._validation import (
     normalize_dates,
     normalize_identity,
     normalize_numeric,
+    normalize_positive_int64,
     normalize_reconciliation_tolerance,
     raise_invalid,
 )
@@ -185,13 +186,12 @@ def _normalize_input(frame: pd.DataFrame, side: str) -> pd.DataFrame:
     normalized["return"] = _normalize_numeric(
         normalized, "return", side, nullable=True
     )
-    day_values = _normalize_numeric(
-        normalized, "quantity_of_days", side, nullable=False
+    normalized["quantity_of_days"] = normalize_positive_int64(
+        normalized,
+        "quantity_of_days",
+        f"{side} input",
+        AttributionError,
     )
-    day_array = np.asarray(day_values, dtype=np.float64)
-    if np.any(day_array <= 0.0) or np.any(day_array != np.floor(day_array)):
-        _raise_invalid(side, "column 'quantity_of_days' must contain positive integers")
-    normalized["quantity_of_days"] = day_values.astype("int64")
 
     input_returns = _float_array(normalized, "return")
     weights = _float_array(normalized, "weight")

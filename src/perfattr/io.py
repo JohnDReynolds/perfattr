@@ -122,6 +122,8 @@ def _read_pair_csv(
                 f"{context} row {line_number} must contain exactly two columns; "
                 f"received {len(row)}"
             )
+        if tuple(value.strip() for value in row) == columns:
+            raise PreparationError(f"{context} must be headerless")
     return pd.DataFrame(rows, columns=columns, dtype="string[python]")
 
 

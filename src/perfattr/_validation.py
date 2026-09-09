@@ -11,7 +11,9 @@ import pandas as pd
 from pandas.api.types import (
     infer_dtype,
     is_bool_dtype,
+    is_complex_dtype,
     is_datetime64_dtype,
+    is_integer_dtype,
     is_numeric_dtype,
 )
 
@@ -159,15 +161,20 @@ def normalize_numeric(
         A float64 Series with allowed nulls preserved.
 
     Raises:
-        ValueError: Using ``error_type`` for strings, booleans, forbidden nulls, or
-            non-finite values.
+        ValueError: Using ``error_type`` for strings, booleans, complex values,
+            forbidden nulls, or non-finite values.
     """
     values = cast(pd.Series, frame[column])
-    if is_bool_dtype(values.dtype) or not is_numeric_dtype(values.dtype):
+    if (
+        is_bool_dtype(values.dtype)
+        or is_complex_dtype(values.dtype)
+        or not is_numeric_dtype(values.dtype)
+    ):
         raise_invalid(
             error_type,
             context,
-            f"column {column!r} must contain numbers, not strings or booleans",
+            f"column {column!r} must contain numbers, not strings or booleans; "
+            "values must be real, not complex",
         )
     if not nullable and has_true(values.isna()):
         raise_invalid(error_type, context, f"column {column!r} contains null values")
@@ -181,6 +188,72 @@ def normalize_numeric(
             f"column {column!r} must contain only finite values",
         )
     return normalized
+
+
+def normalize_positive_int64(
+    frame: pd.DataFrame,
+    column: str,
+    context: str,
+    error_type: type[ValueError],
+) -> pd.Series:
+    """Normalize positive integral values without overflowing ``int64``.
+
+    Args:
+        frame: DataFrame containing the integer column.
+        column: Column to normalize.
+        context: Human-readable boundary included in errors.
+        error_type: Domain error raised for invalid values.
+
+    Returns:
+        Values represented exactly as signed 64-bit integers.
+
+    Raises:
+        ValueError: Using ``error_type`` for a nonnumeric, null, non-finite,
+            nonpositive, fractional, or unrepresentable value.
+
+    Notes:
+        Integer-typed inputs are range-checked before floating-point conversion so the
+        valid ``int64`` maximum remains representable. Floating inputs must be below
+        ``2**63`` because that boundary is one greater than the signed maximum and
+        would otherwise saturate during pandas conversion.
+    """
+    values = cast(pd.Series, frame[column])
+    if is_integer_dtype(values.dtype) and not is_bool_dtype(values.dtype):
+        if has_true(values.isna()):
+            raise_invalid(error_type, context, f"column {column!r} contains null values")
+        invalid = cast(
+            pd.Series,
+            (values <= 0) | (values > np.iinfo(np.int64).max),
+        )
+        if has_true(invalid):
+            raise_invalid(
+                error_type,
+                context,
+                f"column {column!r} must contain positive integers within the "
+                "int64 range",
+            )
+        return cast(pd.Series, values.astype("int64"))
+
+    normalized = normalize_numeric(
+        frame,
+        column,
+        context,
+        error_type,
+        nullable=False,
+    )
+    numeric = np.asarray(normalized, dtype=np.float64)
+    invalid = (
+        (numeric <= 0.0)
+        | (numeric != np.floor(numeric))
+        | (numeric >= float(2**63))
+    )
+    if np.any(invalid):
+        raise_invalid(
+            error_type,
+            context,
+            f"column {column!r} must contain positive integers within the int64 range",
+        )
+    return cast(pd.Series, normalized.astype("int64"))
 
 
 def _identity_inferred_dtype(values: pd.Series) -> str:

@@ -508,6 +508,47 @@ def _validate_prepared_periods(
         )
 
 
+def _validate_calculation_domain(frame: pd.DataFrame, side: str) -> None:
+    """Require final prepared values to satisfy the calculation input domain.
+
+    Args:
+        frame: Final reporting-period rows for one prepared side.
+        side: Portfolio or benchmark, used in a deterministic error.
+
+    Raises:
+        PreparationError: If a defined prepared identifier return or a prepared
+            period contribution total is not compoundable.
+
+    Notes:
+        Exact reporting periods need no consolidation, but the calculation core still
+        compounds their input returns and period contribution totals. This final
+        boundary check keeps copied exact periods subject to the same strictly
+        positive wealth-base requirement as periods produced by logarithmic
+        consolidation.
+    """
+    returns = _float_array(frame, "return")
+    defined_returns = ~np.isnan(returns)
+    if (
+        not np.isfinite(returns[defined_returns]).all()
+        or np.any(returns[defined_returns] <= -1.0)
+    ):
+        raise PreparationError(
+            f"prepared {side} returns must be finite and greater than -1.0 "
+            "when defined"
+        )
+
+    totals = _period_totals(frame, ("contribution",))
+    period_returns = _float_array(totals, "contribution")
+    invalid = (~np.isfinite(period_returns)) | (period_returns <= -1.0)
+    if np.any(invalid):
+        first_failure = int(np.flatnonzero(invalid)[0])
+        period = totals.iloc[first_failure]
+        raise PreparationError(
+            f"prepared {side} period return must be finite and greater than -1.0 "
+            f"for {period['from_date'].date()} to {period['thru_date'].date()}"
+        )
+
+
 # The accepted public contract keeps independent inputs and policies explicit.
 # pylint: disable-next=too-many-arguments,too-many-locals
 def prepare_attribution(
@@ -603,6 +644,8 @@ def prepare_attribution(
         prepared_portfolio.reporting,
         prepared_benchmark.reporting,
     )
+    _validate_calculation_domain(prepared_portfolio.reporting, "portfolio")
+    _validate_calculation_domain(prepared_benchmark.reporting, "benchmark")
     reconciliation = _build_reconciliation(
         prepared_portfolio, prepared_benchmark, aligned, tolerance
     )

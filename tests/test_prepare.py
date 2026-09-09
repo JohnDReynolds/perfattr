@@ -187,6 +187,69 @@ def test_prepare_native_returns_only_composes_with_calculation_core() -> None:
     )
 
 
+def test_prepare_rejects_exact_authoritative_total_outside_calculation_domain() -> None:
+    """Successful preparation must guarantee a positive period wealth base.
+
+    Two 50% rows carry authoritative contributions of -60% and -50%, so their exact
+    native-period total is -110%. The supplied identifier returns remain zero and the
+    effective returns are finite, but ``log1p(-1.10)`` is undefined. Preparation must
+    reject this period instead of returning frames that the calculation core rejects.
+    """
+    side = pd.DataFrame(
+        {
+            "from_date": ["2024-01-01"] * 2,
+            "thru_date": ["2024-01-31"] * 2,
+            "identifier": ["A", "B"],
+            "weight": [0.5, 0.5],
+            "return": [0.0, 0.0],
+            "contribution": [-0.60, -0.50],
+        }
+    )
+
+    with pytest.raises(
+        PreparationError,
+        match="prepared portfolio period return.*greater than -1.0",
+    ):
+        prepare_attribution(side, side)
+
+
+def test_prepare_rejects_exact_mapped_return_outside_calculation_domain() -> None:
+    """An exact mapped group must retain a compoundable downstream input return.
+
+    The period contribution total is a valid positive 10%, but mapping the two rows
+    separately makes X's effective return ``-0.60 / 0.50 = -1.20``. Because that
+    mapped value becomes the calculation core's supplied return, preparation must
+    reject it before claiming successful composition.
+    """
+    side = pd.DataFrame(
+        {
+            "from_date": ["2024-01-01"] * 2,
+            "thru_date": ["2024-01-31"] * 2,
+            "identifier": ["A", "B"],
+            "weight": [0.5, 0.5],
+            "return": [0.0, 0.0],
+            "contribution": [-0.60, 0.70],
+        }
+    )
+    mapping = pd.DataFrame(
+        {
+            "identifier": ["A", "B"],
+            "classification_identifier": ["X", "Y"],
+        }
+    )
+
+    with pytest.raises(
+        PreparationError,
+        match="prepared portfolio returns.*greater than -1.0",
+    ):
+        prepare_attribution(
+            side,
+            side,
+            portfolio_mapping=mapping,
+            benchmark_mapping=mapping,
+        )
+
+
 def test_preparation_result_has_stable_schemas_order_and_dtypes() -> None:
     """Public prepared and reconciliation frames should establish their contracts."""
     prepared = prepare_attribution(

@@ -158,7 +158,8 @@ another extra source column.
   whitespace and leading zeroes are preserved.
 - Identifiers and portfolio codes must be non-null, nonempty strings after trimming.
   Non-string identity values are not coerced.
-- DataFrame numeric strings and booleans are rejected as financial numbers.
+- DataFrame numeric strings, booleans, and complex values are rejected as financial
+  numbers.
 - CSV readers parse financial fields as numbers and reject unparseable values.
 - Financial columns use `float64` after normalization.
 - Caller-supplied frames are never mutated.
@@ -472,6 +473,12 @@ calculation specification.
 Both prepared frames contain identical ordered period keys and the same
 `quantity_of_days` for each period. Their identifier universes need not match; the
 calculation core continues to own universe equalization.
+
+Every defined prepared identifier return and every prepared period contribution total
+must be finite and greater than `-1.0`. This applies even when a source period already
+equals its reporting period and requires no consolidation: the calculation core still
+uses those values in logarithmic horizon linking. Preparation must fail instead of
+returning a frame that `calculate_attribution` would reject.
 
 The output always includes authoritative `contribution`, including when source input
 was returns-only. This gives the calculation core one unambiguous downstream form.

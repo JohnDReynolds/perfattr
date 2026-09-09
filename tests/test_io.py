@@ -358,6 +358,22 @@ def test_classification_reader_normalizes_metadata_and_quoted_commas(
     pd.testing.assert_frame_equal(classification, expected)
 
 
+def test_classification_reader_rejects_a_header(tmp_path: Path) -> None:
+    """The canonical classification shape is headerless, like the mapping shape.
+
+    Treating the conventional field names as an ordinary metadata row would create a
+    phantom classification. The reader must reject that ambiguity before returning
+    normalized display data.
+    """
+    path = _write(
+        tmp_path / "classification_with_header.csv",
+        "classification_identifier,classification_name\nEQ,Equity\n",
+    )
+
+    with pytest.raises(PreparationError, match="classification CSV must be headerless"):
+        read_classification_csv(path)
+
+
 def test_classification_reader_rejects_conflicting_or_blank_metadata(
     tmp_path: Path,
 ) -> None:

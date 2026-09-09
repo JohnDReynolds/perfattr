@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from perfattr._validation import normalize_identity
+from perfattr._validation import normalize_identity, normalize_numeric
 
 
 @pytest.mark.parametrize(
@@ -89,3 +89,22 @@ def test_normalize_identity_rejects_blank_string_after_trimming() -> None:
 
     with pytest.raises(ValueError, match="contains an empty string"):
         normalize_identity(frame, "identity", "test input", ValueError)
+
+
+def test_normalize_numeric_rejects_complex_values_without_discarding_data() -> None:
+    """Financial boundaries must not silently discard an imaginary component.
+
+    Converting ``1 + 2j`` to ``float64`` retains only one and emits a warning. A
+    financial value is real-valued, so validation must reject the complex dtype before
+    conversion rather than changing the caller's number.
+    """
+    frame = pd.DataFrame({"weight": pd.Series([1.0 + 2.0j], dtype="complex128")})
+
+    with pytest.raises(ValueError, match="numbers.*real, not complex"):
+        normalize_numeric(
+            frame,
+            "weight",
+            "test input",
+            ValueError,
+            nullable=False,
+        )
