@@ -1,22 +1,9 @@
 # perfattr
 
-`perfattr` is a small, auditable portfolio performance-attribution calculation
-library built with pandas and NumPy.
-
-The package provides a reusable Brinson attribution calculation core and a portable
-preparation layer for source-period weights and returns. Portfolio accounting,
-vendor schemas, and presentation remain outside the package boundary.
-
-## Installation
-
-`perfattr` requires Python 3.11 or later. Install or upgrade the current stable release
-from PyPI:
-
-```bash
-python -m pip install --upgrade perfattr
-```
-
-See the [public releases][releases] for release notes and earlier versions.
+`perfattr` is a performance-attribution library built with pandas and NumPy.
+It calculates attribution from multi-period portfolio and benchmark weights and
+returns using widely used Brinson methodologies, arithmetic linking methods,
+geometric attribution, and currency attribution.
 
 ## Main features
 
@@ -40,6 +27,17 @@ See the [public releases][releases] for release notes and earlier versions.
   recalculating Brinson effects at parent levels.
 - Preserve zero-weight fee and financing contributions without inventing returns.
 - Return deterministic pandas result frames with explicit financial reconciliation.
+
+## Installation
+
+`perfattr` requires Python 3.11 or later. Install or upgrade the current stable release
+from PyPI:
+
+```bash
+python -m pip install --upgrade perfattr
+```
+
+See the [public releases][releases] for release notes and earlier versions.
 
 ## Documentation
 
