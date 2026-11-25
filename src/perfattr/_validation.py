@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import NoReturn, cast
+import warnings
 
 import numpy as np
 import numpy.typing as npt
@@ -14,6 +15,7 @@ from pandas.api.types import (
     is_complex_dtype,
     is_datetime64_dtype,
     is_integer_dtype,
+    is_number,
     is_numeric_dtype,
 )
 
@@ -113,31 +115,49 @@ def normalize_dates(
         error_type: Domain error raised for invalid values.
 
     Returns:
-        A timezone-naive ``datetime64[ns]`` Series normalized to midnight.
+        A timezone-naive ``datetime64[ns]`` Series at midnight, with the original
+        index and name.
 
     Raises:
         ValueError: Using ``error_type`` for null, numeric, invalid, or timezone-aware
-            values.
+            values, or a midnight outside the nanosecond timestamp range.
     """
     values = cast(pd.Series, frame[column])
     if has_true(values.isna()):
         raise_invalid(error_type, context, f"column {column!r} contains null values")
-    if is_numeric_dtype(values.dtype) or is_bool_dtype(values.dtype):
+    inferred = infer_dtype(values, skipna=False)
+    if (
+        is_numeric_dtype(values.dtype)
+        or is_bool_dtype(values.dtype)
+        or (
+            inferred not in {"string", "unicode", "date", "datetime", "datetime64", "empty"}
+            and any(is_number(value) or isinstance(value, np.bool_) for value in values)
+        )
+    ):
         raise_invalid(error_type, context, f"column {column!r} must contain dates")
 
     try:
-        normalized = pd.to_datetime(values, errors="raise", format="mixed")
-    except (TypeError, ValueError, OverflowError) as error:
+        with warnings.catch_warnings():
+            # Older pandas warns before rejecting mixed timezones. Promote that
+            # diagnostic to a failed conversion, including under strict callers.
+            warnings.simplefilter("error", FutureWarning)
+            normalized = pd.to_datetime(values, errors="raise", format="mixed")
+    except (TypeError, ValueError, OverflowError, FutureWarning) as error:
         raise error_type(f"{context} column {column!r} contains an invalid date") from error
 
     if isinstance(normalized.dtype, pd.DatetimeTZDtype):
         raise_invalid(error_type, context, f"column {column!r} must be timezone-naive")
     if not is_datetime64_dtype(normalized.dtype):
         raise_invalid(error_type, context, f"column {column!r} must be timezone-naive")
-    return cast(
-        pd.Series,
-        normalized.dt.normalize().astype("datetime64[ns]"),
-    )
+    if has_true(normalized.isna()):
+        raise_invalid(error_type, context, f"column {column!r} contains an invalid date")
+    try:
+        # Fixed-day floor checks overflow where normalize can wrap at the ns lower
+        # bound. Keep the parsed unit until midnight: a valid date can have a time
+        # outside the ns range even though its midnight remains representable.
+        return cast(pd.Series, normalized.dt.floor("D").astype("datetime64[ns]"))
+    except (TypeError, ValueError, OverflowError) as error:
+        raise error_type(f"{context} column {column!r} contains an invalid date") from error
 
 
 def normalize_numeric(
