@@ -808,14 +808,14 @@ def test_extreme_source_wealth_retains_the_existing_strict_audit() -> None:
 
 @pytest.mark.parametrize("method", _METHODS)
 @pytest.mark.parametrize(
-    ("portfolio_values", "benchmark_values", "charge"),
+    ("portfolio_values", "benchmark_values", "charge", "include_neutral_row"),
     [
         ([1e30, -1. + 2. ** -51, -1. + 2. ** -52],
-         [2e30, -1. + 2. ** -52, -1. + 2. ** -52], 1e100),
-        ([1e16, -1. + 2. ** -51], [2e16, -1. + 2. ** -52], 1e30),
-        ([2. ** 51, -1. + 2. ** -51], [2. ** 52, -1. + 2. ** -52], 1e45),
+         [2e30, -1. + 2. ** -52, -1. + 2. ** -52], 1e100, True),
+        ([1e16, -1. + 2. ** -51], [2e16, -1. + 2. ** -52], 1e30, True),
+        ([2. ** 51, -1. + 2. ** -51], [2. ** 52, -1. + 2. ** -52], 1e45, True),
         ([2. ** 1000, -1. + 2. ** -51] + [-1. + 2. ** -50] * 19,
-         [2. ** 1001, -1. + 2. ** -52] + [-1. + 2. ** -50] * 19, 1e307),
+         [2. ** 1001, -1. + 2. ** -52] + [-1. + 2. ** -50] * 19, 1e307, False),
     ],
 )
 def test_tiny_projection_preserves_offsetting_authoritative_charges(
@@ -823,6 +823,7 @@ def test_tiny_projection_preserves_offsetting_authoritative_charges(
     portfolio_values: list[float],
     benchmark_values: list[float],
     charge: float,
+    include_neutral_row: bool,
 ) -> None:
     """A tiny optimized coefficient must retain material zero-weight charges.
 
@@ -861,15 +862,25 @@ def test_tiny_projection_preserves_offsetting_authoritative_charges(
     charges["identifier"], charges["weight"], charges["return"] = ["A", "B"], 0., np.nan
     charges["contribution"] = [charge, -charge]
     portfolio = pd.concat([portfolio, charges], ignore_index=True)
+    if include_neutral_row:
+        # A leading zero retains the small source return when grouped sums reduce
+        # the much larger offsetting charges. Keep the subnormal case's original
+        # row geometry, which already preserves its contribution reconciliation.
+        neutral = portfolio.iloc[[0]].copy(deep=True)
+        neutral["identifier"] = "0"
+        neutral[["weight", "return", "contribution"]] = 0.
+        portfolio = pd.concat([portfolio, neutral], ignore_index=True)
 
     result = calculate_attribution(
         portfolio, benchmark, method=method,
         effect_linking_method=EffectLinkingMethod.MENCHERO,
     )
 
-    actual = result.period_detail.loc[result.period_detail["identifier"].isin(["A", "B"])]
-    assert bool(actual["portfolio_return"].isna().all())
-    np.testing.assert_allclose(actual["linked_total_effect"], [expected, -expected],
+    np.testing.assert_array_equal(result.period_summary["portfolio_return"], portfolio_returns)
+    np.testing.assert_array_equal(result.period_summary["benchmark_return"], benchmark_returns)
+    charges = result.period_detail.loc[result.period_detail["identifier"].isin(["A", "B"])]
+    assert bool(charges["portfolio_return"].isna().all())
+    np.testing.assert_allclose(charges["linked_total_effect"], [expected, -expected],
                                rtol=_TOLERANCE, atol=_TOLERANCE)
     assert bool(result.reconciliation["passed"].all())
 
