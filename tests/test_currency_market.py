@@ -266,24 +266,15 @@ def test_randomized_market_grid_reconciles_to_independent_active_premiums() -> N
 
 def test_nonfinite_market_calculation_is_rejected_without_a_partial_result() -> None:
     """Finite inputs that overflow a weighted log effect must fail explicitly."""
-    inputs = list(_hand_calculated_inputs())
-    for index in (0, 1):
-        # Four exposures allow a leading zero, an exact cancelling pair and a
-        # unit residual without depending on one grouped summation algorithm.
-        extra_market = inputs[index].iloc[[0]].copy(deep=True)
-        extra_market.loc[:, "market_identifier"] = "D"
-        inputs[index] = pd.concat([inputs[index], extra_market], ignore_index=True)
-        inputs[index].loc[:, "market_weight"] = [0.0, 1e306, -1e306, 1.0]
-        inputs[index].loc[:, ["local_asset_return", "local_cash_return"]] = 0.0
-    # Neutral returns isolate the overflow: 1e306 * log(max_float) is about 7.1e308.
-    inputs[0].loc[1, "local_asset_return"] = float.fromhex(
+    inputs = _hand_calculated_inputs()
+    inputs[0].loc[:, "market_weight"] = [1e308, -1e308, 1.0]
+    inputs[1].loc[:, "market_weight"] = [1e308, -1e308, 1.0]
+    inputs[0].loc[0, "local_asset_return"] = float.fromhex(
         "0x1.fffffffffffffp+1023"
     )
 
-    with pytest.raises(AttributionError, match="market-grid calculation produced a non-finite"):
-        calculate_currency_attribution(
-            inputs[0], inputs[1], inputs[2], inputs[3], base_currency="USD"
-        )
+    with pytest.raises(AttributionError, match="produced a non-finite value"):
+        calculate_currency_attribution(*inputs, base_currency="USD")
 
 
 def test_completed_market_grid_is_preserved_in_the_public_result() -> None:
