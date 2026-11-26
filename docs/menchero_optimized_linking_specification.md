@@ -173,27 +173,13 @@ M = mean(x ** (T - 1 - j) * y ** j for j = 0, ..., T - 1)
 ```
 
 This expression equals the published quotient when `x != y` and equals `x ** (T-1)`
-when `x = y`. Evaluate the positive terms without subtracting nearby roots.
-The common scale and correction must retain enough precision through their final
-cancellation to preserve small coefficients multiplying authoritative effects.
-Do not decide that horizon returns are equal merely because their difference falls
-below the reconciliation tolerance.
+when `x = y`. The implementation should evaluate the positive terms from accumulated
+log growth with a scaled or log-space mean. It must not decide that horizon returns
+are equal merely because their difference falls below the reconciliation tolerance.
 
-The correction denominator must likewise avoid overflow when squaring finite
-large active returns. A genuinely non-finite coefficient or linked effect still
-raises `AttributionError`.
-
-The residual must retain the difference between source-period wealth products.
-Subtracting separately rounded horizon returns can erase a tiny active difference
-and materially distort offsetting linked components. With only one active period,
-its coefficient equals the product of the other periods' common wealth factors,
-even when the displayed horizon active return rounds to zero.
-
-Production reconciliation remains mandatory. At extreme magnitudes, corrected
-source-period effects can disagree with the separately rounded contribution or
-return identities beyond the existing tolerance. Such a request raises
-`AttributionError` under the existing failed-reconciliation rule rather than
-returning an inconsistent result.
+The correction denominator should likewise use a scaled Euclidean norm so finite
+large active returns do not overflow merely when squared. A genuinely non-finite
+coefficient or linked effect still raises `AttributionError`.
 
 ## Equal horizon returns do not imply zero corrections
 

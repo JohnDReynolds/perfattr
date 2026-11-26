@@ -2,12 +2,6 @@
 
 from __future__ import annotations
 
-from decimal import Context, Decimal, DecimalException, DivisionByZero, InvalidOperation
-from decimal import MAX_EMAX, MIN_EMIN, Overflow, ROUND_HALF_EVEN
-from decimal import localcontext
-import math
-import sys
-
 import numpy as np
 import numpy.typing as npt
 
@@ -122,122 +116,6 @@ def _frongello(
         return portfolio_prefixes * benchmark_suffixes
 
 
-def _menchero_wealth(returns: npt.NDArray[np.float64]) -> tuple[int, int]:
-    """Retain a source wealth product as an exact integer and binary exponent.
-
-    Args:
-        returns: Finite simple period returns greater than -1.
-
-    Returns:
-        Numerator and exponent representing ``product(1 + returns)`` exactly.
-
-    Notes:
-        Binary floats are dyadic rationals. Add one before rounding each factor,
-        remove its powers of two, then multiply the odd numerators. Integer width
-        grows with history length. Exact products are necessary because subtracting
-        rounded wealth or log ratios can erase a material active difference.
-    """
-    product, exponent = 1, 0
-    for value in returns:
-        numerator, denominator = float(value).as_integer_ratio()
-        factor = numerator + denominator
-        power = (factor & -factor).bit_length() - 1
-        product *= factor >> power
-        exponent += power - (denominator.bit_length() - 1)
-    return product, exponent
-
-
-def _menchero_source_scales(
-    portfolio_returns: npt.NDArray[np.float64],
-    benchmark_returns: npt.NDArray[np.float64],
-) -> tuple[Decimal, Decimal]:
-    """Evaluate the continuous common scale and exact-source active wealth.
-
-    Args:
-        portfolio_returns: Admitted portfolio period returns.
-        benchmark_returns: Corresponding benchmark period returns.
-
-    Returns:
-        Common scale M and source wealth difference D in the caller's local
-        high-precision context.
-
-    Notes:
-        With source wealth roots x and y, the difference-of-powers identity gives
-        ``M = sum(x**(T-1-j) * y**j) / T``. A positive-term recurrence evaluates
-        that sum in O(T) arithmetic operations without subtracting nearby roots.
-        Subtract the dyadic source products before converting to Decimal, retaining
-        D even when the two roots round to the same high-precision value.
-
-    References:
-        Menchero, J. G. "An Optimized Approach to Linking Attribution Effects over
-        Time." *The Journal of Performance Measurement* 5, no. 1 (2000): 36-42.
-    """
-    count = portfolio_returns.size
-    wealths = [_menchero_wealth(values) for values in (portfolio_returns, benchmark_returns)]
-    exponent = min(power for _, power in wealths)
-    difference = (wealths[0][0] << (wealths[0][1] - exponent)) - (
-        wealths[1][0] << (wealths[1][1] - exponent)
-    )
-    growths = [Decimal(value) * Decimal(2) ** power for value, power in wealths]
-    roots = [growth ** (Decimal(1) / int(count)) for growth in growths]
-    ratio = roots[1] / roots[0]
-    term = roots[0] ** (int(count) - 1)
-    common_scale = Decimal(0)
-    for _ in range(count):
-        common_scale += term
-        term *= ratio
-    return common_scale / int(count), Decimal(difference) * Decimal(2) ** exponent
-
-
-def _menchero_projection(
-    common_scale: Decimal,
-    wealth_difference: Decimal,
-    portfolio_returns: npt.NDArray[np.float64],
-    benchmark_returns: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
-    """Complete the minimum-norm projection before rounding each coefficient.
-
-    Args:
-        common_scale: Continuous Menchero scale M in the local Decimal context.
-        wealth_difference: Source wealth difference D in that same context.
-        portfolio_returns: Admitted portfolio period returns, with some activity.
-        benchmark_returns: Corresponding benchmark period returns.
-
-    Returns:
-        Float64 coefficients ``[M*(Q-S*d[t]) + D*d[t]] / Q``.
-
-    Notes:
-        Express both source vectors in one exact binary unit before subtracting.
-        For d=n/U, S=sum(n)/U and Q=sum(n**2)/U**2, the coefficient is
-        ``[M*(q-s*n) + D*n*U] / q``. Integer projection numerators preserve tiny
-        departures from a unit projection. Keep both terms in the local Decimal
-        context through their cancellation and division, then convert once.
-        A small final coefficient can multiply large authoritative offsetting
-        charges, so accurate aggregate reconciliation alone is insufficient.
-    """
-    ratios = [
-        (float(left).as_integer_ratio(), float(right).as_integer_ratio())
-        for left, right in zip(portfolio_returns, benchmark_returns)
-    ]
-    unit = max(denominator for pair in ratios for _, denominator in pair)
-    integers = [
-        left * (unit // left_unit) - right * (unit // right_unit)
-        for (left, left_unit), (right, right_unit) in ratios
-    ]
-    active_sum = sum(integers)
-    squared_norm = sum(value * value for value in integers)
-    return np.asarray(
-        [
-            float(
-                (common_scale * Decimal(squared_norm - active_sum * value)
-                 + wealth_difference * Decimal(value * unit)) / Decimal(squared_norm)
-            )
-            for value in integers
-        ],
-        dtype=np.float64,
-    )
-
-
 def _menchero(
     portfolio_returns: npt.NDArray[np.float64],
     benchmark_returns: npt.NDArray[np.float64],
@@ -255,72 +133,64 @@ def _menchero(
     Returns:
         One Menchero coefficient per period, in source-period order.
 
-    Raises:
-        AttributionError: If a common scale, residual, correction or coefficient
-            is not finite under the released admission rules.
-
     Notes:
-        The existing minimum-norm formula uses exact dyadic source products and
-        projection numerators, then a uniform local Decimal evaluation. Precision
-        spans binary64's largest exponent through its smallest subnormal, with
-        guard digits for period accumulation and root evaluation. Thus cancellation
-        between finite projected terms is retained through the smallest float64
-        coefficient. Precision grows only logarithmically with the period count;
-        it does not select a different formula or a financial equality tolerance.
-        The private context owns its settings independently of mutable process
-        defaults. Caller Decimal settings and flags are preserved.
+        The common scale is the mean of the positive terms in the
+        difference-of-powers identity. This remains continuous when the compounded
+        horizon returns are equal and avoids subtracting nearly equal roots.
 
-        A single period is the identity. When every period active return is exactly
-        zero, the minimum-norm correction is exactly zero. Equal horizon wealth
-        with a nonzero active vector still requires its optimized correction.
-        Horizon and contribution calculations and production audits remain separate.
+        Corrections use a scaled Euclidean norm. If every active period return is
+        exactly zero, the minimum-norm correction is exactly zero. No tolerance
+        selects either financial formula.
 
     References:
         Menchero, J. G. "An Optimized Approach to Linking Attribution Effects over
         Time." *The Journal of Performance Measurement* 5, no. 1 (2000): 36-42.
     """
+    period_count = portfolio_returns.size
+    horizon_log_growths = np.log1p(
+        np.asarray(
+            [portfolio_horizon_return, benchmark_horizon_return],
+            dtype=np.float64,
+        )
+    )
+
+    # These are the logs of x**(T-1-j) * y**j. Scaling their exponentials keeps
+    # the continuous divided-difference mean well conditioned.
+    benchmark_powers = np.arange(period_count, dtype=np.float64)
+    term_logs = (
+        (period_count - 1.0 - benchmark_powers) * horizon_log_growths[0]
+        + benchmark_powers * horizon_log_growths[1]
+    ) / period_count
+    common_scale = float(
+        np.exp(np.logaddexp.reduce(term_logs) - np.log(period_count))
+    )
+    if not np.isfinite(term_logs).all() or not np.isfinite(common_scale):
+        raise AttributionError("Menchero linking values must be finite")
+
     active_returns = portfolio_returns - benchmark_returns
     maximum_active_return = float(np.max(np.abs(active_returns)))
     if not np.isfinite(active_returns).all() or not np.isfinite(maximum_active_return):
         raise AttributionError("Menchero linking values must be finite")
-    if portfolio_returns.size == 1:
+    # A one-period horizon is the identity by definition. Returning it explicitly
+    # prevents expm1(log1p(return)) reconstruction noise from creating a spurious
+    # least-squares correction on platforms with different math libraries.
+    if period_count == 1:
         return np.ones(1, dtype=np.float64)
+    if maximum_active_return == 0.0:
+        return np.full(period_count, common_scale, dtype=np.float64)
 
-    # Carry cancellation across the full output exponent range. Two count
-    # factors cover recurrence and accumulation; 32 extra decimal digits
-    # separate root/rounding error from the smallest float64 output unit.
-    precision = math.ceil(
-        (sys.float_info.max_exp - sys.float_info.min_exp + sys.float_info.mant_dig)
-        * math.log10(2)
-    ) + 32 + 2 * len(str(portfolio_returns.size))
-    try:
-        with localcontext(Context(
-            prec=precision, rounding=ROUND_HALF_EVEN, Emax=MAX_EMAX, Emin=MIN_EMIN,
-            capitals=1, clamp=0, flags=[], traps=[InvalidOperation, DivisionByZero, Overflow],
-        )):
-            common_scale, wealth_difference = _menchero_source_scales(
-                portfolio_returns, benchmark_returns,
-            )
-            common_value = float(common_scale)
-            if not np.isfinite(common_value):
-                raise AttributionError("Menchero linking values must be finite")
-            if maximum_active_return == 0.0:
-                return np.full(portfolio_returns.size, common_value, dtype=np.float64)
-            coefficients = _menchero_projection(
-                common_scale, wealth_difference, portfolio_returns, benchmark_returns,
-            )
-    except (DecimalException, OverflowError, ValueError) as error:
-        raise AttributionError("Menchero linking values must be finite") from error
-
-    # Preserve finite-residual admission using the released rounded horizons, while
-    # the coefficients above retain the independent source-wealth calculation.
+    scaled_active_returns = active_returns / maximum_active_return
+    scaled_squared_norm = float(np.dot(scaled_active_returns, scaled_active_returns))
     residual = (
-        portfolio_horizon_return - benchmark_horizon_return
-        - common_value * float(np.sum(active_returns, dtype=np.float64))
+        portfolio_horizon_return
+        - benchmark_horizon_return
+        - common_scale
+        * float(np.sum(active_returns, dtype=np.float64))
     )
-    with np.errstate(over="ignore", invalid="ignore"):
-        corrections = coefficients - common_value
-    if (not np.isfinite(residual) or not np.isfinite(coefficients).all()
-            or not np.isfinite(corrections).all()):
+    if not np.isfinite(scaled_squared_norm) or not np.isfinite(residual):
         raise AttributionError("Menchero linking values must be finite")
-    return coefficients
+    correction_scale = residual / maximum_active_return / scaled_squared_norm
+    scaled_active_returns = common_scale + correction_scale * scaled_active_returns
+    if not np.isfinite(correction_scale) or not np.isfinite(scaled_active_returns).all():
+        raise AttributionError("Menchero linking values must be finite")
+    return scaled_active_returns
