@@ -563,11 +563,19 @@ def test_calculation_is_deterministic_and_does_not_mutate_inputs(
         pd.testing.assert_frame_equal(
             getattr(ordered, frame_name), getattr(shuffled, frame_name)
         )
-    original_overall_value = ordered.overall_detail.at[0, "portfolio_weight"]
-    original_second_value = shuffled.period_detail.at[0, "portfolio_weight"]
+    original_overall_weights = ordered.overall_detail["portfolio_weight"].copy(deep=True)
+    original_shuffled_weights = shuffled.period_detail["portfolio_weight"].copy(deep=True)
     ordered.period_detail.at[0, "portfolio_weight"] = 999.0
-    assert ordered.overall_detail.at[0, "portfolio_weight"] == original_overall_value
-    assert shuffled.period_detail.at[0, "portfolio_weight"] == original_second_value
+    pd.testing.assert_series_equal(
+        ordered.overall_detail["portfolio_weight"],
+        original_overall_weights,
+        check_exact=True,
+    )
+    pd.testing.assert_series_equal(
+        shuffled.period_detail["portfolio_weight"],
+        original_shuffled_weights,
+        check_exact=True,
+    )
 
 
 @pytest.mark.parametrize("case_name", ("multi_period_linking", "linking_boundaries"))
