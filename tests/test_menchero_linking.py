@@ -815,7 +815,7 @@ def test_extreme_source_wealth_retains_the_existing_strict_audit() -> None:
         ([1e16, -1. + 2. ** -51], [2e16, -1. + 2. ** -52], 1e30, True),
         ([2. ** 51, -1. + 2. ** -51], [2. ** 52, -1. + 2. ** -52], 1e45, True),
         ([2. ** 1000, -1. + 2. ** -51] + [-1. + 2. ** -50] * 19,
-         [2. ** 1001, -1. + 2. ** -52] + [-1. + 2. ** -50] * 19, 1e307, False),
+         [2. ** 1001, -1. + 2. ** -52] + [-1. + 2. ** -50] * 19, 2.0 ** 1000, False),
     ],
 )
 def test_tiny_projection_preserves_offsetting_authoritative_charges(
@@ -842,8 +842,10 @@ def test_tiny_projection_preserves_offsetting_authoritative_charges(
     and linked 1e45 charges of +/-0.016421466378806458. Rounding M
     or the cancelling projected terms first erases those charges.
     The 21-period case instead retains a subnormal coefficient
-    1.070901e-317, whose 1e307 charges link to +/-1.0709011211989854e-10.
-    Relative direct and public component assertions protect both limits.
+    1.070901e-317, whose 2**1000 charges link to +/-1.147479768810137e-16.
+    Matching the first portfolio exposure keeps the separate logarithmic
+    contribution reconciliation well-conditioned. Normalizing the direct and
+    public effect comparisons prevents an absolute tolerance from accepting zero.
     """
     portfolio_returns = np.asarray(portfolio_values, dtype=np.float64)
     benchmark_returns = np.asarray(benchmark_values, dtype=np.float64)
@@ -880,8 +882,10 @@ def test_tiny_projection_preserves_offsetting_authoritative_charges(
     np.testing.assert_array_equal(result.period_summary["benchmark_return"], benchmark_returns)
     charges = result.period_detail.loc[result.period_detail["identifier"].isin(["A", "B"])]
     assert bool(charges["portfolio_return"].isna().all())
-    np.testing.assert_allclose(charges["linked_total_effect"], [expected, -expected],
-                               rtol=_TOLERANCE, atol=_TOLERANCE)
+    np.testing.assert_allclose(
+        charges["linked_total_effect"].to_numpy() / np.asarray([expected, -expected]),
+        np.ones(2), rtol=_TOLERANCE, atol=0.0,
+    )
     assert bool(result.reconciliation["passed"].all())
 
 
