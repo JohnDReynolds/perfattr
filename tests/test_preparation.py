@@ -84,7 +84,7 @@ def test_returns_only_normalization_derives_contribution_and_days() -> None:
         rtol=1e-12,
         atol=1e-12,
     )
-    assert pd.isna(normalized.frame.loc[2, "return"])
+    assert normalized.frame["return"].isna().loc[2]
     assert str(normalized.frame["identifier"].dtype) == "string"
     assert normalized.frame["weight"].dtype == np.dtype("float64")
     assert normalized.frame["quantity_of_days"].dtype == np.dtype("int64")
@@ -118,7 +118,7 @@ def test_authoritative_normalization_preserves_unexposed_charge(
         atol=1e-12,
     )
     assert normalized.frame["contribution"].sum() == pytest.approx(0.05)
-    assert pd.isna(normalized.frame.loc[1, "return"])
+    assert normalized.frame["return"].isna().loc[1]
     assert list(normalized.frame["quantity_of_days"]) == [29, 29]
 
 
