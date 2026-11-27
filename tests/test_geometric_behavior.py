@@ -79,13 +79,13 @@ def test_public_result_has_exact_dtypes_indexes_and_null_placement() -> None:
     _assert_canonical_dtypes(result)
     for frame in _geometric_frames(result).values():
         assert frame.index.equals(pd.RangeIndex(len(frame)))
-    assert pd.isna(detail.at["P Fee", "portfolio_return"])
+    assert detail["portfolio_return"].isna().at["P Fee"]
     assert detail.at["P Fee", "benchmark_return"] == pytest.approx(0.0)
-    assert pd.isna(detail.at["P Fee", "active_return"])
+    assert detail["active_return"].isna().at["P Fee"]
     assert detail.at["P Fee", "selection_effect"] == pytest.approx(-0.001 / 1.04)
     assert detail.at["B Fee", "portfolio_return"] == pytest.approx(0.0)
-    assert pd.isna(detail.at["B Fee", "benchmark_return"])
-    assert pd.isna(detail.at["B Fee", "active_return"])
+    assert detail["benchmark_return"].isna().at["B Fee"]
+    assert detail["active_return"].isna().at["B Fee"]
     assert detail.at["B Fee", "benchmark_accounting_residual"] == pytest.approx(
         -0.002
     )

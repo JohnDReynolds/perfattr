@@ -455,10 +455,12 @@ def test_randomized_currency_and_complete_identities_match_direct_calculation() 
 def test_nonfinite_currency_calculation_is_rejected_without_a_partial_result() -> None:
     """Finite inputs that overflow a weighted currency effect must fail explicitly."""
     inputs = _complete_hand_fixture()
-    extreme_weights = [1e308, -1e308, 1.0, 0.0]
+    # Cancel the large weights before adding the unit residual so validation passes.
+    # A large-weight row still overflows when multiplied by the extreme log return.
+    extreme_weights = [0.0, 1e308, -1e308, 1.0]
     inputs[2].loc[:, "currency_weight"] = extreme_weights
     inputs[3].loc[:, "currency_weight"] = extreme_weights
-    inputs[2].loc[0, "base_currency_cash_return"] = float.fromhex(
+    inputs[2].loc[1, "base_currency_cash_return"] = float.fromhex(
         "0x1.fffffffffffffp+1023"
     )
 
