@@ -140,7 +140,7 @@ def test_authoritative_portfolio_contribution_drives_selection() -> None:
 
     assert indexed.at["Asset", "portfolio_return"] == pytest.approx(0.05)
     assert indexed.at["Asset", "benchmark_return"] == pytest.approx(0.04)
-    assert indexed["portfolio_return"].isna().at["Fee"]
+    assert pd.isna(indexed.at["Fee", "portfolio_return"])
     assert indexed.at["Fee", "selection_effect"] == pytest.approx(-0.001 / 1.04)
     assert indexed.at["Asset", "selection_effect"] == pytest.approx(0.010 / 1.04)
     assert indexed["allocation_effect"].sum() == pytest.approx(0.0)
