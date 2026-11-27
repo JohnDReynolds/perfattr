@@ -267,9 +267,13 @@ def test_randomized_market_grid_reconciles_to_independent_active_premiums() -> N
 def test_nonfinite_market_calculation_is_rejected_without_a_partial_result() -> None:
     """Finite inputs that overflow a weighted log effect must fail explicitly."""
     inputs = _hand_calculated_inputs()
-    inputs[0].loc[:, "market_weight"] = [1e308, -1e308, 1.0]
-    inputs[1].loc[:, "market_weight"] = [1e308, -1e308, 1.0]
-    inputs[0].loc[0, "local_asset_return"] = float.fromhex(
+    # Add a neutral market so the large weights cancel before the unit residual.
+    # The extreme return on a large-weight row still forces a non-finite effect.
+    for frame in inputs[:2]:
+        frame.loc[len(frame)] = ["2024-01-01", "2024-01-31", "D", 0.0, 0.0, 0.0]
+    inputs[0].loc[:, "market_weight"] = [0.0, 1e308, -1e308, 1.0]
+    inputs[1].loc[:, "market_weight"] = [0.0, 1e308, -1e308, 1.0]
+    inputs[0].loc[1, "local_asset_return"] = float.fromhex(
         "0x1.fffffffffffffp+1023"
     )
 
